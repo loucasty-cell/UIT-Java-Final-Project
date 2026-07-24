@@ -23,6 +23,7 @@ Direct messaging, referrals, advanced milestones, AI matching, video hosting, pa
 - Lovable SPA is the client.
 - Supabase Auth owns registration, login, password reset, and email verification.
 - Spring Security validates Supabase access tokens through the project JWKS endpoint.
+- Configure the Supabase JWT access-token lifetime to exactly 30 minutes (`1800` seconds). Supabase owns token refresh; Spring Boot must reject expired access tokens.
 - Spring Boot is the only write path for application tables and all point operations.
 - Supabase PostgreSQL is the system of record; use Spring Data JPA and Flyway.
 - Supabase Storage holds profile images and certificate files.

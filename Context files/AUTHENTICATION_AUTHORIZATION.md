@@ -4,6 +4,8 @@
 
 Supabase Auth owns sign-up, sign-in, email verification, token refresh, sign-out, and password reset. The Lovable frontend uses the Supabase client for those operations. Spring Boot exposes no duplicate authentication endpoints and stores no passwords or refresh tokens.
 
+Configure the Supabase JWT access-token lifetime to exactly 30 minutes (`1800` seconds). The token's `exp` claim is authoritative. Spring Boot must reject an expired access token with `401 TOKEN_EXPIRED`; the frontend then refreshes through Supabase and retries the failed request at most once.
+
 The Supabase project must use asymmetric signing keys so Spring Security can validate JWTs through:
 
 `https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json`
@@ -24,8 +26,8 @@ Expected issuer is `https://<project-ref>.supabase.co/auth/v1` and expected audi
 - API is stateless and uses bearer tokens, not server sessions or authentication cookies.
 - Disable CSRF only because authentication is header-based and stateless.
 - CORS uses an explicit allow-list of Lovable production/preview and local development origins; never `*` with credentials.
-- Frontend refreshes tokens through Supabase and retries a request at most once after refresh.
-- Logging out revokes/clears the Supabase session on the client; short access-token lifetime limits stale access.
+- Frontend refreshes the 30-minute access token through Supabase and retries a request at most once after refresh.
+- Logging out revokes/clears the Supabase session on the client; the 30-minute access-token lifetime limits stale access.
 - Role changes and suspension take effect from the database check even if an old JWT still exists.
 
 ## Account-state behavior

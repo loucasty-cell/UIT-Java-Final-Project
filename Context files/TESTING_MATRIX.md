@@ -13,7 +13,7 @@
 
 | Feature | Required automated cases |
 |---|---|
-| Authentication | valid token, missing token, bad signature, wrong issuer/audience, expired token, unknown key refresh |
+| Authentication | valid token within the 30-minute lifetime, missing token, bad signature, wrong issuer/audience, token accepted immediately before expiry, token rejected at/after expiry with `401 TOKEN_EXPIRED`, refresh followed by at most one retry, unknown key refresh |
 | Account state | missing profile only onboarding; active access; suspended read-me only; deleted rejection; admin status override |
 | Onboarding | creates profile/wallet/+30 once; same idempotency retry returns original; different payload conflict; concurrent calls do not double grant |
 | Profile | validation, version conflict, private-field redaction, owner update, unrelated-user restrictions |

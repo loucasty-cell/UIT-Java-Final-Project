@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: skillbridge-backend
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/skillbridge?sslmode=disable}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: always
+    include-binding-errors: always
+
+skillbridge:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:very_secret_default_key_that_should_be_changed_in_prod}
+      access-token-minutes: ${ACCESS_TOKEN_MINUTES:30}
+      refresh-token-days: ${REFRESH_TOKEN_DAYS:7}
+  cors:
+    allowed-origins: ${FRONTEND_ORIGINS:http://localhost:3000}

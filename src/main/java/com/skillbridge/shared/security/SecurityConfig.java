@@ -24,6 +24,9 @@ public class SecurityConfig {
     @Value("${skillbridge.cors.allowed-origins}")
     private String allowedOrigins;
 
+    @Value("${skillbridge.security.jwt.secret}")
+    private String jwtSecret;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -35,8 +38,17 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
                         .anyRequest().authenticated()
+                )
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt.decoder(jwtDecoder()))
                 );
         return http.build();
+    }
+
+    @Bean
+    public org.springframework.security.oauth2.jwt.JwtDecoder jwtDecoder() {
+        javax.crypto.SecretKey secretKey = new javax.crypto.spec.SecretKeySpec(jwtSecret.getBytes(), "HmacSHA256");
+        return org.springframework.security.oauth2.jwt.NimbusJwtDecoder.withSecretKey(secretKey).build();
     }
 
     @Bean

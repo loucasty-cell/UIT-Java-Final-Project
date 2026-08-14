@@ -29,7 +29,7 @@ Text is trimmed, blank required text is rejected, and unknown command properties
 - `RefreshTokenRequest`: opaque `refreshToken`.
 - `AuthResponse`: `accessToken`, `accessTokenExpiresAt`, rotated `refreshToken`, safe user `id`, `displayName`, `roles`, `accountStatus`.
 
-Passwords/tokens are never echoed. Access lifetime is 30 minutes.
+Passwords/tokens are never echoed. Access lifetime is 24 hours.
 
 ## Profile/dashboard/file DTOs
 

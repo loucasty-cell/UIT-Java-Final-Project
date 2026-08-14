@@ -1,72 +1,66 @@
 # Project Architecture
 
-## System boundary
+## Current repository state
 
-```text
-Lovable React client
-  -> HTTPS JSON/multipart + JWT
+The repository currently contains an empty Spring Boot package scaffold and documentation. There is no build descriptor or implementation class yet.
+
+## Package layout
+
+The planned Java root is com.skillbridge:
+
+~~~text
+com/skillbridge/
+  auth, user, skill, mentor, request, swap, session
+  wallet, review, forum, notification, moderation, admin, search
+  shared/
+    config, error, idempotency, security, storage
+    observability, time, events, scheduling, web, persistence
+~~~
+
+Each feature reserves:
+
+~~~text
+feature/
+  api/controller
+  api/dto/request
+  api/dto/response
+  api/mapper
+  application/command
+  application/query
+  domain/entity
+  domain/model
+  infrastructure/persistence
+~~~
+
+Resources are reserved for configuration, Flyway migration and seed files, OpenAPI, and storage adapters. Tests are separated into unit, PostgreSQL/Testcontainers, migration, concurrency, web/security, contract, E2E, and fixture areas under src/test.
+
+## Runtime boundary
+
+~~~text
+API client
+  -> HTTPS JSON or multipart with Bearer JWT
   -> Spring Security
-  -> Java 21 Spring Boot REST API on Tomcat 10.1+
+  -> controller and DTO validation
+  -> application command/query
+  -> domain rules
+  -> repository or adapter
   -> Neon PostgreSQL
-```
+~~~
 
-Spring Boot owns authentication and every business-data write. Neon PostgreSQL is the system of record. File bytes use a storage adapter; PostgreSQL stores owner-scoped metadata/object keys. The frontend never accesses Neon directly.
+Spring Boot owns authentication and business-data writes. PostgreSQL owns persisted business state. Storage owns file bytes while PostgreSQL owns authorized metadata and object keys.
 
-## Deployment
+## Dependency direction
 
-- Preferred: executable Spring Boot JAR with embedded Tomcat 10.1+.
-- Course-compatible option: WAR deployed to external Tomcat 10.1+, using `jakarta.servlet` and Java 21.
-- Require Neon SSL, environment variables, a small Hikari pool, and separate development/test/production databases or Neon branches.
-- Flyway owns schema changes. Set Hibernate schema behavior to validation and disable open-session-in-view.
+API depends on application. Application depends on domain contracts. Infrastructure implements inner-layer ports. A feature uses another feature through a narrow application interface and never calls another feature's repository.
 
-## Backend modules
+Controllers do not call repositories, storage clients, schedulers, or mappers directly. Query services do not mutate state or calculate authoritative point changes. Wallet mutations pass through the wallet application boundary.
 
-- `auth`: register, login, refresh rotation, logout, password hashes, token-family revocation.
-- `user`: profile, account status, avatar metadata, certificates.
-- `skill`: catalog, teach/learn associations, mentor offerings, availability, discovery.
-- `request`: learning requests, acceptance, rejection, cancellation, expiry.
-- `swap`: reciprocal validation, snapshots, status, participant confirmations.
-- `session`: scheduling, meeting URL, completion confirmations, cancellation.
-- `wallet`: wallet, immutable ledger, escrow, rewards, payout, refund, adjustments.
-- `review`: eligibility, uniqueness, rating aggregates.
-- `forum`: posts, skills/tags, comments, likes, leaderboard, volunteer requests.
-- `notification`: user events and read state.
-- `moderation`: reports, warnings, disputes, settings, audit events.
-- `shared`: configuration, errors, security infrastructure, idempotency, clocks, storage, and observability.
+## Transactions and jobs
 
-## Package style
+Use one transaction for registration, point holds, skill-swap snapshots, acceptance, completion, refunds, rewards, and dispute resolution. Use row locks, optimistic versions, and idempotency keys where required.
 
-Use package-by-feature. Inside a feature separate `api`, `application`, `domain`, and `infrastructure`. Dependency direction is API -> application -> domain; infrastructure implements inner-layer interfaces. A feature calls another feature through a narrow application interface, never its repository.
+Scheduled jobs expire requests, refund escrow, auto-release eligible point sessions, queue notifications, and clean expired refresh tokens. Jobs must be repeat-safe and safe across multiple instances.
 
-## Request path
+## Configuration
 
-1. Spring Security validates JWT signature and claims, then loads current account state/roles.
-2. Controller validates transport input and calls one application use case.
-3. Service checks ownership, participant relationship, role, state, and domain rules.
-4. Service executes one database transaction through repositories/adapters.
-5. Mapper/assembler returns a caller-specific DTO.
-6. Global error handling returns a stable RFC 9457 response.
-
-## Transaction boundaries
-
-- Registration creates user, roles, wallet, and +50 starter ledger entry once.
-- Point request locks the learner wallet and creates request, escrow, and ledger hold atomically.
-- Skill-swap request validates both owned teach/learn rows and writes both snapshots atomically without wallet rows.
-- Request acceptance creates exactly one session and changes request/swap state atomically.
-- Completion locks session plus escrow/swap. The second confirmation releases points or completes the swap exactly once.
-- Reject/cancel/expiry refunds held points exactly once.
-- Dispute creation freezes release; admin resolution releases/refunds/cancels exactly once and writes an audit event.
-- External file transfer is outside long database transactions; metadata confirmation is short and transactional.
-
-## Data ownership
-
-- `users` owns login identity; password hashes and refresh-token hashes never leave the backend.
-- Neon PostgreSQL owns business state, wallet balances, immutable ledger, snapshots, moderation, and audit history.
-- Storage owns bytes; PostgreSQL owns private metadata and object keys.
-- The frontend owns display state only.
-
-## Background work
-
-Scheduled jobs expire pending requests, refund escrow, auto-release eligible point sessions after their snapshotted deadline, send queued notifications, and remove expired refresh-token rows. Jobs are idempotent, use row claims/locks, and remain safe with multiple app instances.
-
-See [CONTROLLER_SERVICE_MAP.md](CONTROLLER_SERVICE_MAP.md), [DTO_MAPPING.md](DTO_MAPPING.md), and [AUTHENTICATION_AUTHORIZATION.md](AUTHENTICATION_AUTHORIZATION.md).
+Use .env.example for local placeholders and .env.test.example for isolated tests. Require Neon SSL, a small Hikari pool, UTC, Flyway, JPA validate, and open-session-in-view disabled. Never commit credentials or run tests against production.

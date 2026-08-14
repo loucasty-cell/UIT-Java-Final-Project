@@ -1,20 +1,20 @@
 # SkillBridge Context Index
 
-Read these files before backend implementation. They describe the current Lovable/React frontend contract and the Java 21 backend that must support it.
+The root [forbackend.md](../forbackend.md) is the authoritative implementation guide. This checkout contains documentation and an empty backend scaffold; the context files describe planned behavior and contracts until implementation exists.
 
-1. [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) - product goal, actors, frontend routes, MVP, and success criteria.
-2. [BACKEND_CONTEXT.md](BACKEND_CONTEXT.md) - authoritative business workflow, Neon PostgreSQL model, and system decisions.
-3. [API_STANDARDS.md](API_STANDARDS.md) - HTTP-wide REST conventions.
-4. [API_CONTRACT.md](API_CONTRACT.md) - complete frontend-facing endpoint inventory.
-5. [DTO_CATALOG.md](DTO_CATALOG.md) - request, response, query, enum, and validation contract.
-6. [DTO_MAPPING.md](DTO_MAPPING.md) - entity, DTO, projection, snapshot, and derived-field rules.
-7. [AUTHENTICATION_AUTHORIZATION.md](AUTHENTICATION_AUTHORIZATION.md) - Spring Security JWT flow and permission matrix.
-8. [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md) - modules, layers, transactions, Tomcat, Neon, and dependencies.
-9. [CONTROLLER_SERVICE_MAP.md](CONTROLLER_SERVICE_MAP.md) - controller and application-service ownership.
-10. [CLEAN_CODE_STANDARDS.md](CLEAN_CODE_STANDARDS.md) - implementation quality rules.
-11. [TESTING_MATRIX.md](TESTING_MATRIX.md) - required automated coverage and release gates.
-12. [REQUIRED_SKILLS.md](REQUIRED_SKILLS.md) - contributor knowledge requirements.
+Read the guide first, then use the focused files:
 
-The root [forbackend.md](../forbackend.md) is the implementation guide that this context set expands. When concerns overlap, use the concern-specific file: business rules come from `BACKEND_CONTEXT`, HTTP routes from `API_CONTRACT`, wire fields from `DTO_CATALOG`, access decisions from `AUTHENTICATION_AUTHORIZATION`, and verification requirements from `TESTING_MATRIX`.
+1. [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) - product purpose, actors, capabilities, and scope.
+2. [BACKEND_CONTEXT.md](BACKEND_CONTEXT.md) - domain modes, workflow invariants, and database rules.
+3. [API_CONTRACT.md](API_CONTRACT.md) - complete REST route inventory.
+4. [DTO_CATALOG.md](DTO_CATALOG.md) - complete request, response, enum, and validation inventory.
+5. [API_STANDARDS.md](API_STANDARDS.md) - HTTP, error, pagination, and reliability rules.
+6. [AUTHENTICATION_AUTHORIZATION.md](AUTHENTICATION_AUTHORIZATION.md) - JWT, roles, account state, and ownership.
+7. [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md) - actual package layout and dependency direction.
+8. [DTO_MAPPING.md](DTO_MAPPING.md) - entity, DTO, projection, snapshot, and redaction rules.
+9. [CONTROLLER_SERVICE_MAP.md](CONTROLLER_SERVICE_MAP.md) - planned controller and application ownership.
+10. [TESTING_MATRIX.md](TESTING_MATRIX.md) - required test layers and scenarios.
+11. [CLEAN_CODE_STANDARDS.md](CLEAN_CODE_STANDARDS.md) - implementation quality rules.
+12. [REQUIRED_SKILLS.md](REQUIRED_SKILLS.md) - contributor competencies.
 
-No implementation may introduce an endpoint, DTO field, state transition, point event, permission, or database table that conflicts with these files. Update this context set and the OpenAPI contract before changing behavior.
+When documents overlap, use the root guide for implementation decisions, API_CONTRACT and DTO_CATALOG for public interfaces, AUTHENTICATION_AUTHORIZATION for access decisions, and TESTING_MATRIX for verification. Update the relevant contract documents before changing behavior.

@@ -17,7 +17,7 @@ All paths are relative to `/api/v1`. Routes require an active authenticated acco
 |---|---|---|---|
 | `GET /me` | ProfileController -> ProfileQueryService | none -> MyProfileResponse | owner |
 | `PATCH /me` | ProfileController -> ProfileService | ProfileUpdateRequest -> MyProfileResponse | owner; `If-Match` |
-| `GET /me/dashboard` | DashboardController -> DashboardQueryService | none -> DashboardResponse | owner; frontend dashboard projection |
+| `GET /me/dashboard` | DashboardController -> DashboardQueryService | none -> DashboardResponse | owner; dashboard projection |
 | `GET /skills` | SkillCatalogController -> SkillQueryService | `q,page,size,sort` -> PageResponse<SkillResponse> | active catalog |
 | `GET /me/skills` | MySkillController -> UserSkillQueryService | `direction,page,size` -> PageResponse<UserSkillResponse> | owner |
 | `POST /me/skills` | MySkillController -> UserSkillService | UserSkillCreateRequest -> UserSkillResponse | owner; `201` |
@@ -77,7 +77,7 @@ All paths are relative to `/api/v1`. Routes require an active authenticated acco
 | `GET /sessions/{sessionId}/review` | ReviewController -> ReviewQueryService | none -> ReviewResponse | participant gets caller review or `404` |
 | `GET /mentors/{mentorId}/reviews` | ReviewController -> ReviewQueryService | page query -> PageResponse<ReviewResponse> | active user; public fields |
 
-Completion returns `confirmedByMe`, `confirmedByOtherParticipant`, `pointsReleased`, `autoReleaseAt`, and authoritative status. React must not announce payout unless `pointsReleased=true`. The second confirmation releases point escrow or completes a swap exactly once. Opening a dispute blocks release/completion.
+Completion returns `confirmedByMe`, `confirmedByOtherParticipant`, `pointsReleased`, `autoReleaseAt`, and authoritative status. API clients must not announce payout unless `pointsReleased=true`. The second confirmation releases point escrow or completes a swap exactly once. Opening a dispute blocks release/completion.
 
 ## Volunteer forum
 
@@ -112,7 +112,7 @@ Completion returns `confirmedByMe`, `confirmedByOtherParticipant`, `pointsReleas
 | Method and path | Controller -> service | Input -> output | Access and behavior |
 |---|---|---|---|
 | `POST /reports` | ReportController -> ReportService | ReportCreateRequest -> ReportResponse | reporter from principal; `201` |
-| `GET /admin/dashboard` | AdminDashboardController -> AdminQueryService | none -> AdminDashboardResponse | aggregate frontend cards |
+| `GET /admin/dashboard` | AdminDashboardController -> AdminQueryService | none -> AdminDashboardResponse | aggregate dashboard values |
 | `GET /admin/reports` | AdminReportController -> ReportQueryService | `status,targetType,reason,page,size,sort` -> PageResponse<ReportResponse> | moderation queue |
 | `POST /admin/reports/{reportId}/dismiss` | AdminReportController -> ReportService | AdminReasonRequest -> ReportResponse | audited; `IDEM` |
 | `POST /admin/reports/{reportId}/remove-content` | AdminReportController -> ReportService | AdminReasonRequest -> ReportResponse | soft-delete target; audited; `IDEM` |

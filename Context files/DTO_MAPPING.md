@@ -6,6 +6,28 @@ Controllers accept and return DTOs only. Entities, password data, token hashes, 
 
 Feature-local mappers handle mechanical conversions. Application assemblers add caller-aware fields, aggregates, authorized URLs, snapshots, and projections. Mappers do not access repositories, security context, clocks, storage, or networks.
 
+## Location by feature
+
+DTOs and mappers are organized inside each feature package:
+
+~~~text
+com.skillbridge.{feature}.api.dto.request
+com.skillbridge.{feature}.api.dto.response
+com.skillbridge.{feature}.api.mapper
+~~~
+
+Application services that use these DTOs are located in:
+
+~~~text
+com.skillbridge.{feature}.application.command
+com.skillbridge.{feature}.application.query
+~~~
+
+This applies to `admin`, `auth`, `forum`, `mentor`, `moderation`,
+`notification`, `request`, `review`, `search`, `session`, `skill`, `swap`,
+`user`, and `wallet`. The folders are scaffold locations at present; DTO,
+mapper, controller, and service classes are not implemented yet.
+
 ## Write rules
 
 - Map only client-owned fields from request DTOs.

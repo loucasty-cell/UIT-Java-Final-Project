@@ -2,6 +2,24 @@
 
 The classes below are planned locations, not implemented classes. Controllers translate HTTP only. Application commands own writes and transactions. Query services return read-only projections.
 
+## Package locations
+
+For every feature, the related classes belong in the following packages:
+
+| Responsibility | Package path |
+|---|---|
+| Controllers | `com.skillbridge.{feature}.api.controller` |
+| Request DTOs | `com.skillbridge.{feature}.api.dto.request` |
+| Response DTOs | `com.skillbridge.{feature}.api.dto.response` |
+| Mappers and response assemblers | `com.skillbridge.{feature}.api.mapper` |
+| Write/transaction services | `com.skillbridge.{feature}.application.command` |
+| Read/query services | `com.skillbridge.{feature}.application.query` |
+
+The feature names are `admin`, `auth`, `forum`, `mentor`, `moderation`,
+`notification`, `request`, `review`, `search`, `session`, `skill`, `swap`,
+`user`, and `wallet`. These are planned package locations; implementation
+classes have not been added yet.
+
 ## Controllers
 
 | Area | Controllers | Application ownership |

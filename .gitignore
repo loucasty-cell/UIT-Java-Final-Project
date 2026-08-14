@@ -26,3 +26,10 @@ replay_pid*
 # IntelliJ IDEA project files
 .idea/
 *.iml
+node_modules
+
+# Local environment files
+.env
+.env.*
+!.env.example
+!.env.test.example

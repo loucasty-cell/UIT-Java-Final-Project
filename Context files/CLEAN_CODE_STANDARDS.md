@@ -2,62 +2,73 @@
 
 ## Core principles
 
-- Prefer clear, direct code over clever abstractions.
-- Each class and method has one reason to change.
-- Names describe business meaning: `holdPoints`, `quotedPoints`, and `completionDeadline`, not vague words such as `process` or `data`.
-- Remove duplication only when the shared concept is genuinely the same.
-- Comments explain decisions and constraints, not what readable code already says.
+- Prefer clear direct code over speculative abstraction.
+- Each class/method has one reason to change.
+- Names express domain actions: `holdPoints`, `createSkillSwapSnapshot`, `confirmCompletion`, `refundEscrow`.
+- Comments explain decisions, transaction constraints, and security boundaries.
+- Do not copy mock frontend data into backend constants.
 
-## Spring boundaries
+## Spring/Tomcat boundaries
 
-- Controllers handle HTTP concerns only and call one application use case.
-- Services own business rules, authorization, orchestration, and transaction boundaries.
+- Use Java 21, Spring Boot 3.x, and `jakarta.*` for Tomcat 10.1+.
+- Controllers handle HTTP only and call one application use case.
+- Services own authorization, workflow rules, idempotency, orchestration, and transactions.
 - Repositories contain persistence access only.
-- Never expose JPA entities from controllers or bind request JSON directly to entities.
-- Use constructor injection. Avoid field injection, mutable global state, and service-locator patterns.
-- Centralize exception-to-problem mapping; do not catch broad exceptions in each controller.
+- Never expose JPA entities or bind command JSON directly to entities.
+- Use constructor injection; avoid mutable global state, field injection, and service locators.
+- Centralize exception-to-RFC-9457 mapping.
 
-## Domain and data
+## PostgreSQL/Neon data
 
-- Model modes, roles, states, and ledger event types with explicit enums and stable API values.
-- Enforce critical invariants in both application logic and database constraints.
-- Use `Instant` for stored timestamps and inject a `Clock` where current time affects behavior.
-- Use integer types for points; never floating point.
-- Do not use `Optional` as an entity field or method parameter.
-- Avoid unrestricted setters. Mutations should express valid domain actions.
-- Prevent N+1 queries and never rely on open-session lazy loading during JSON serialization.
+- PostgreSQL on Neon is the system of record; never add MySQL dependencies or syntax.
+- Flyway owns schema changes; JPA validates mappings.
+- Use UUIDs, `timestamptz`, explicit constraints/indexes, and version columns.
+- Lock wallets/escrow/workflow rows explicitly where concurrency requires it.
+- Ledger/audit rows are append-only. Corrections use compensating events.
+- Use `Instant`/`OffsetDateTime` deliberately and inject `Clock` for time-dependent behavior.
+- Points are integers, never floating point.
+- Prevent N+1 queries and open-session lazy JSON access.
 
-## DTO and validation rules
+## Domain invariants
 
-- Request DTOs validate required fields, sizes, formats, ranges, and allowed values.
-- Response DTOs reveal only fields allowed for that caller.
-- Mappers are explicit and contain no database access or business decisions.
-- Normalize user input deliberately; preserve original display text when required.
-- Client input is never trusted for ownership, price, balance, reward, or workflow state.
-- Follow the complete field contract in [DTO_CATALOG.md](DTO_CATALOG.md) and mapping rules in [DTO_MAPPING.md](DTO_MAPPING.md).
+- Stable enums match [DTO_CATALOG.md](DTO_CATALOG.md), OpenAPI, and database checks.
+- Point price and reward values are server-owned and snapshotted where historical meaning requires it.
+- Skill swaps validate reciprocal owned skills and write immutable snapshots; they never touch wallets.
+- Completion, refund, release, reward, and admin resolution are idempotent and occur once.
+- State changes use named domain methods, not unrestricted status setters.
 
-## Error handling and logging
+## DTO and validation
 
-- Throw specific domain/application exceptions with stable error codes.
-- Log once at the correct boundary with `traceId`, operation, and safe entity IDs.
-- Never log tokens, passwords, secrets, certificate contents, private URLs, or full personal profiles.
-- Expected validation and authorization failures are not server errors.
+- Request DTOs validate required fields, formats, ranges, conditional mode fields, and unknown properties.
+- Response DTOs reveal only caller-authorized fields.
+- Mappers contain no repositories or business decisions.
+- Client input is never trusted for identity, owner, role, author, participant, price, balance, reward, aggregate, audit actor, or final state.
+- Follow [DTO_CATALOG.md](DTO_CATALOG.md) and [DTO_MAPPING.md](DTO_MAPPING.md).
 
-## Testing standards
+## Security, files, and logging
 
-- Test behavior and business outcomes, not private implementation details.
-- Unit-test pure rules; integration-test repositories, transactions, security, and HTTP contracts.
-- Use PostgreSQL Testcontainers for database behavior; do not substitute H2 for transactional or SQL-specific tests.
-- Include happy path, invalid state, unauthorized user, insufficient balance, duplicate retry, and concurrent execution cases.
-- Tests must be deterministic: control time, IDs, and external storage responses.
-- [TESTING_MATRIX.md](TESTING_MATRIX.md) is mandatory coverage, not a suggestion.
+- Passwords use Argon2id/BCrypt; refresh tokens are stored only as hashes.
+- Never log passwords, hashes, JWTs, refresh tokens, signing keys, Neon credentials, meeting URLs, certificate content/keys, or personal payloads.
+- Validate certificate PDF MIME, signature, size, ownership, and generated key.
+- Log once at the boundary with request ID, operation, and safe entity IDs.
+- Expected validation/auth failures are not server errors.
+
+## Testing
+
+- Test business outcomes, not private implementation.
+- Unit-test pure rules; integration-test repositories, locks, transactions, security, and REST contracts.
+- Use PostgreSQL Testcontainers; never substitute H2 for database behavior.
+- Control time, IDs, idempotency keys, and storage responses.
+- Include happy path, invalid state, unauthorized user, insufficient balance, mismatched swap, duplicate retry, and concurrent execution.
+- [TESTING_MATRIX.md](TESTING_MATRIX.md) is mandatory.
 
 ## Change discipline
 
-- Keep changes focused and keep the build green.
-- Add or update tests and OpenAPI documentation with behavior changes.
+- Keep changes focused and build green.
+- Update Flyway, OpenAPI, context, and tests with behavior changes.
 - Do not mix schema changes with unrelated refactoring.
-- Never use automatic schema creation/update outside disposable local experiments.
-- Delete dead code; do not keep commented-out implementations or unresolved TODOs without an issue reference.
+- Never rewrite applied production migrations.
+- Delete dead code; unresolved TODOs require an issue reference.
+- Keep secrets and real Neon connection details outside Git.
 
-When simplicity and abstraction conflict, choose the simplest design that preserves the rules in [BACKEND_CONTEXT.md](BACKEND_CONTEXT.md).
+Choose the simplest implementation that preserves [BACKEND_CONTEXT.md](BACKEND_CONTEXT.md).

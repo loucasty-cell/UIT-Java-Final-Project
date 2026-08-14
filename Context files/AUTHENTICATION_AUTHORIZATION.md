@@ -2,80 +2,97 @@
 
 ## Authentication ownership
 
-Supabase Auth owns sign-up, sign-in, email verification, token refresh, sign-out, and password reset. The Lovable frontend uses the Supabase client for those operations. Spring Boot exposes no duplicate authentication endpoints and stores no passwords or refresh tokens.
+Spring Boot owns registration, login, access-token issue, refresh-token rotation, logout, and account enforcement. Neon PostgreSQL stores users, password hashes, roles, account status, and refresh-token hashes. The frontend never authenticates directly against Neon.
 
-Configure the Supabase JWT access-token lifetime to exactly 30 minutes (`1800` seconds). The token's `exp` claim is authoritative. Spring Boot must reject an expired access token with `401 TOKEN_EXPIRED`; the frontend then refreshes through Supabase and retries the failed request at most once.
+Access-token lifetime is exactly 30 minutes. The JWT `exp` claim is authoritative. Refresh tokens are opaque, long-lived secrets rotated on every refresh; only their hashes are stored.
 
-The Supabase project must use asymmetric signing keys so Spring Security can validate JWTs through:
+## Endpoints
 
-`https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json`
+- `POST /api/v1/auth/register`: creates user, `USER` role, wallet, and one +50 registration award atomically.
+- `POST /api/v1/auth/login`: verifies password hash and returns access/refresh tokens plus safe user summary.
+- `POST /api/v1/auth/refresh`: verifies and rotates the refresh token; reuse revokes the token family.
+- `POST /api/v1/auth/logout`: revokes the current refresh-token family.
+
+Password reset/email verification may be added later with server-generated single-use tokens. Do not invent frontend behavior until routes/DTOs are added to the context.
 
 ## Request authentication flow
 
-1. Frontend sends `Authorization: Bearer <access-token>`.
-2. Spring Security verifies signature, approved algorithm, key ID, issuer, audience, expiry, and not-before time.
-3. `sub` must be a UUID and becomes the immutable application user ID.
-4. Backend loads the profile role and account status from PostgreSQL. Email/metadata claims never grant authorization.
-5. Missing profile may call only onboarding. Existing active profile may use normal endpoints.
-6. Invalid token returns `401`; valid identity without permission returns `403`.
+1. Frontend sends `Authorization: Bearer <accessToken>`.
+2. Spring Security validates approved algorithm, signature, issuer, audience, `sub`, `iat`, `nbf`, and `exp`.
+3. `sub` is the UUID from `users.id`.
+4. Backend loads current roles and account status from PostgreSQL. JWT claims never override current suspension/role state.
+5. Missing/invalid/revoked token returns `401`. Expired access token returns `401 TOKEN_EXPIRED`.
+6. Frontend may call refresh and retry the original request once. A second failure returns the user to login.
+7. Valid identity without resource permission returns `403`.
 
-Expected issuer is `https://<project-ref>.supabase.co/auth/v1` and expected audience is `authenticated`. Allow small clock skew only. Cache JWKS within Supabase rotation guidance and support key refresh on an unknown key ID.
+## Credential rules
+
+- Passwords are hashed using Argon2id or BCrypt with deployment-appropriate parameters.
+- Never log or return raw passwords, password hashes, JWTs, refresh tokens, token hashes, or signing keys.
+- JWT signing secret/key is at least 256 bits for HS256 or use an asymmetric key pair; production keys come from a secret manager.
+- Refresh rows record family, expiry, revocation, replacement, and reuse detection metadata.
+- Login and refresh are rate-limited. Generic credential errors do not reveal whether an email exists.
 
 ## Session security
 
-- API is stateless and uses bearer tokens, not server sessions or authentication cookies.
-- Disable CSRF only because authentication is header-based and stateless.
-- CORS uses an explicit allow-list of Lovable production/preview and local development origins; never `*` with credentials.
-- Frontend refreshes the 30-minute access token through Supabase and retries a request at most once after refresh.
-- Logging out revokes/clears the Supabase session on the client; the 30-minute access-token lifetime limits stale access.
-- Role changes and suspension take effect from the database check even if an old JWT still exists.
+- API is stateless for access-token authentication; no servlet login session stores user identity.
+- Header-based bearer authentication allows CSRF disabling only while credentials are not cookie-authenticated.
+- CORS uses explicit Lovable production/preview and local origins; never wildcard origins with credentials.
+- Logout/reuse detection revokes refresh capability. Existing access tokens remain short-lived and current account state is checked from the database.
 
-## Account-state behavior
+## Account behavior
 
-- `ACTIVE`: normal access based on role and ownership.
-- `SUSPENDED`: may call `GET /me` only; all other business endpoints return `403 ACCOUNT_SUSPENDED`.
-- `DELETED`: all protected endpoints return `403 ACCOUNT_DELETED`; retain historical records and prevent new actions.
-- Account state overrides `ADMIN` role.
+- `ACTIVE`: normal role/ownership/participant access.
+- `WARNED`: normal access plus warning notification/history.
+- `SUSPENDED`: may call `GET /me` and logout only; business endpoints return `403 ACCOUNT_SUSPENDED`.
+- `DISABLED`: authentication/refresh fails; historical records remain.
+- Account state overrides every role including `ADMIN`.
+
+## Role model
+
+- `USER`: ordinary authenticated account.
+- `MENTOR`: same user identity with at least one eligible mentor offering. The offering service grants it atomically on the first eligible offering; a mentor may still act as learner.
+- `ADMIN`: moderation and configuration authority.
+- Roles use a `user_roles` table; do not create separate user/admin/mentor identity tables.
 
 ## Permission matrix
 
-| Resource/action | User rule | Admin rule |
+| Resource/action | User/mentor rule | Admin rule |
 |---|---|---|
-| Onboarding | authenticated identity with no profile | not applicable |
-| Own profile/skills/files/wallet/notifications | owner only | admin does not impersonate owner |
-| Public profile/mentor/reviews | any active user; public fields only | same public response unless using admin endpoint |
-| Learning request read | learner or mentor | may read for moderation/audit |
-| Request accept/reject | selected mentor only | forbidden in MVP |
-| Pending request cancel | learner only | forbidden in MVP |
-| Session read | participant | may read for dispute/report handling |
-| Set Meet link | mentor participant | forbidden in MVP |
-| Complete session | either participant after scheduled end | forbidden in MVP |
-| Cancel session | either participant while scheduled and before start | no override in MVP; after start use dispute |
-| Open/read dispute | participant | read and resolve |
-| Create review | learner participant after completed session | cannot create for a user |
-| Forum create/update/delete | author; delete is soft | moderate through admin/report flow |
-| Report create/read | reporter reads own report | list, assign, resolve |
-| Catalog skill mutation | forbidden | create, update, soft-disable |
-| User status/role | forbidden | update with reason; cannot remove last active admin or change self unsafely |
-| Wallet mutation | forbidden | explicit audited adjustment only |
-| Private certificate | owner gets signed access | metadata/evidence access only when policy requires; never unrestricted browsing |
+| Own profile, skills, certificates, wallet, notifications | owner only | no impersonation through user endpoint |
+| Public mentor profile/reviews | any active account, public fields only | same unless admin endpoint |
+| Create first mentor offering | active user with owned visible `TEACH` skill; service grants `MENTOR` | not through user endpoint |
+| Learning request read | requester or selected mentor | read for moderation/audit |
+| Request accept/reject | selected mentor only | no normal override |
+| Pending request cancel | requester only | no normal override |
+| Session/meeting URL read | participant | read for active dispute/report |
+| Update schedule/meeting URL | participant under state rules | no normal override |
+| Confirm completion | either participant when eligible | resolve only through dispute endpoint |
+| Create dispute | participant before final completion/release | list/resolve |
+| Create review | participant reviewing the other after completion | cannot fabricate review |
+| Forum CRUD | author; deletion is soft | moderation action with audit |
+| Report create/read | reporter reads own | list/dismiss/action |
+| Catalog skill mutation | forbidden | create/update/disable |
+| User status/role | forbidden | update with reason; protect last admin/self-lockout |
+| Wallet mutation | forbidden | explicit audited adjustment/resolution only |
+| Platform settings | forbidden | read/update with audit |
 
 ## Object-level checks
 
-- Resolve resources by ID, then verify owner/participant before returning data or revealing existence.
-- Use `404` for an unrelated user when existence itself is private; use `403` when the resource is known but the action is forbidden.
-- Participant IDs always come from persisted request/session relationships, never from request bodies.
-- A mentor offering must belong to the target mentor, be enabled, and support the requested mode.
-- Forum author checks use persisted author ID. Admin moderation actions are separately audited.
+- Resolve resource, then verify owner/participant before returning private data.
+- Use `404` when revealing existence would leak private data; otherwise `403` for known forbidden action.
+- Participant/author/owner IDs come from persisted relationships or authenticated principal, never request bodies.
+- Mentor offering must belong to the target mentor, be active, and support the mode.
+- `offeredUserSkillId` must belong to the requester and be visible `TEACH`; the mentor must have matching visible `LEARN`.
+- Meeting URLs, certificate object keys, idempotency keys, and admin notes are private.
 
-## Database and Storage access
+## Database and storage access
 
-- Spring Boot is the only business-table write path. Lock down or disable the Supabase Data API for these tables.
-- Use a least-privilege PostgreSQL runtime role; migration credentials are separate.
-- Supabase service/secret keys remain backend-only and are never included in frontend configuration.
-- Upload intents issue owner-scoped object paths. Confirmation verifies bucket, owner prefix, MIME type, size, object existence, and safe file signature before acceptance.
-- Private files are returned only through short-lived signed URLs after authorization.
+- Spring Boot is the only business-table and file-metadata write path.
+- React receives no Neon host credentials, database role, signing key, or storage secret.
+- Runtime and migration PostgreSQL roles are least privilege and separated where practical.
+- Private files are returned only after ownership/authorization through a short-lived storage URL or authenticated streaming endpoint.
 
 ## Security error codes
 
-Use stable codes including `TOKEN_INVALID`, `TOKEN_EXPIRED`, `PROFILE_REQUIRED`, `ACCOUNT_SUSPENDED`, `ACCOUNT_DELETED`, `FORBIDDEN`, `RESOURCE_NOT_FOUND`, `NOT_PARTICIPANT`, and `ADMIN_REQUIRED`. Responses follow RFC 9457 and never reveal token or policy internals.
+Use stable codes including `UNAUTHENTICATED`, `TOKEN_INVALID`, `TOKEN_EXPIRED`, `REFRESH_TOKEN_INVALID`, `REFRESH_TOKEN_REUSED`, `ACCOUNT_SUSPENDED`, `ACCOUNT_DISABLED`, `FORBIDDEN`, `RESOURCE_NOT_FOUND`, `NOT_PARTICIPANT`, and `ADMIN_REQUIRED`. Responses follow [API_STANDARDS.md](API_STANDARDS.md).

@@ -21,7 +21,7 @@ The current frontend routes are the functional source of truth:
 - `/forum`: volunteer posts, likes, comments, leaderboard, and free requests.
 - `/admin`: statistics, moderation, user warnings, reward settings, escrow timing, and disputes.
 
-[api.md](api.md) is the HTTP contract. [skills.md](skills.md) defines the expected engineering capabilities.
+[Context files/API_CONTRACT.md](Context%20files/API_CONTRACT.md) is the HTTP contract. [Context files/REQUIRED_SKILLS.md](Context%20files/REQUIRED_SKILLS.md) defines the expected engineering capabilities.
 
 ## 2. Important frontend corrections
 
@@ -487,7 +487,7 @@ State checks belong in the service layer and must also be protected by row locks
 
 ## 11. API implementation rules
 
-- Implement exactly the routes and payload ownership described in [api.md](api.md).
+- Implement exactly the routes and payload ownership described in [Context files/API_CONTRACT.md](Context%20files/API_CONTRACT.md).
 - Use Bean Validation on request DTOs and domain validation in services.
 - Never expose JPA entities, password hashes, refresh-token hashes, internal notes, or another user's private meeting URL.
 - Use DTO projections for mentor cards, dashboard metrics, session cards, notifications, and admin queue rows.
@@ -574,7 +574,7 @@ Use PostgreSQL full-text or trigram search only after basic indexed search is wo
 - Users cannot access other users' private wallets, certificates, notifications, requests, or sessions.
 - Only participants can see meeting URLs or complete/report sessions.
 - Only admins can access admin routes or resolve disputes.
-- Validation and error JSON match [api.md](api.md).
+- Validation and error JSON match [Context files/API_CONTRACT.md](Context%20files/API_CONTRACT.md).
 
 ### Frontend contract tests
 

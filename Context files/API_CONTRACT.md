@@ -1,113 +1,133 @@
 # Complete API Contract
 
-All paths below are relative to `/api/v1`, require an active Supabase-authenticated user unless marked `ADMIN`, and follow [API_STANDARDS.md](API_STANDARDS.md). `If-Match` carries the current numeric version for mutable resources. `Idempotency-Key` is required where marked `IDEM`.
+All paths are relative to `/api/v1`. Routes require an active authenticated account unless marked public or `ADMIN`. They follow [API_STANDARDS.md](API_STANDARDS.md). `If-Match` carries a mutable resource version where required. `Idempotency-Key` is required for retry-sensitive commands.
 
-## Profile and files
+## Authentication
 
 | Method and path | Controller -> service | Input -> output | Access and behavior |
 |---|---|---|---|
-| `POST /me/onboarding` | ProfileController -> OnboardingService | OnboardingRequest -> MyProfileResponse | `IDEM`; creates profile, wallet, starter ledger once; `201` |
+| `POST /auth/register` | AuthController -> RegistrationService | RegisterRequest -> AuthResponse | public; `IDEM`; user/role/wallet/+50 once; `201` |
+| `POST /auth/login` | AuthController -> AuthenticationService | LoginRequest -> AuthResponse | public; rate-limited |
+| `POST /auth/refresh` | AuthController -> RefreshTokenService | RefreshTokenRequest -> AuthResponse | public with refresh token; rotates family |
+| `POST /auth/logout` | AuthController -> RefreshTokenService | RefreshTokenRequest -> none | authenticated; revokes family; `204` |
+
+## Profile, dashboard, skills, and certificates
+
+| Method and path | Controller -> service | Input -> output | Access and behavior |
+|---|---|---|---|
 | `GET /me` | ProfileController -> ProfileQueryService | none -> MyProfileResponse | owner |
 | `PATCH /me` | ProfileController -> ProfileService | ProfileUpdateRequest -> MyProfileResponse | owner; `If-Match` |
-| `GET /users/{userId}` | ProfileController -> ProfileQueryService | path UUID -> PublicProfileResponse | hides private fields |
-| `POST /me/avatar/upload-intents` | AvatarController -> FileService | FileUploadIntentRequest -> UploadIntentResponse | owner; `201` |
-| `POST /me/avatar/confirm` | AvatarController -> FileService | FileConfirmRequest -> AvatarResponse | owner; `201` |
-| `DELETE /me/avatar` | AvatarController -> FileService | none -> none | owner; `204` |
-| `POST /me/certificates/upload-intents` | CertificateController -> FileService | FileUploadIntentRequest -> UploadIntentResponse | owner; `201` |
-| `POST /me/certificates` | CertificateController -> CertificateService | CertificateCreateRequest -> CertificateResponse | owner; object must exist; `201` |
-| `GET /me/certificates` | CertificateController -> CertificateQueryService | page query -> PageResponse<CertificateResponse> | owner |
-| `DELETE /me/certificates/{certificateId}` | CertificateController -> CertificateService | path UUID -> none | owner; soft-delete metadata and delete object; `204` |
-
-## Skills and mentor discovery
-
-| Method and path | Controller -> service | Input -> output | Access and behavior |
-|---|---|---|---|
-| `GET /skills` | SkillCatalogController -> SkillQueryService | `q,category,page,size,sort` -> PageResponse<SkillResponse> | enabled catalog entries |
+| `GET /me/dashboard` | DashboardController -> DashboardQueryService | none -> DashboardResponse | owner; frontend dashboard projection |
+| `GET /skills` | SkillCatalogController -> SkillQueryService | `q,page,size,sort` -> PageResponse<SkillResponse> | active catalog |
 | `GET /me/skills` | MySkillController -> UserSkillQueryService | `direction,page,size` -> PageResponse<UserSkillResponse> | owner |
 | `POST /me/skills` | MySkillController -> UserSkillService | UserSkillCreateRequest -> UserSkillResponse | owner; `201` |
 | `PATCH /me/skills/{userSkillId}` | MySkillController -> UserSkillService | UserSkillUpdateRequest -> UserSkillResponse | owner; `If-Match` |
-| `DELETE /me/skills/{userSkillId}` | MySkillController -> UserSkillService | path UUID -> none | owner; soft-disable; `204` |
-| `GET /mentors` | MentorController -> MentorQueryService | MentorSearchQuery -> PageResponse<MentorSummaryResponse> | excludes caller and disabled offers |
-| `GET /mentors/{mentorId}` | MentorController -> MentorQueryService | path UUID -> MentorDetailResponse | active mentor only |
+| `DELETE /me/skills/{userSkillId}` | MySkillController -> UserSkillService | path UUID -> none | owner; block active references; `204` |
+| `GET /me/certificates` | CertificateController -> CertificateQueryService | page query -> PageResponse<CertificateResponse> | owner |
+| `POST /me/certificates` | CertificateController -> CertificateService | multipart PDF + optional `skillId` -> CertificateResponse | owner; max 10 MB; `201` |
+| `DELETE /me/certificates/{certificateId}` | CertificateController -> CertificateService | path UUID -> none | owner; allowed state only; `204` |
 
-## Learning requests and sessions
-
-| Method and path | Controller -> service | Input -> output | Access and behavior |
-|---|---|---|---|
-| `POST /learning-requests` | LearningRequestController -> LearningRequestService | LearningRequestCreateRequest -> LearningRequestResponse | learner; `IDEM`; holds points; `201` |
-| `GET /learning-requests/{requestId}` | LearningRequestController -> LearningRequestQueryService | path UUID -> LearningRequestResponse | participant or admin |
-| `GET /me/learning-requests` | LearningRequestController -> LearningRequestQueryService | `role,status,page,size,sort` -> PageResponse<LearningRequestResponse> | participant view |
-| `POST /learning-requests/{requestId}/accept` | LearningRequestController -> LearningRequestService | no body -> SessionResponse | mentor; `IDEM`, `If-Match`; `201` |
-| `POST /learning-requests/{requestId}/reject` | LearningRequestController -> LearningRequestService | ReasonCommandRequest -> LearningRequestResponse | mentor; `IDEM`, `If-Match`; releases escrow |
-| `POST /learning-requests/{requestId}/cancel` | LearningRequestController -> LearningRequestService | ReasonCommandRequest -> LearningRequestResponse | learner while pending; `IDEM`, `If-Match`; releases escrow |
-| `GET /me/sessions` | SessionController -> SessionQueryService | `role,status,from,to,page,size,sort` -> PageResponse<SessionSummaryResponse> | participant view |
-| `GET /sessions/{sessionId}` | SessionController -> SessionQueryService | path UUID -> SessionResponse | participant or admin |
-| `POST /sessions/{sessionId}/set-meet-link` | SessionController -> SessionService | MeetLinkUpdateRequest -> SessionResponse | mentor; `IDEM`, `If-Match` |
-| `POST /sessions/{sessionId}/complete` | SessionController -> SessionService | no body -> SessionResponse | participant after scheduled end; `IDEM`, `If-Match`; may pay out |
-| `POST /sessions/{sessionId}/cancel` | SessionController -> SessionService | SessionCancelRequest -> SessionResponse | participant before scheduled start; `IDEM`, `If-Match`; refunds escrow |
-| `POST /sessions/{sessionId}/disputes` | DisputeController -> DisputeService | DisputeCreateRequest -> DisputeResponse | participant from start until payout; `IDEM`, `If-Match`; `201` |
-| `GET /disputes/{disputeId}` | DisputeController -> DisputeQueryService | path UUID -> DisputeResponse | participant or admin |
-
-## Wallet and reviews
+## Wallet and activity
 
 | Method and path | Controller -> service | Input -> output | Access and behavior |
 |---|---|---|---|
 | `GET /me/wallet` | WalletController -> WalletQueryService | none -> WalletResponse | owner |
-| `GET /me/point-transactions` | WalletController -> WalletQueryService | `type,from,to,page,size,sort` -> PageResponse<PointTransactionResponse> | owner |
-| `POST /sessions/{sessionId}/reviews` | ReviewController -> ReviewService | ReviewCreateRequest -> ReviewResponse | learner after completion; `IDEM`; grants reward once; `201` |
-| `GET /users/{userId}/reviews` | ReviewController -> ReviewQueryService | `page,size,sort` -> PageResponse<ReviewResponse> | public fields only |
+| `GET /me/wallet/transactions` | WalletController -> WalletQueryService | `type,from,to,page,size,sort` -> PageResponse<PointTransactionResponse> | owner |
+| `GET /me/wallet/transactions.csv` | WalletController -> WalletQueryService | filters -> CSV | owner export only |
+
+## Mentor discovery and offerings
+
+| Method and path | Controller -> service | Input -> output | Access and behavior |
+|---|---|---|---|
+| `GET /mentors` | MentorController -> MentorQueryService | MentorSearchQuery -> PageResponse<MentorSummaryResponse> | excludes caller/inactive offers |
+| `GET /mentors/{mentorId}` | MentorController -> MentorQueryService | path UUID -> MentorDetailResponse | active mentor/public fields |
+| `GET /mentors/{mentorId}/availability` | MentorController -> AvailabilityQueryService | `from,to` -> AvailabilityResponse | active slots |
+| `GET /me/mentor-offerings` | MentorOfferingController -> MentorOfferingQueryService | page query -> PageResponse<MentorOfferingResponse> | owner mentor |
+| `POST /me/mentor-offerings` | MentorOfferingController -> MentorOfferingService | MentorOfferingCreateRequest -> MentorOfferingResponse | active user; owned `TEACH`; grants `MENTOR` on first eligible offer; `201` |
+| `PATCH /me/mentor-offerings/{offeringId}` | MentorOfferingController -> MentorOfferingService | MentorOfferingUpdateRequest -> MentorOfferingResponse | owner mentor; `If-Match` |
+| `DELETE /me/mentor-offerings/{offeringId}` | MentorOfferingController -> MentorOfferingService | path UUID -> none | owner; block pending reference; `204` |
+
+## Learning requests and skill swaps
+
+| Method and path | Controller -> service | Input -> output | Access and behavior |
+|---|---|---|---|
+| `POST /learning-requests` | LearningRequestController -> LearningRequestService | LearningRequestCreateRequest -> LearningRequestResponse | requester; `IDEM`; mode-specific transaction; `201` |
+| `GET /learning-requests` | LearningRequestController -> LearningRequestQueryService | `direction,status,page,size,sort` -> PageResponse<LearningRequestResponse> | caller participant view |
+| `GET /learning-requests/{requestId}` | LearningRequestController -> LearningRequestQueryService | path UUID -> LearningRequestResponse | participant/admin |
+| `POST /learning-requests/{requestId}/accept` | LearningRequestController -> LearningRequestService | RequestAcceptRequest -> SessionResponse | selected mentor; `IDEM`; creates one session; `201` |
+| `POST /learning-requests/{requestId}/reject` | LearningRequestController -> LearningRequestService | ReasonCommandRequest -> LearningRequestResponse | selected mentor; `IDEM`; refund once |
+| `POST /learning-requests/{requestId}/cancel` | LearningRequestController -> LearningRequestService | ReasonCommandRequest -> LearningRequestResponse | requester in allowed state; `IDEM`; refund once |
+
+`LearningRequestCreateRequest` always includes `mentorId`, `mentorOfferingId`, `requestedSkillId`, `mode`, schedule, duration, and optional message.
+
+- `POINTS`: `offeredUserSkillId` is null. Server snapshots offering price and creates wallet hold/escrow/ledger atomically.
+- `SKILL_SWAP`: `offeredUserSkillId` is required, owned visible `TEACH`, and must match the mentor's active `LEARN` row. Server snapshots both reciprocal skills. No point rows are created.
+- `VOLUNTEER`: price is zero and offered skill is null.
+- `sourceForumPostId`: when present, it must belong to the selected mentor and forces `VOLUNTEER`.
+
+## Sessions, reviews, and disputes
+
+| Method and path | Controller -> service | Input -> output | Access and behavior |
+|---|---|---|---|
+| `GET /sessions` | SessionController -> SessionQueryService | `status,role,from,to,page,size,sort` -> PageResponse<SessionSummaryResponse> | caller participant view |
+| `GET /sessions/{sessionId}` | SessionController -> SessionQueryService | path UUID -> SessionResponse | participant/admin; meeting URL redacted otherwise |
+| `PATCH /sessions/{sessionId}` | SessionController -> SessionService | SessionUpdateRequest -> SessionResponse | participant in allowed state; `If-Match` |
+| `POST /sessions/{sessionId}/completion-confirmations` | SessionController -> SessionCompletionService | CompletionConfirmationRequest -> CompletionResponse | participant; `IDEM`; optional review; may release/complete |
+| `POST /sessions/{sessionId}/disputes` | DisputeController -> DisputeService | DisputeCreateRequest -> DisputeResponse | participant before final release; `IDEM`; `201` |
+| `GET /sessions/{sessionId}/review` | ReviewController -> ReviewQueryService | none -> ReviewResponse | participant gets caller review or `404` |
+| `GET /mentors/{mentorId}/reviews` | ReviewController -> ReviewQueryService | page query -> PageResponse<ReviewResponse> | active user; public fields |
+
+Completion returns `confirmedByMe`, `confirmedByOtherParticipant`, `pointsReleased`, `autoReleaseAt`, and authoritative status. React must not announce payout unless `pointsReleased=true`. The second confirmation releases point escrow or completes a swap exactly once. Opening a dispute blocks release/completion.
 
 ## Volunteer forum
 
 | Method and path | Controller -> service | Input -> output | Access and behavior |
 |---|---|---|---|
-| `GET /forum-posts` | ForumPostController -> ForumQueryService | ForumSearchQuery -> PageResponse<ForumPostSummaryResponse> | active posts |
-| `POST /forum-posts` | ForumPostController -> ForumService | ForumPostCreateRequest -> ForumPostResponse | author; `201` |
-| `GET /forum-posts/{postId}` | ForumPostController -> ForumQueryService | path UUID -> ForumPostResponse | active post or author/admin |
-| `PATCH /forum-posts/{postId}` | ForumPostController -> ForumService | ForumPostUpdateRequest -> ForumPostResponse | author or admin; `If-Match` |
-| `DELETE /forum-posts/{postId}` | ForumPostController -> ForumService | path UUID -> none | author or admin; soft-delete; `204` |
-| `GET /forum-posts/{postId}/comments` | ForumCommentController -> ForumQueryService | page query -> PageResponse<ForumCommentResponse> | active comments |
-| `POST /forum-posts/{postId}/comments` | ForumCommentController -> ForumService | ForumCommentCreateRequest -> ForumCommentResponse | author; `201` |
-| `PATCH /forum-comments/{commentId}` | ForumCommentController -> ForumService | ForumCommentUpdateRequest -> ForumCommentResponse | author or admin; `If-Match` |
-| `DELETE /forum-comments/{commentId}` | ForumCommentController -> ForumService | path UUID -> none | author or admin; soft-delete; `204` |
-| `PUT /forum-posts/{postId}/reaction` | ForumReactionController -> ForumService | no body -> ReactionSummaryResponse | idempotent like |
-| `DELETE /forum-posts/{postId}/reaction` | ForumReactionController -> ForumService | no body -> ReactionSummaryResponse | remove caller's like |
-| `POST /forum-posts/{postId}/session-requests` | ForumPostController -> LearningRequestService | VolunteerRequestCreateRequest -> LearningRequestResponse | forces `VOLUNTEER`; `IDEM`; `201` |
+| `GET /forum/posts` | ForumPostController -> ForumQueryService | ForumSearchQuery -> PageResponse<ForumPostSummaryResponse> | active posts |
+| `POST /forum/posts` | ForumPostController -> ForumService | ForumPostCreateRequest -> ForumPostResponse | authenticated author from principal; `201` |
+| `GET /forum/posts/{postId}` | ForumPostController -> ForumQueryService | path UUID -> ForumPostResponse | active post/owner/admin |
+| `PATCH /forum/posts/{postId}` | ForumPostController -> ForumService | ForumPostUpdateRequest -> ForumPostResponse | owner/admin; `If-Match` |
+| `DELETE /forum/posts/{postId}` | ForumPostController -> ForumService | path UUID -> none | owner/admin; soft-delete; `204` |
+| `PUT /forum/posts/{postId}/like` | ForumLikeController -> ForumService | none -> ForumEngagementResponse | idempotent caller like |
+| `DELETE /forum/posts/{postId}/like` | ForumLikeController -> ForumService | none -> ForumEngagementResponse | idempotent unlike |
+| `GET /forum/posts/{postId}/comments` | ForumCommentController -> ForumQueryService | page query -> PageResponse<ForumCommentResponse> | active comments |
+| `POST /forum/posts/{postId}/comments` | ForumCommentController -> ForumService | ForumCommentCreateRequest -> ForumCommentResponse | author from principal; `201` |
+| `DELETE /forum/comments/{commentId}` | ForumCommentController -> ForumService | path UUID -> none | owner/admin; soft-delete; `204` |
+| `POST /forum/comments/{commentId}/mark-helpful` | ForumRewardController -> ForumRewardService | none -> PointTransactionResponse | post author; not own comment; one reward/post; `IDEM` |
+| `GET /forum/top-volunteers` | ForumPostController -> VolunteerRankingQueryService | `week` -> PageResponse<TopVolunteerResponse> | weekly ranking |
 
-## Notifications and reports
+## Notifications and global search
 
 | Method and path | Controller -> service | Input -> output | Access and behavior |
 |---|---|---|---|
-| `GET /me/notifications` | NotificationController -> NotificationQueryService | `read,page,size,sort` -> PageResponse<NotificationResponse> | owner |
-| `POST /me/notifications/{notificationId}/read` | NotificationController -> NotificationService | no body -> none | owner; idempotent; `204` |
-| `POST /me/notifications/read-all` | NotificationController -> NotificationService | no body -> none | owner; idempotent; `204` |
-| `POST /reports` | ReportController -> ReportService | ReportCreateRequest -> ReportResponse | reporter; `201` |
-| `GET /me/reports` | ReportController -> ReportQueryService | page query -> PageResponse<ReportResponse> | reporter |
+| `GET /notifications` | NotificationController -> NotificationQueryService | `unreadOnly,page,size,sort` -> PageResponse<NotificationResponse> | owner |
+| `PATCH /notifications/{notificationId}/read` | NotificationController -> NotificationService | none -> NotificationResponse | owner; idempotent |
+| `POST /notifications/read-all` | NotificationController -> NotificationService | none -> none | owner; idempotent; `204` |
+| `GET /search` | SearchController -> GlobalSearchQueryService | `q,types,limit` -> GlobalSearchResponse | mentors, skills, forum posts |
 
-## Administration
+## Reports and administration
 
-Every route in this section requires an active `ADMIN`.
+`POST /reports` requires an active user. Every `/admin/**` route requires active `ADMIN`.
 
-| Method and path | Controller -> service | Input -> output | Behavior |
+| Method and path | Controller -> service | Input -> output | Access and behavior |
 |---|---|---|---|
-| `GET /admin/dashboard` | AdminDashboardController -> AdminQueryService | none -> AdminDashboardResponse | aggregate counts only |
-| `GET /admin/users` | AdminUserController -> AdminUserQueryService | `q,status,role,page,size,sort` -> PageResponse<AdminUserResponse> | admin listing |
-| `GET /admin/users/{userId}` | AdminUserController -> AdminUserQueryService | path UUID -> AdminUserResponse | no private file bytes |
-| `PATCH /admin/users/{userId}/status` | AdminUserController -> AdminUserService | AccountStatusUpdateRequest -> AdminUserResponse | `If-Match`; reason required |
-| `PATCH /admin/users/{userId}/role` | AdminUserController -> AdminUserService | RoleUpdateRequest -> AdminUserResponse | `If-Match`; cannot remove last admin |
-| `POST /admin/skills` | AdminSkillController -> AdminSkillService | SkillCreateRequest -> SkillResponse | `201` |
-| `PATCH /admin/skills/{skillId}` | AdminSkillController -> AdminSkillService | SkillUpdateRequest -> SkillResponse | `If-Match` |
-| `DELETE /admin/skills/{skillId}` | AdminSkillController -> AdminSkillService | path UUID -> none | soft-disable; `204` |
-| `GET /admin/disputes` | AdminDisputeController -> DisputeQueryService | `state,page,size,sort` -> PageResponse<DisputeResponse> | moderation queue |
-| `POST /admin/disputes/{disputeId}/resolve` | AdminDisputeController -> DisputeService | DisputeResolutionRequest -> DisputeResponse | `IDEM`, `If-Match`; payout or refund |
-| `GET /admin/reports` | AdminReportController -> ReportQueryService | `state,targetType,page,size,sort` -> PageResponse<ReportResponse> | moderation queue |
-| `POST /admin/reports/{reportId}/resolve` | AdminReportController -> ReportService | ReportResolutionRequest -> ReportResponse | `If-Match` |
-| `POST /admin/wallet-adjustments` | AdminWalletController -> WalletService | WalletAdjustmentRequest -> PointTransactionResponse | `IDEM`; reason and audit actor; `201` |
-| `GET /admin/point-transactions` | AdminWalletController -> WalletQueryService | `userId,type,from,to,page,size,sort` -> PageResponse<PointTransactionResponse> | financial audit |
+| `POST /reports` | ReportController -> ReportService | ReportCreateRequest -> ReportResponse | reporter from principal; `201` |
+| `GET /admin/dashboard` | AdminDashboardController -> AdminQueryService | none -> AdminDashboardResponse | aggregate frontend cards |
+| `GET /admin/reports` | AdminReportController -> ReportQueryService | `status,targetType,reason,page,size,sort` -> PageResponse<ReportResponse> | moderation queue |
+| `POST /admin/reports/{reportId}/dismiss` | AdminReportController -> ReportService | AdminReasonRequest -> ReportResponse | audited; `IDEM` |
+| `POST /admin/reports/{reportId}/remove-content` | AdminReportController -> ReportService | AdminReasonRequest -> ReportResponse | soft-delete target; audited; `IDEM` |
+| `POST /admin/users/{userId}/warnings` | AdminUserController -> AdminUserService | AccountWarningRequest -> AccountWarningResponse | notify and audit; `201` |
+| `PATCH /admin/users/{userId}/status` | AdminUserController -> AdminUserService | AccountStatusUpdateRequest -> AdminUserResponse | suspend/reactivate/disable; `If-Match` |
+| `GET /admin/disputes` | AdminDisputeController -> DisputeQueryService | `status,page,size,sort` -> PageResponse<DisputeResponse> | dispute queue |
+| `POST /admin/disputes/{disputeId}/resolve` | AdminDisputeController -> DisputeService | DisputeResolutionRequest -> DisputeResponse | mode-valid resolution; `IDEM`; audited |
+| `GET /admin/settings` | AdminSettingsController -> PlatformSettingsService | none -> PlatformSettingsResponse | current defaults |
+| `PATCH /admin/settings` | AdminSettingsController -> PlatformSettingsService | PlatformSettingsUpdateRequest -> PlatformSettingsResponse | affects future operations; audited |
+| `GET /admin/audit-events` | AdminAuditController -> AdminAuditQueryService | filters/page -> PageResponse<AdminAuditEventResponse> | immutable audit history |
 
-## Non-API routes
+Default settings are registration bonus 50, helpful forum contribution 5, and escrow auto-release 18 hours. Updating settings does not rewrite historical ledger/snapshots/deadlines.
 
-- Supabase owns sign-up, sign-in, token refresh, sign-out, email verification, and password reset; the backend exposes no duplicate `/auth` controller.
-- `GET /actuator/health` is public and reveals no internals. Detailed health requires admin/operations access.
-- `/v3/api-docs` and Swagger UI are enabled only in local/test environments unless explicitly protected.
-- Request expiry and session auto-completion are internal scheduled use cases, not public endpoints.
+## Non-business routes and jobs
+
+- `GET /actuator/health` is public and reveals no internals. Detailed health is operations/admin protected.
+- `/v3/api-docs` and Swagger UI are local/test only unless protected.
+- Pending-request expiry, escrow auto-release, notification dispatch, and refresh-token cleanup are internal idempotent jobs.

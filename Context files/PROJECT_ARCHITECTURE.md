@@ -2,67 +2,71 @@
 
 ## System boundary
 
-Lovable SPA -> Spring Boot REST API -> Supabase PostgreSQL and Storage.
+```text
+Lovable React client
+  -> HTTPS JSON/multipart + JWT
+  -> Spring Security
+  -> Java 21 Spring Boot REST API on Tomcat 10.1+
+  -> Neon PostgreSQL
+```
 
-Supabase Auth issues access tokens. Spring Boot verifies them and remains the only business API and write path for application data.
+Spring Boot owns authentication and every business-data write. Neon PostgreSQL is the system of record. File bytes use a storage adapter; PostgreSQL stores owner-scoped metadata/object keys. The frontend never accesses Neon directly.
+
+## Deployment
+
+- Preferred: executable Spring Boot JAR with embedded Tomcat 10.1+.
+- Course-compatible option: WAR deployed to external Tomcat 10.1+, using `jakarta.servlet` and Java 21.
+- Require Neon SSL, environment variables, a small Hikari pool, and separate development/test/production databases or Neon branches.
+- Flyway owns schema changes. Set Hibernate schema behavior to validation and disable open-session-in-view.
 
 ## Backend modules
 
-- `profile`: onboarding, profile, account status, avatars, certificates.
-- `skill`: catalog, teaching offers, learning interests, mentor search.
-- `request`: learning-request creation, acceptance, rejection, cancellation, expiry.
-- `session`: scheduling, Meet link, completion, timeout, cancellation.
-- `wallet`: balances, escrow, ledger, payout, refund, rewards, admin adjustment.
-- `review`: eligible reviews and rating summaries.
-- `forum`: posts, comments, reactions, volunteer requests.
+- `auth`: register, login, refresh rotation, logout, password hashes, token-family revocation.
+- `user`: profile, account status, avatar metadata, certificates.
+- `skill`: catalog, teach/learn associations, mentor offerings, availability, discovery.
+- `request`: learning requests, acceptance, rejection, cancellation, expiry.
+- `swap`: reciprocal validation, snapshots, status, participant confirmations.
+- `session`: scheduling, meeting URL, completion confirmations, cancellation.
+- `wallet`: wallet, immutable ledger, escrow, rewards, payout, refund, adjustments.
+- `review`: eligibility, uniqueness, rating aggregates.
+- `forum`: posts, skills/tags, comments, likes, leaderboard, volunteer requests.
 - `notification`: user events and read state.
-- `moderation`: reports, disputes, and admin resolution.
-- `security`, `storage`, and `shared`: cross-cutting infrastructure only.
+- `moderation`: reports, warnings, disputes, settings, audit events.
+- `shared`: configuration, errors, security infrastructure, idempotency, clocks, storage, and observability.
 
 ## Package style
 
-Use package-by-feature. Inside a feature, separate:
-
-- `api`: controllers, request/response DTOs, validation.
-- `application`: use cases, authorization decisions, transaction boundaries.
-- `domain`: entities, enums, and business invariants.
-- `infrastructure`: JPA repositories, database adapters, storage clients, schedulers.
-
-Dependency direction is API -> application -> domain. Infrastructure implements needs defined by the inner layers. Features must not reach into another feature's repository; call its application service or a narrow interface.
-
-The complete ownership list is in [CONTROLLER_SERVICE_MAP.md](CONTROLLER_SERVICE_MAP.md).
+Use package-by-feature. Inside a feature separate `api`, `application`, `domain`, and `infrastructure`. Dependency direction is API -> application -> domain; infrastructure implements inner-layer interfaces. A feature calls another feature through a narrow application interface, never its repository.
 
 ## Request path
 
-1. Security validates token and creates the authenticated principal.
+1. Spring Security validates JWT signature and claims, then loads current account state/roles.
 2. Controller validates transport input and calls one application use case.
-3. Application service checks ownership, role, state, and business rules.
-4. Service performs the transaction through repositories or adapters.
-5. Mapper returns an explicit response DTO.
-6. Global exception handling converts failures to RFC 9457 problems.
+3. Service checks ownership, participant relationship, role, state, and domain rules.
+4. Service executes one database transaction through repositories/adapters.
+5. Mapper/assembler returns a caller-specific DTO.
+6. Global error handling returns a stable RFC 9457 response.
 
 ## Transaction boundaries
 
-- One public application command owns one transaction.
-- Wallet mutation locks the wallet row, validates funds, updates balance, and appends ledger rows atomically.
-- Request acceptance creates one session atomically.
-- Completion or dispute resolution changes state and pays/refunds atomically.
-- Review creation and reward granting occur atomically with a unique constraint.
-- External file operations are not hidden inside long database transactions; use upload-intent and confirmation steps.
+- Registration creates user, roles, wallet, and +50 starter ledger entry once.
+- Point request locks the learner wallet and creates request, escrow, and ledger hold atomically.
+- Skill-swap request validates both owned teach/learn rows and writes both snapshots atomically without wallet rows.
+- Request acceptance creates exactly one session and changes request/swap state atomically.
+- Completion locks session plus escrow/swap. The second confirmation releases points or completes the swap exactly once.
+- Reject/cancel/expiry refunds held points exactly once.
+- Dispute creation freezes release; admin resolution releases/refunds/cancels exactly once and writes an audit event.
+- External file transfer is outside long database transactions; metadata confirmation is short and transactional.
 
 ## Data ownership
 
-- Supabase Auth owns credentials and verified email identity.
-- PostgreSQL owns application state and financial audit history.
-- Storage owns file bytes; PostgreSQL stores authorized object metadata and paths.
-- The frontend owns presentation state only and never calculates authoritative balances or statuses.
-
-## Configuration
-
-Use environment-specific configuration with validated startup properties. Keep secrets outside Git. Separate local, test, and production settings. Flyway is the only schema-change mechanism; JPA validates mappings.
+- `users` owns login identity; password hashes and refresh-token hashes never leave the backend.
+- Neon PostgreSQL owns business state, wallet balances, immutable ledger, snapshots, moderation, and audit history.
+- Storage owns bytes; PostgreSQL owns private metadata and object keys.
+- The frontend owns display state only.
 
 ## Background work
 
-A scheduled application job expires pending requests and auto-completes eligible sessions. Jobs must claim records safely, be idempotent, and work correctly if multiple application instances run.
+Scheduled jobs expire pending requests, refund escrow, auto-release eligible point sessions after their snapshotted deadline, send queued notifications, and remove expired refresh-token rows. Jobs are idempotent, use row claims/locks, and remain safe with multiple app instances.
 
-DTO assembly rules are defined in [DTO_MAPPING.md](DTO_MAPPING.md); authentication boundaries are defined in [AUTHENTICATION_AUTHORIZATION.md](AUTHENTICATION_AUTHORIZATION.md).
+See [CONTROLLER_SERVICE_MAP.md](CONTROLLER_SERVICE_MAP.md), [DTO_MAPPING.md](DTO_MAPPING.md), and [AUTHENTICATION_AUTHORIZATION.md](AUTHENTICATION_AUTHORIZATION.md).

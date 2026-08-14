@@ -21,7 +21,7 @@
 ## Security and reliability
 
 - Protected requests use Authorization: Bearer accessToken.
-- Access tokens expire after 30 minutes; return TOKEN_EXPIRED when applicable.
+- Access tokens expire after 24 hours; return TOKEN_EXPIRED when applicable.
 - Require Idempotency-Key for registration, workflow commands, point mutations, rewards, refunds, releases, and dispute resolution.
 - Use If-Match/version checks for mutable resources where specified.
 - Use explicit CORS origins and rate-limit authentication, search, uploads, reports, and commands.

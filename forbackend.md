@@ -141,7 +141,7 @@ Exact states, transitions, and response fields remain in the API and DTO contrac
 
 Use environment variables from .env.example for local configuration and .env.test.example for isolated tests. Never commit real credentials.
 
-Required runtime settings include DATABASE_URL, DATABASE_USERNAME, DATABASE_PASSWORD, FRONTEND_ORIGINS, JWT_SECRET, ACCESS_TOKEN_MINUTES=30, REFRESH_TOKEN_DAYS, FLYWAY_ENABLED, JPA_DDL_AUTO=validate, and OPEN_SESSION_IN_VIEW=false.
+Required runtime settings include DATABASE_URL, DATABASE_USERNAME, DATABASE_PASSWORD, FRONTEND_ORIGINS, JWT_SECRET, ACCESS_TOKEN_MINUTES=1440, REFRESH_TOKEN_DAYS, FLYWAY_ENABLED, JPA_DDL_AUTO=validate, and OPEN_SESSION_IN_VIEW=false.
 
 Database rules:
 
@@ -183,7 +183,7 @@ Never edit an applied migration. Add a new version.
 
 Spring Boot owns registration, login, access-token issue, refresh rotation, logout, and account enforcement. Neon stores password hashes, roles, account status, and refresh-token hashes.
 
-- Access tokens expire after exactly 30 minutes; JWT exp is authoritative.
+- Access tokens expire after exactly 24 hours; JWT exp is authoritative.
 - Refresh tokens are opaque, rotated on every refresh, and stored only as hashes.
 - Validate signature, algorithm, issuer, audience, subject, issued-at, not-before, and expiry.
 - Load current roles and account status from PostgreSQL; JWT claims do not override database state.

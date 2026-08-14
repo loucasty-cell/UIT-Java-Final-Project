@@ -4,7 +4,7 @@
 
 Spring Boot owns registration, login, access-token issue, refresh rotation, logout, and account enforcement. PostgreSQL stores users, password hashes, roles, account state, and refresh-token hashes. The API client never connects directly to PostgreSQL.
 
-Access tokens last exactly 30 minutes. Refresh tokens are opaque, rotated on every refresh, and stored only as hashes.
+Access tokens last exactly 24 hours. Refresh tokens are opaque, rotated on every refresh, and stored only as hashes.
 
 ## Request flow
 

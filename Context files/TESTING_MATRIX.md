@@ -1,6 +1,6 @@
 # Testing Matrix
 
-This matrix describes planned automated coverage. No test framework or build descriptor exists in the current checkout yet.
+This matrix describes current and planned automated coverage. The repository has a Maven build and a basic Spring Boot test; the broader web, PostgreSQL, contract, concurrency, and end-to-end coverage remains to be implemented.
 
 ## Test layers
 
@@ -29,4 +29,4 @@ This matrix describes planned automated coverage. No test framework or build des
 
 ## Quality gates
 
-When the build exists, require formatting/static analysis, unit tests, web/security tests, PostgreSQL/Testcontainers tests, migration validation, contract checks, concurrency checks, and full workflow tests. Never use production credentials or production data.
+As implementation expands, require formatting/static analysis, unit tests, web/security tests, PostgreSQL/Testcontainers tests, migration validation, contract checks, concurrency checks, and full workflow tests. Never use production credentials or production data.

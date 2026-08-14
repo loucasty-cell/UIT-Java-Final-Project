@@ -1,6 +1,6 @@
 # SkillBridge source scaffold
 
-This directory is intentionally scaffolded for the Java 21 Spring Boot backend described by `forbackend.md` and the files in `Context files/`. No implementation classes, controllers, services, entities, repositories, migrations, or tests have been added yet.
+This directory contains the Java 21 Spring Boot backend described by `forbackend.md` and the files in `Context files/`. The mentor-offering and forum slices contain implementation classes, while the remaining feature folders are scaffold locations for planned controllers, services, entities, repositories, and tests.
 
 ## Main source layout
 

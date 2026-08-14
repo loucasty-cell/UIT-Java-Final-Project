@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository currently contains an empty Spring Boot package scaffold and documentation. There is no build descriptor or implementation class yet.
+The repository contains a Spring Boot Maven build, partial implementation, Flyway migrations, tests, and documentation. Mentor-offering and forum slices currently contain implementation classes; the other feature packages remain planned scaffold locations.
 
 ## Package layout
 

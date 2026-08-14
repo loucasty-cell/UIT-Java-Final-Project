@@ -2,7 +2,7 @@
 
 ## 1. Status and authority
 
-This checkout currently contains backend documentation and an empty Java package scaffold. It does not yet contain a Maven/Gradle build, Java classes, Flyway SQL, OpenAPI files, or executable backend code.
+This checkout contains the backend documentation, a Maven Spring Boot build, partial Java implementation, and Flyway migrations. The currently implemented slices are the mentor-offering and forum areas; the remaining API contract is still planned until its implementation is added.
 
 This guide is the implementation source of truth. The detailed public interfaces are kept in:
 
@@ -11,7 +11,7 @@ This guide is the implementation source of truth. The detailed public interfaces
 - [Context files/AUTHENTICATION_AUTHORIZATION.md](Context%20files/AUTHENTICATION_AUTHORIZATION.md) for access rules.
 - [Context files/TESTING_MATRIX.md](Context%20files/TESTING_MATRIX.md) for required verification.
 
-All features, migrations, endpoints, and tests described here are planned until implementation files exist. The supplied MVC/MySQL diagrams are conceptual only. The target database is PostgreSQL on Neon; do not add MySQL drivers, SQL, or assumptions.
+Features and endpoints without corresponding implementation files remain planned. The supplied MVC/MySQL diagrams are conceptual only. The target database is PostgreSQL on Neon; do not add MySQL drivers, SQL, or assumptions.
 
 ## 2. Required stack and runtime
 

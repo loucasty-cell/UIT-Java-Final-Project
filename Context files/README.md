@@ -1,6 +1,6 @@
 # SkillBridge Context Index
 
-The root [forbackend.md](../forbackend.md) is the authoritative implementation guide. This checkout contains documentation and an empty backend scaffold; the context files describe planned behavior and contracts until implementation exists.
+The root [forbackend.md](../forbackend.md) is the authoritative implementation guide. This checkout contains documentation and a partial backend implementation. The context files describe the implemented mentor/forum behavior plus planned behavior and contracts for features not yet implemented.
 
 Read the guide first, then use the focused files:
 

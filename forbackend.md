@@ -2,7 +2,7 @@
 
 ## 1. Status and authority
 
-This checkout contains the backend documentation, a Maven Spring Boot build, partial Java implementation, and Flyway migrations. The currently implemented slices are the mentor-offering and forum areas; the remaining API contract is still planned until its implementation is added.
+This checkout contains the backend documentation, a Maven Spring Boot build, Java domain implementations, and Flyway migrations. The implemented slices are the auth (with 12-hour JWT token lifespan), admin, mentor-offering, and forum areas; the remaining API contract domains (such as wallet, learning requests, sessions) are planned for subsequent milestones.
 
 This guide is the implementation source of truth. The detailed public interfaces are kept in:
 

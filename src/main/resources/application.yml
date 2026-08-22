@@ -34,7 +34,7 @@ skillbridge:
   security:
     jwt:
       secret: ${JWT_SECRET:very_secret_default_key_that_should_be_changed_in_prod}
-      access-token-minutes: ${ACCESS_TOKEN_MINUTES:1440}
+      access-token-minutes: ${ACCESS_TOKEN_MINUTES:720}
       refresh-token-days: ${REFRESH_TOKEN_DAYS:7}
   cors:
     allowed-origins: ${FRONTEND_ORIGINS:http://localhost:3000}

@@ -4,11 +4,9 @@ import com.skillbridge.admin.domain.model.AccountStatus;
 import com.skillbridge.auth.api.dto.request.RegisterRequest;
 import com.skillbridge.auth.api.dto.response.AuthResponse;
 import com.skillbridge.auth.api.mapper.AuthMapper;
-import com.skillbridge.auth.domain.entity.RefreshToken;
 import com.skillbridge.auth.domain.entity.User;
 import com.skillbridge.auth.domain.entity.UserRole;
 import com.skillbridge.auth.domain.model.Role;
-import com.skillbridge.auth.infrastructure.persistence.RefreshTokenRepository;
 import com.skillbridge.auth.infrastructure.persistence.UserRepository;
 import com.skillbridge.auth.infrastructure.persistence.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +20,7 @@ import java.util.List;
 import java.util.UUID;
 
 // RegistrationService: Transactional application service managing user registration and initial onboarding
-// Linkage: AuthController -> RegistrationService -> (UserRepository, UserRoleRepository, RefreshTokenRepository, JwtTokenService, AuthMapper)
+// Linkage: AuthController -> RegistrationService -> (UserRepository, UserRoleRepository, RefreshTokenIssuer, JwtTokenService, AuthMapper)
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -34,14 +32,14 @@ public class RegistrationService {
     // Repository for user-role relationships in 'user_roles' table
     private final UserRoleRepository userRoleRepository;
 
-    // Repository for hashed refresh tokens in 'refresh_tokens' table
-    private final RefreshTokenRepository refreshTokenRepository;
-
     // Password encoder (BCrypt) for secure one-way password hashing
     private final PasswordEncoder passwordEncoder;
 
-    // Service for generating 12-hour signed JWT access tokens and opaque refresh token hashes
+    // Service for generating 12-hour signed JWT access tokens
     private final JwtTokenService jwtTokenService;
+
+    // Central component that generates, hashes, and persists the initial refresh token family
+    private final RefreshTokenIssuer refreshTokenIssuer;
 
     // Mapper to convert User entity and tokens into standardized AuthResponse DTO
     private final AuthMapper authMapper;
@@ -84,21 +82,8 @@ public class RegistrationService {
                 savedUser.getStatus().name()
         );
 
-        // Step 6: Generate opaque refresh token and store only its SHA-256 hash in database
-        String rawRefreshToken = jwtTokenService.generateOpaqueToken();
-        String tokenHash = jwtTokenService.hashToken(rawRefreshToken);
-        UUID familyId = UUID.randomUUID();
-
-        RefreshToken refreshToken = new RefreshToken();
-        refreshToken.setId(UUID.randomUUID());
-        refreshToken.setUserId(userId);
-        refreshToken.setTokenHash(tokenHash);
-        refreshToken.setFamilyId(familyId);
-        refreshToken.setExpiresAt(OffsetDateTime.now().plusDays(jwtTokenService.getRefreshTokenDays()));
-        refreshToken.setCreatedAt(OffsetDateTime.now());
-        refreshToken.setRevoked(false);
-
-        refreshTokenRepository.save(refreshToken);
+        // Step 6: Issue the initial refresh token family (generation + hashing + persistence handled by RefreshTokenIssuer)
+        String rawRefreshToken = refreshTokenIssuer.issueNewFamily(userId);
 
         // Step 7: Map entity state and generated tokens to AuthResponse DTO
         return authMapper.toAuthResponse(

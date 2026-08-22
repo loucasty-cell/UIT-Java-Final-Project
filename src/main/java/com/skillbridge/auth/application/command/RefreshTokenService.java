@@ -17,10 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.UUID;
 
 // RefreshTokenService: Manages token family rotation, reuse attack detection, and session logout
-// Linkage: AuthController -> RefreshTokenService -> (RefreshTokenRepository, UserRepository, UserRoleRepository, JwtTokenService, AuthMapper)
+// Linkage: AuthController -> RefreshTokenService -> (RefreshTokenRepository, UserRepository, UserRoleRepository, JwtTokenService, RefreshTokenIssuer, AuthMapper)
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -35,8 +34,11 @@ public class RefreshTokenService {
     // Repository for retrieving user roles
     private final UserRoleRepository userRoleRepository;
 
-    // Service for generating 12-hour signed JWT access tokens and hashing refresh tokens
+    // Service for hashing the incoming raw refresh token before database lookup
     private final JwtTokenService jwtTokenService;
+
+    // Central component that persists the rotated refresh token inside the existing family
+    private final RefreshTokenIssuer refreshTokenIssuer;
 
     // Mapper to convert User entity and tokens into standardized AuthResponse DTO
     private final AuthMapper authMapper;
@@ -88,20 +90,8 @@ public class RefreshTokenService {
                 user.getStatus().name()
         );
 
-        // Step 9: Issue new rotated Refresh Token keeping the same family ID
-        String newRawRefreshToken = jwtTokenService.generateOpaqueToken();
-        String newTokenHash = jwtTokenService.hashToken(newRawRefreshToken);
-
-        RefreshToken newRefreshToken = new RefreshToken();
-        newRefreshToken.setId(UUID.randomUUID());
-        newRefreshToken.setUserId(user.getId());
-        newRefreshToken.setTokenHash(newTokenHash);
-        newRefreshToken.setFamilyId(storedToken.getFamilyId());
-        newRefreshToken.setExpiresAt(OffsetDateTime.now().plusDays(jwtTokenService.getRefreshTokenDays()));
-        newRefreshToken.setCreatedAt(OffsetDateTime.now());
-        newRefreshToken.setRevoked(false);
-
-        refreshTokenRepository.save(newRefreshToken);
+        // Step 9: Issue the rotated refresh token inside the SAME family (hashing + persistence delegated to RefreshTokenIssuer)
+        String newRawRefreshToken = refreshTokenIssuer.issueRotated(user.getId(), storedToken.getFamilyId());
 
         // Step 10: Map results to AuthResponse DTO
         return authMapper.toAuthResponse(

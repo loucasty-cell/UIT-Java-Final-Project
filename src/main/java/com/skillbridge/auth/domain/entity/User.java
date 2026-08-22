@@ -29,6 +29,25 @@ public class User {
     @Column(name = "last_name", nullable = false)
     private String lastName;
 
+    // Optional profile fields managed by the user feature (PATCH /api/v1/me); nullable until set
+    @Column(name = "display_name", length = 100)
+    private String displayName;
+
+    @Column(name = "major", length = 100)
+    private String major;
+
+    @Column(name = "year_of_study")
+    private Integer yearOfStudy;
+
+    @Column(name = "bio", length = 1000)
+    private String bio;
+
+    @Column(name = "timezone", length = 100)
+    private String timezone;
+
+    @Column(name = "avatar_object_key", length = 500)
+    private String avatarObjectKey;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 50)
     private AccountStatus status;

@@ -25,7 +25,9 @@ spring:
     locations: classpath:db/migration
 
 server:
-  port: ${PORT:8080}
+  # 9095: uncommon port chosen to avoid clashes with 3000/5173 (frontends), 5432 (Postgres),
+  # and 8080/8081 (other common local web servers)
+  port: ${SERVER_PORT:9095}
   error:
     include-message: always
     include-binding-errors: always

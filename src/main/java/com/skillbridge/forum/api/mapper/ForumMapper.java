@@ -5,7 +5,6 @@ import com.skillbridge.forum.api.dto.response.ForumPostResponse;
 import com.skillbridge.forum.api.dto.response.ForumPostSummaryResponse;
 import com.skillbridge.forum.domain.entity.ForumComment;
 import com.skillbridge.forum.domain.entity.ForumPost;
-import com.skillbridge.shared.api.dto.response.SkillSummaryResponse;
 import com.skillbridge.shared.api.dto.response.UserSummaryResponse;
 import org.springframework.stereotype.Component;
 

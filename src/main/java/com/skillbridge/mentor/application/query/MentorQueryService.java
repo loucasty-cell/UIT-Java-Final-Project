@@ -3,14 +3,10 @@ package com.skillbridge.mentor.application.query;
 import com.skillbridge.mentor.api.dto.request.MentorSearchQuery;
 import com.skillbridge.mentor.api.dto.response.MentorDetailResponse;
 import com.skillbridge.mentor.api.dto.response.MentorSummaryResponse;
-import com.skillbridge.shared.api.dto.response.UserSummaryResponse;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
 import java.util.UUID;
 
 @Service

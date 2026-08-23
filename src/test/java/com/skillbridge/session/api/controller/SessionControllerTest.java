@@ -38,7 +38,7 @@ public class SessionControllerTest {
         private UpdateSessionRequest updateRequest;
 
         RecordingSessionService() {
-            super(null, null, null);
+            super(null, null, null, null);
         }
 
         @Override

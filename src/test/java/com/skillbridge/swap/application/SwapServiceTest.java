@@ -2,6 +2,8 @@ package com.skillbridge.swap.application;
 
 import com.skillbridge.auth.domain.entity.User;
 import com.skillbridge.auth.infrastructure.persistence.UserRepository;
+import com.skillbridge.notification.application.NotificationService;
+import com.skillbridge.notification.domain.model.NotificationType;
 import com.skillbridge.skill.domain.Skill;
 import com.skillbridge.skill.infrastructure.SkillRepository;
 import com.skillbridge.swap.api.dto.request.CreateSwapProposalRequest;
@@ -190,6 +192,7 @@ public class SwapServiceTest {
         private final Map<UUID, SwapRequest> requests = new LinkedHashMap<>();
         private final Map<UUID, SwapSession> sessions = new LinkedHashMap<>();
         private final RecordingWalletService walletService = new RecordingWalletService();
+        private final RecordingNotificationService notificationService = new RecordingNotificationService();
         private final UserRepository userRepository = userRepository();
         private final SkillRepository skillRepository = skillRepository();
         private final SwapSessionRepository sessionRepository = sessionRepository();
@@ -200,7 +203,8 @@ public class SwapServiceTest {
                 skillRepository,
                 walletRepository(),
                 walletService,
-                new SwapMapper(userRepository, skillRepository, sessionRepository)
+                new SwapMapper(userRepository, skillRepository, sessionRepository),
+                notificationService
         );
 
         void addUsers() {
@@ -355,6 +359,27 @@ public class SwapServiceTest {
         ) {
             this.releaseCalled = true;
             this.referenceId = referenceId;
+        }
+    }
+
+    private static class RecordingNotificationService extends NotificationService {
+        private NotificationType type;
+        private UUID referenceId;
+
+        RecordingNotificationService() {
+            super(null, null);
+        }
+
+        @Override
+        public void notifySwapProposalUpdate(UUID userId, NotificationType type, UUID swapRequestId) {
+            this.type = type;
+            this.referenceId = swapRequestId;
+        }
+
+        @Override
+        public void notifySessionStatusChange(UUID userId, NotificationType type, UUID sessionId) {
+            this.type = type;
+            this.referenceId = sessionId;
         }
     }
 }

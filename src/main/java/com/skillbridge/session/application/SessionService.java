@@ -1,5 +1,7 @@
 package com.skillbridge.session.application;
 
+import com.skillbridge.notification.application.NotificationService;
+import com.skillbridge.notification.domain.model.NotificationType;
 import com.skillbridge.session.api.dto.request.UpdateSessionRequest;
 import com.skillbridge.session.api.dto.response.SessionResponse;
 import com.skillbridge.session.api.mapper.SessionMapper;
@@ -23,6 +25,7 @@ public class SessionService {
     private final SwapSessionRepository sessionRepository;
     private final SwapService swapService;
     private final SessionMapper sessionMapper;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public List<SessionResponse> getActiveSwapSessions(UUID userId) {
@@ -42,7 +45,9 @@ public class SessionService {
         session.setStatus(SwapSessionStatus.STARTED);
         session.setStartedAt(OffsetDateTime.now());
         session.setUpdatedAt(OffsetDateTime.now());
-        return sessionMapper.toResponse(sessionRepository.save(session));
+        SwapSession saved = sessionRepository.save(session);
+        notifyParticipants(saved, NotificationType.SESSION_STARTED);
+        return sessionMapper.toResponse(saved);
     }
 
     public SessionResponse completeSession(UUID sessionId) {
@@ -61,11 +66,18 @@ public class SessionService {
         session.setMeetingUrl(request.getMeetingUrl());
         session.setNotes(request.getNotes());
         session.setUpdatedAt(OffsetDateTime.now());
-        return sessionMapper.toResponse(sessionRepository.save(session));
+        SwapSession saved = sessionRepository.save(session);
+        notifyParticipants(saved, NotificationType.SESSION_UPDATED);
+        return sessionMapper.toResponse(saved);
     }
 
     private SwapSession loadSession(UUID sessionId) {
         return sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));
+    }
+
+    private void notifyParticipants(SwapSession session, NotificationType type) {
+        notificationService.notifySessionStatusChange(session.getRequesterId(), type, session.getId());
+        notificationService.notifySessionStatusChange(session.getResponderId(), type, session.getId());
     }
 }

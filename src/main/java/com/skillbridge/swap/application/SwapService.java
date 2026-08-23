@@ -1,6 +1,8 @@
 package com.skillbridge.swap.application;
 
 import com.skillbridge.auth.infrastructure.persistence.UserRepository;
+import com.skillbridge.notification.application.NotificationService;
+import com.skillbridge.notification.domain.model.NotificationType;
 import com.skillbridge.skill.infrastructure.SkillRepository;
 import com.skillbridge.swap.api.dto.request.CreateSwapProposalRequest;
 import com.skillbridge.swap.api.dto.response.SwapRequestResponse;
@@ -36,6 +38,7 @@ public class SwapService {
     private final WalletRepository walletRepository;
     private final WalletService walletService;
     private final SwapMapper swapMapper;
+    private final NotificationService notificationService;
 
     public SwapRequestResponse createProposal(CreateSwapProposalRequest request) {
         validateParticipants(request.getRequesterId(), request.getResponderId());
@@ -60,7 +63,13 @@ public class SwapService {
         swapRequest.setUpdatedAt(now);
         swapRequest.setVersion(0L);
 
-        return swapMapper.toRequestResponse(requestRepository.save(swapRequest));
+        SwapRequest saved = requestRepository.save(swapRequest);
+        notificationService.notifySwapProposalUpdate(
+                saved.getResponderId(),
+                NotificationType.SWAP_PROPOSAL_CREATED,
+                saved.getId()
+        );
+        return swapMapper.toRequestResponse(saved);
     }
 
     public SwapRequestResponse acceptProposal(UUID requestId) {
@@ -100,6 +109,11 @@ public class SwapService {
 
         requestRepository.save(swapRequest);
         sessionRepository.save(session);
+        notificationService.notifySwapProposalUpdate(
+                swapRequest.getRequesterId(),
+                NotificationType.SWAP_PROPOSAL_ACCEPTED,
+                swapRequest.getId()
+        );
 
         return swapMapper.toRequestResponse(swapRequest);
     }
@@ -113,7 +127,13 @@ public class SwapService {
         swapRequest.setRejectedAt(now);
         swapRequest.setUpdatedAt(now);
 
-        return swapMapper.toRequestResponse(requestRepository.save(swapRequest));
+        SwapRequest saved = requestRepository.save(swapRequest);
+        notificationService.notifySwapProposalUpdate(
+                saved.getRequesterId(),
+                NotificationType.SWAP_PROPOSAL_REJECTED,
+                saved.getId()
+        );
+        return swapMapper.toRequestResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -153,7 +173,18 @@ public class SwapService {
         session.setUpdatedAt(now);
 
         requestRepository.save(swapRequest);
-        return swapMapper.toSessionResponse(sessionRepository.save(session));
+        SwapSession savedSession = sessionRepository.save(session);
+        notificationService.notifySessionStatusChange(
+                swapRequest.getRequesterId(),
+                NotificationType.SESSION_COMPLETED,
+                savedSession.getId()
+        );
+        notificationService.notifySessionStatusChange(
+                swapRequest.getResponderId(),
+                NotificationType.SESSION_COMPLETED,
+                savedSession.getId()
+        );
+        return swapMapper.toSessionResponse(savedSession);
     }
 
     public List<SwapRequestResponse> getSwapHistory(UUID userId) {
@@ -192,7 +223,13 @@ public class SwapService {
         swapRequest.setStatus(SwapRequestStatus.CANCELLED);
         swapRequest.setCancelledAt(now);
         swapRequest.setUpdatedAt(now);
-        return swapMapper.toRequestResponse(requestRepository.save(swapRequest));
+        SwapRequest saved = requestRepository.save(swapRequest);
+        notificationService.notifySwapProposalUpdate(
+                saved.getResponderId(),
+                NotificationType.SWAP_PROPOSAL_CANCELLED,
+                saved.getId()
+        );
+        return swapMapper.toRequestResponse(saved);
     }
 
     private SwapRequest loadRequest(UUID requestId) {

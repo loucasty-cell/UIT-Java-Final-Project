@@ -3,6 +3,8 @@ package com.skillbridge.session.application;
 import com.skillbridge.session.api.dto.request.UpdateSessionRequest;
 import com.skillbridge.session.api.dto.response.SessionResponse;
 import com.skillbridge.session.api.mapper.SessionMapper;
+import com.skillbridge.notification.application.NotificationService;
+import com.skillbridge.notification.domain.model.NotificationType;
 import com.skillbridge.swap.api.dto.response.SwapSessionResponse;
 import com.skillbridge.swap.application.SwapService;
 import com.skillbridge.swap.domain.entity.SwapSession;
@@ -69,10 +71,12 @@ public class SessionServiceTest {
     private class Fixture {
         private final Map<UUID, SwapSession> sessions = new LinkedHashMap<>();
         private final RecordingSwapService swapService = new RecordingSwapService(sessions);
+        private final RecordingNotificationService notificationService = new RecordingNotificationService();
         private final SessionService service = new SessionService(
                 repository(),
                 swapService,
-                new SessionMapper(null)
+                new SessionMapper(null),
+                notificationService
         );
 
         private SwapSessionRepository repository() {
@@ -104,7 +108,7 @@ public class SessionServiceTest {
         private UUID completedSessionId;
 
         RecordingSwapService(Map<UUID, SwapSession> sessions) {
-            super(null, null, null, null, null, null, null);
+            super(null, null, null, null, null, null, null, null);
             this.sessions = sessions;
         }
 
@@ -118,6 +122,16 @@ public class SessionServiceTest {
             response.setId(sessionId);
             response.setStatus(SwapSessionStatus.COMPLETED);
             return response;
+        }
+    }
+
+    private static class RecordingNotificationService extends NotificationService {
+        RecordingNotificationService() {
+            super(null, null);
+        }
+
+        @Override
+        public void notifySessionStatusChange(UUID userId, NotificationType type, UUID sessionId) {
         }
     }
 }

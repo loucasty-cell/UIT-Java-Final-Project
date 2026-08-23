@@ -56,7 +56,7 @@ public class SwapControllerTest {
         private UUID historyUserId;
 
         RecordingSwapService() {
-            super(null, null, null, null, null, null, null);
+            super(null, null, null, null, null, null, null, null);
         }
 
         @Override

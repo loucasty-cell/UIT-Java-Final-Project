@@ -13,6 +13,7 @@ import com.skillbridge.forum.domain.entity.ForumPost;
 import com.skillbridge.forum.infrastructure.persistence.ForumCommentRepository;
 import com.skillbridge.forum.infrastructure.persistence.ForumLikeRepository;
 import com.skillbridge.forum.infrastructure.persistence.ForumPostRepository;
+import com.skillbridge.notification.application.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,7 @@ public class ForumService {
     private final ForumCommentRepository commentRepository;
     private final ForumLikeRepository forumLikeRepository;
     private final ForumMapper forumMapper;
+    private final NotificationService notificationService;
 
     public ForumPostResponse createPost(ForumPostCreateRequest request) {
         UUID currentUserId = com.skillbridge.shared.security.SecurityUtils.getCurrentUserId();
@@ -146,7 +148,11 @@ public class ForumService {
         post.setCommentCount(post.getCommentCount() + 1);
         postRepository.save(post);
 
-        return forumMapper.toResponse(commentRepository.save(comment));
+        ForumComment saved = commentRepository.save(comment);
+        if (!post.getAuthorId().equals(currentUserId)) {
+            notificationService.notifyForumCommentReply(post.getAuthorId(), saved.getId());
+        }
+        return forumMapper.toResponse(saved);
     }
 
     public void deleteComment(UUID commentId) {

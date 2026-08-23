@@ -6,7 +6,6 @@ import com.skillbridge.admin.api.dto.response.AccountWarningResponse;
 import com.skillbridge.admin.api.dto.response.AdminUserResponse;
 import com.skillbridge.admin.api.mapper.AdminMapper;
 import com.skillbridge.admin.domain.entity.AccountWarning;
-import com.skillbridge.admin.domain.model.AccountStatus;
 import com.skillbridge.admin.infrastructure.persistence.AccountWarningRepository;
 import com.skillbridge.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;

@@ -6,7 +6,6 @@ import com.skillbridge.admin.api.mapper.AdminMapper;
 import com.skillbridge.admin.domain.entity.Report;
 import com.skillbridge.admin.domain.model.ReportStatus;
 import com.skillbridge.admin.infrastructure.persistence.ReportRepository;
-import com.skillbridge.forum.domain.entity.ForumPost;
 import com.skillbridge.forum.infrastructure.persistence.ForumCommentRepository;
 import com.skillbridge.forum.infrastructure.persistence.ForumPostRepository;
 import com.skillbridge.shared.security.SecurityUtils;

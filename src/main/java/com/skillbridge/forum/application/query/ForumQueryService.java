@@ -16,6 +16,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -33,24 +35,26 @@ public class ForumQueryService {
             query.getSize() != null ? query.getSize() : 20
         );
 
-        Specification<ForumPost> spec = Specification.where((root, query1, criteriaBuilder) ->
-            criteriaBuilder.isTrue(root.get("active")));
+        List<Specification<ForumPost>> specs = new ArrayList<>();
+        specs.add((root, query1, criteriaBuilder) -> criteriaBuilder.isTrue(root.get("active")));
 
         if (query.getQ() != null && !query.getQ().isBlank()) {
-            spec = spec.and((root, query1, criteriaBuilder) ->
+            String searchTerm = "%" + query.getQ().toLowerCase() + "%";
+            specs.add((root, query1, criteriaBuilder) ->
                 criteriaBuilder.or(
-                    criteriaBuilder.like(criteriaBuilder.lower(root.get("title")), "%" + query.getQ().toLowerCase() + "%"),
-                    criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), "%" + query.getQ().toLowerCase() + "%")
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("title")), searchTerm),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), searchTerm)
                 )
             );
         }
 
         if (query.getAuthorId() != null) {
-            spec = spec.and((root, query1, criteriaBuilder) ->
+            specs.add((root, query1, criteriaBuilder) ->
                 criteriaBuilder.equal(root.get("authorId"), query.getAuthorId())
             );
         }
 
+        Specification<ForumPost> spec = Specification.allOf(specs);
         return postRepository.findAll(spec, pageable)
                 .map(forumMapper::toSummaryResponse);
     }

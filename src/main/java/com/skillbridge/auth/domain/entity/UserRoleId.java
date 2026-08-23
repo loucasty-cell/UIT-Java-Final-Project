@@ -11,6 +11,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserRoleId implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private UUID userId;
     private String role;
 }

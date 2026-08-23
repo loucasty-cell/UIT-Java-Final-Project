@@ -1,17 +1,24 @@
 package com.skillbridge.forum.api.mapper;
 
+import com.skillbridge.auth.domain.entity.User;
+import com.skillbridge.auth.infrastructure.persistence.UserRepository;
 import com.skillbridge.forum.api.dto.response.ForumCommentResponse;
 import com.skillbridge.forum.api.dto.response.ForumPostResponse;
 import com.skillbridge.forum.api.dto.response.ForumPostSummaryResponse;
 import com.skillbridge.forum.domain.entity.ForumComment;
 import com.skillbridge.forum.domain.entity.ForumPost;
 import com.skillbridge.shared.api.dto.response.UserSummaryResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
+import java.util.UUID;
 
 @Component
+@RequiredArgsConstructor
 public class ForumMapper {
+
+    private final UserRepository userRepository;
 
     public ForumPostSummaryResponse toSummaryResponse(ForumPost entity) {
         if (entity == null) {
@@ -20,12 +27,7 @@ public class ForumMapper {
 
         ForumPostSummaryResponse response = new ForumPostSummaryResponse();
         response.setId(entity.getId());
-
-        UserSummaryResponse author = new UserSummaryResponse();
-        author.setId(entity.getAuthorId());
-        // TODO: Populate displayName and other fields once User domain is available
-        // TODO: Populate displayName and other fields once User domain is available
-        response.setAuthor(author);
+        response.setAuthor(toUserSummary(entity.getAuthorId(), false));
 
         response.setTitle(entity.getTitle());
         response.setExcerpt(entity.getDescription().substring(0, Math.min(entity.getDescription().length(), 100)));
@@ -47,11 +49,7 @@ public class ForumMapper {
 
         ForumPostResponse response = new ForumPostResponse();
         response.setId(entity.getId());
-
-        UserSummaryResponse author = new UserSummaryResponse();
-        author.setId(entity.getAuthorId());
-        author.setDisplayName("Forum Author");
-        response.setAuthor(author);
+        response.setAuthor(toUserSummary(entity.getAuthorId(), false));
 
         response.setTitle(entity.getTitle());
         response.setDescription(entity.getDescription());
@@ -74,11 +72,7 @@ public class ForumMapper {
         ForumCommentResponse response = new ForumCommentResponse();
         response.setId(entity.getId());
         response.setPostId(entity.getPostId());
-
-        UserSummaryResponse author = new UserSummaryResponse();
-        author.setId(entity.getAuthorId());
-        // TODO: Populate displayName and other fields once User domain is available
-        response.setAuthor(author);
+        response.setAuthor(toUserSummary(entity.getAuthorId(), false));
 
         response.setBody(entity.getBody());
         response.setCreatedAt(entity.getCreatedAt());
@@ -86,5 +80,38 @@ public class ForumMapper {
         response.setVersion(entity.getVersion());
 
         return response;
+    }
+
+    private UserSummaryResponse toUserSummary(UUID userId, boolean mentorBadge) {
+        UserSummaryResponse summary = new UserSummaryResponse();
+        summary.setId(userId);
+        summary.setMentorBadge(mentorBadge);
+
+        userRepository.findById(userId).ifPresent(user -> {
+            summary.setDisplayName(displayNameFor(user));
+            summary.setMajor(user.getMajor());
+            summary.setYearOfStudy(user.getYearOfStudy());
+            summary.setAvatarUrl(user.getAvatarObjectKey());
+        });
+
+        if (summary.getDisplayName() == null) {
+            summary.setDisplayName(userId.toString());
+        }
+
+        return summary;
+    }
+
+    private String displayNameFor(User user) {
+        if (user.getDisplayName() != null && !user.getDisplayName().isBlank()) {
+            return user.getDisplayName();
+        }
+
+        String fullName = ((user.getFirstName() != null ? user.getFirstName() : "") + " "
+                + (user.getLastName() != null ? user.getLastName() : "")).trim();
+        if (!fullName.isBlank()) {
+            return fullName;
+        }
+
+        return user.getEmail();
     }
 }

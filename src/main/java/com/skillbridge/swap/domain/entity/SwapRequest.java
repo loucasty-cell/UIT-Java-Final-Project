@@ -1,7 +1,7 @@
 package com.skillbridge.swap.domain.entity;
 
 import com.skillbridge.auth.domain.entity.User;
-import com.skillbridge.skill.domain.Skill;
+import com.skillbridge.skill.domain.entity.Skill;
 import com.skillbridge.swap.domain.model.SwapRequestStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

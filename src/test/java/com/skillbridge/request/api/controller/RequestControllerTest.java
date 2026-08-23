@@ -4,6 +4,8 @@ import com.skillbridge.request.api.dto.request.CreateRequestProposalRequest;
 import com.skillbridge.request.api.dto.response.RequestProposalResponse;
 import com.skillbridge.request.application.RequestService;
 import com.skillbridge.swap.domain.model.SwapRequestStatus;
+import com.skillbridge.support.TestAuthContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +17,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class RequestControllerTest {
 
+    @AfterEach
+    void logout() {
+        TestAuthContext.logout();
+    }
+
     @Test
     void exposesSwapProposalLifecycleEndpoints() {
         RecordingRequestService service = new RecordingRequestService();
@@ -22,7 +29,8 @@ public class RequestControllerTest {
         CreateRequestProposalRequest request = new CreateRequestProposalRequest();
         UUID requestId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        UUID responderId = UUID.randomUUID();
+
+        TestAuthContext.loginAs(userId);
 
         ResponseEntity<RequestProposalResponse> created = controller.createSwapProposal(request);
 
@@ -34,10 +42,8 @@ public class RequestControllerTest {
         assertEquals(requestId, service.rejectedId);
         assertEquals(SwapRequestStatus.CANCELLED, controller.cancelSwapProposal(requestId).getBody().getStatus());
         assertEquals(requestId, service.cancelledId);
-        assertEquals(1, controller.getSwapHistory(userId).getBody().size());
-        assertEquals(userId, service.historyUserId);
-        assertEquals(1, controller.getPendingSwapProposalsForResponder(responderId).getBody().size());
-        assertEquals(responderId, service.pendingResponderId);
+        assertEquals(1, controller.getSwapHistory().getBody().size());
+        assertEquals(1, controller.getPendingSwapProposalsForResponder().getBody().size());
     }
 
     private static class RecordingRequestService extends RequestService {
@@ -45,8 +51,6 @@ public class RequestControllerTest {
         private UUID acceptedId;
         private UUID rejectedId;
         private UUID cancelledId;
-        private UUID historyUserId;
-        private UUID pendingResponderId;
 
         RecordingRequestService() {
             super(null, null, null);
@@ -77,14 +81,12 @@ public class RequestControllerTest {
         }
 
         @Override
-        public List<RequestProposalResponse> getSwapHistory(UUID userId) {
-            this.historyUserId = userId;
+        public List<RequestProposalResponse> getSwapHistory() {
             return List.of(response(SwapRequestStatus.COMPLETED));
         }
 
         @Override
-        public List<RequestProposalResponse> getPendingSwapProposalsForResponder(UUID responderId) {
-            this.pendingResponderId = responderId;
+        public List<RequestProposalResponse> getPendingSwapProposalsForResponder() {
             return List.of(response(SwapRequestStatus.PENDING));
         }
 

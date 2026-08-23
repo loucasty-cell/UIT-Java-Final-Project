@@ -6,11 +6,13 @@ import com.skillbridge.review.api.dto.response.ReviewResponse;
 import com.skillbridge.review.api.mapper.ReviewMapper;
 import com.skillbridge.review.domain.entity.Review;
 import com.skillbridge.review.infrastructure.persistence.ReviewRepository;
+import com.skillbridge.shared.security.SecurityUtils;
 import com.skillbridge.skill.infrastructure.SkillRepository;
 import com.skillbridge.swap.domain.entity.SwapSession;
 import com.skillbridge.swap.domain.model.SwapSessionStatus;
 import com.skillbridge.swap.infrastructure.persistence.SwapSessionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,18 +32,19 @@ public class ReviewService {
     private final ReviewMapper reviewMapper;
 
     public ReviewResponse submitReview(UUID sessionId, SubmitReviewRequest request) {
+        UUID reviewerId = SecurityUtils.getCurrentUserId();
         SwapSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));
         if (session.getStatus() != SwapSessionStatus.COMPLETED) {
             throw new IllegalStateException("Reviews can only be submitted for completed sessions");
         }
-        validateParticipant(session, request.getReviewerId(), "Reviewer must be a session participant");
+        validateParticipant(session, reviewerId, "Reviewer must be a session participant");
         validateParticipant(session, request.getRevieweeId(), "Reviewee must be a session participant");
-        if (request.getReviewerId().equals(request.getRevieweeId())) {
+        if (reviewerId.equals(request.getRevieweeId())) {
             throw new IllegalArgumentException("Reviewer and reviewee must be different users");
         }
-        if (!userRepository.existsById(request.getReviewerId())) {
-            throw new IllegalArgumentException("Reviewer not found: " + request.getReviewerId());
+        if (!userRepository.existsById(reviewerId)) {
+            throw new IllegalArgumentException("Reviewer not found: " + reviewerId);
         }
         if (!userRepository.existsById(request.getRevieweeId())) {
             throw new IllegalArgumentException("Reviewee not found: " + request.getRevieweeId());
@@ -53,14 +56,14 @@ public class ReviewService {
         if (!skillRepository.existsById(request.getSkillId())) {
             throw new IllegalArgumentException("Skill not found: " + request.getSkillId());
         }
-        if (reviewRepository.existsBySessionIdAndReviewerId(sessionId, request.getReviewerId())) {
+        if (reviewRepository.existsBySessionIdAndReviewerId(sessionId, reviewerId)) {
             throw new IllegalStateException("Reviewer has already reviewed this session");
         }
 
         Review review = new Review();
         review.setId(UUID.randomUUID());
         review.setSessionId(sessionId);
-        review.setReviewerId(request.getReviewerId());
+        review.setReviewerId(reviewerId);
         review.setRevieweeId(request.getRevieweeId());
         review.setSkillId(request.getSkillId());
         review.setRating(request.getRating());
@@ -83,7 +86,7 @@ public class ReviewService {
 
     private void validateParticipant(SwapSession session, UUID userId, String message) {
         if (!session.getRequesterId().equals(userId) && !session.getResponderId().equals(userId)) {
-            throw new IllegalArgumentException(message);
+            throw new AccessDeniedException(message);
         }
     }
 

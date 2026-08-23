@@ -2,6 +2,74 @@
 
 All paths are relative to `/api/v1`. Routes require an active authenticated account unless marked public or `ADMIN`. They follow [API_STANDARDS.md](API_STANDARDS.md). `If-Match` carries a mutable resource version where required. `Idempotency-Key` is required for retry-sensitive commands.
 
+## Implemented API surface (current code)
+
+The modules below are implemented and served by live controllers. These routes are mounted directly under `/api` (not `/api/v1`) and all require a Bearer JWT except `/api/auth/**`, `/actuator/health`, and Swagger routes. The acting user is always derived from the JWT subject via `SecurityUtils.getCurrentUserId()`; client-supplied user IDs in request bodies or paths are never trusted for identity.
+
+### Skill catalog (`skill`)
+
+| Method and path | Controller -> service | Input -> output | Access and behavior |
+|---|---|---|---|
+| `GET /skills` | SkillController -> SkillService | none -> List<SkillResponse> | full catalog |
+| `GET /skills/search?q=` | SkillController -> SkillService | query -> List<SkillResponse> | case-insensitive name search; blank returns all |
+| `GET /skills/{id}` | SkillController -> SkillService | path UUID -> SkillResponse | `404` when missing |
+| `POST /skills` | SkillController -> SkillService | CreateSkillRequest -> SkillResponse | authenticated; `201`; unique name |
+| `DELETE /skills/{id}` | SkillController -> SkillService | path UUID -> none | authenticated; `404` when missing |
+
+### Swap proposals (`swap`)
+
+Lifecycle: `PENDING -> ACCEPTED/REJECTED`, `ACCEPTED -> COMPLETED/CANCELLED`. Point cost > 0 is escrowed at accept time (`holdPoints`), released on completion, refunded on cancellation — atomically with the state transition.
+
+| Method and path | Controller -> service | Input -> output | Access and behavior |
+|---|---|---|---|
+| `POST /swaps/proposals` | SwapController -> SwapService | CreateSwapProposalRequest -> SwapRequestResponse | requester from JWT; validates users/skills/wallet balance; `201`; notifies responder |
+| `GET /swaps/proposals/{id}` | SwapController -> SwapService | path UUID -> SwapRequestResponse | authenticated read-only |
+| `POST /swaps/proposals/{id}/accept` | SwapController -> SwapService | path UUID -> SwapRequestResponse | responder only; holds points; creates one session; notifies requester |
+| `POST /swaps/proposals/{id}/reject` | SwapController -> SwapService | path UUID -> SwapRequestResponse | responder only; pending only |
+| `POST /swaps/proposals/{id}/cancel` | SwapController -> SwapService | path UUID -> SwapRequestResponse | requester only; refunds held points |
+| `POST /swaps/sessions/{sessionId}/complete` | SwapController -> SwapService | path UUID -> SwapSessionResponse | participants only; releases escrow; both parties notified |
+| `GET /swaps/history/me` | SwapController -> SwapService | none -> List<SwapRequestResponse> | caller's proposals, newest first |
+
+### Request facade (`request`)
+
+Thin facade over swap use cases with its own DTOs; authorization is enforced inside SwapService.
+
+| Method and path | Controller -> service | Input -> output | Access and behavior |
+|---|---|---|---|
+| `POST /requests/swaps` | RequestController -> RequestService | CreateRequestProposalRequest -> RequestProposalResponse | same rules as `POST /swaps/proposals` |
+| `POST /requests/swaps/{id}/accept` | RequestController -> RequestService | path UUID -> RequestProposalResponse | responder only |
+| `POST /requests/swaps/{id}/reject` | RequestController -> RequestService | path UUID -> RequestProposalResponse | responder only |
+| `POST /requests/swaps/{id}/cancel` | RequestController -> RequestService | path UUID -> RequestProposalResponse | requester only |
+| `GET /requests/swaps/history/me` | RequestController -> RequestService | none -> List<RequestProposalResponse> | caller view |
+| `GET /requests/swaps/pending/incoming` | RequestController -> RequestService | none -> List<RequestProposalResponse> | PENDING proposals awaiting the caller |
+
+### Sessions (`session`)
+
+One-to-one with an accepted swap request. Status flow `ACCEPTED -> STARTED -> COMPLETED`; updates blocked after completion/cancellation.
+
+| Method and path | Controller -> service | Input -> output | Access and behavior |
+|---|---|---|---|
+| `GET /sessions/active/me` | SessionController -> SessionService | none -> List<SessionResponse> | caller's ACCEPTED/STARTED sessions |
+| `POST /sessions/{sessionId}/start` | SessionController -> SessionService | path UUID -> SessionResponse | participants only; ACCEPTED only; both notified |
+| `POST /sessions/{sessionId}/complete` | SessionController -> SessionService | path UUID -> SessionResponse | participants only; releases escrow |
+| `PATCH /sessions/{sessionId}` | SessionController -> SessionService | UpdateSessionRequest -> SessionResponse | participants only; schedules date/duration/meeting URL/notes |
+
+### Reviews (`review`)
+
+| Method and path | Controller -> service | Input -> output | Access and behavior |
+|---|---|---|---|
+| `POST /reviews/sessions/{sessionId}` | ReviewController -> ReviewService | SubmitReviewRequest -> ReviewResponse | reviewer from JWT; completed sessions only; participant check; reviewer != reviewee; skill must belong to session; one review per reviewer/session (service + DB unique constraint); response carries refreshed averages |
+
+### Notifications (`notification`)
+
+| Method and path | Controller -> service | Input -> output | Access and behavior |
+|---|---|---|---|
+| `GET /notifications/me` | NotificationController -> NotificationService | none -> List<NotificationResponse> | caller's notifications, newest first |
+| `POST /notifications/{notificationId}/read` | NotificationController -> NotificationService | path UUID -> NotificationResponse | owner only; idempotent |
+| `DELETE /notifications/{notificationId}` | NotificationController -> NotificationService | path UUID -> none | owner only; `204` |
+
+Domain events that create notifications: proposal created/accepted/rejected/cancelled, session started/completed/updated, forum comment replies.
+
 ## Authentication
 
 | Method and path | Controller -> service | Input -> output | Access and behavior |

@@ -11,7 +11,6 @@ public class RequestMapper {
 
     public CreateSwapProposalRequest toSwapCreateRequest(CreateRequestProposalRequest request) {
         CreateSwapProposalRequest swapRequest = new CreateSwapProposalRequest();
-        swapRequest.setRequesterId(request.getRequesterId());
         swapRequest.setResponderId(request.getResponderId());
         swapRequest.setOfferedSkillId(request.getOfferedSkillId());
         swapRequest.setRequestedSkillId(request.getRequestedSkillId());

@@ -1,6 +1,6 @@
 package com.skillbridge.skill;
 
-import com.skillbridge.skill.domain.Skill;
+import com.skillbridge.skill.domain.entity.Skill;
 import com.skillbridge.skill.infrastructure.SkillRepository;
 
 import java.lang.reflect.InvocationHandler;

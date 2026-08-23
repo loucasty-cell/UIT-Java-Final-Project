@@ -4,7 +4,7 @@ import com.skillbridge.auth.domain.entity.User;
 import com.skillbridge.auth.infrastructure.persistence.UserRepository;
 import com.skillbridge.notification.application.NotificationService;
 import com.skillbridge.notification.domain.model.NotificationType;
-import com.skillbridge.skill.domain.Skill;
+import com.skillbridge.skill.domain.entity.Skill;
 import com.skillbridge.skill.infrastructure.SkillRepository;
 import com.skillbridge.swap.api.dto.request.CreateSwapProposalRequest;
 import com.skillbridge.swap.api.dto.response.SwapRequestResponse;
@@ -19,6 +19,8 @@ import com.skillbridge.swap.infrastructure.persistence.SwapSessionRepository;
 import com.skillbridge.wallet.application.command.WalletService;
 import com.skillbridge.wallet.domain.entity.Wallet;
 import com.skillbridge.wallet.infrastructure.persistence.WalletRepository;
+import com.skillbridge.support.TestAuthContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Proxy;
@@ -36,6 +38,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class SwapServiceTest {
 
+    @AfterEach
+    void logout() {
+        TestAuthContext.logout();
+    }
+
     private final UUID requesterId = UUID.randomUUID();
     private final UUID responderId = UUID.randomUUID();
     private final UUID offeredSkillId = UUID.randomUUID();
@@ -47,6 +54,7 @@ public class SwapServiceTest {
         fixture.addUsers();
         fixture.addSkills();
         fixture.addWallet(20);
+        TestAuthContext.loginAs(requesterId);
 
         SwapRequestResponse response = fixture.service.createProposal(createRequest(10));
 
@@ -63,6 +71,7 @@ public class SwapServiceTest {
         fixture.addUsers();
         fixture.addSkills();
         fixture.addWallet(2);
+        TestAuthContext.loginAs(requesterId);
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
@@ -78,6 +87,7 @@ public class SwapServiceTest {
         fixture.addSkills();
         SwapRequest proposal = pendingProposal(10);
         fixture.requests.put(proposal.getId(), proposal);
+        TestAuthContext.loginAs(responderId);
 
         SwapRequestResponse response = fixture.service.acceptProposal(proposal.getId());
 
@@ -95,6 +105,7 @@ public class SwapServiceTest {
         fixture.addSkills();
         SwapRequest proposal = pendingProposal(0);
         fixture.requests.put(proposal.getId(), proposal);
+        TestAuthContext.loginAs(responderId);
 
         SwapRequestResponse response = fixture.service.rejectProposal(proposal.getId());
 
@@ -111,6 +122,7 @@ public class SwapServiceTest {
         SwapSession session = acceptedSession(proposal);
         fixture.requests.put(proposal.getId(), proposal);
         fixture.sessions.put(session.getId(), session);
+        TestAuthContext.loginAs(requesterId);
 
         SwapSessionResponse response = fixture.service.completeSwapSession(session.getId());
 
@@ -126,8 +138,9 @@ public class SwapServiceTest {
         fixture.addSkills();
         SwapRequest proposal = acceptedProposal(0);
         fixture.requests.put(proposal.getId(), proposal);
+        TestAuthContext.loginAs(requesterId);
 
-        List<SwapRequestResponse> history = fixture.service.getSwapHistory(requesterId);
+        List<SwapRequestResponse> history = fixture.service.getSwapHistory();
 
         assertEquals(1, history.size());
         assertEquals(proposal.getId(), history.get(0).getId());
@@ -135,7 +148,6 @@ public class SwapServiceTest {
 
     private CreateSwapProposalRequest createRequest(int pointCost) {
         CreateSwapProposalRequest request = new CreateSwapProposalRequest();
-        request.setRequesterId(requesterId);
         request.setResponderId(responderId);
         request.setOfferedSkillId(offeredSkillId);
         request.setRequestedSkillId(requestedSkillId);

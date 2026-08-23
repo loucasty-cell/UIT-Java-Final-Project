@@ -6,6 +6,8 @@ import com.skillbridge.swap.api.dto.response.SwapSessionResponse;
 import com.skillbridge.swap.application.SwapService;
 import com.skillbridge.swap.domain.model.SwapRequestStatus;
 import com.skillbridge.swap.domain.model.SwapSessionStatus;
+import com.skillbridge.support.TestAuthContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +18,11 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class SwapControllerTest {
+
+    @AfterEach
+    void logout() {
+        TestAuthContext.logout();
+    }
 
     @Test
     void createsSwapProposal() {
@@ -37,6 +44,7 @@ public class SwapControllerTest {
         UUID userId = UUID.randomUUID();
         RecordingSwapService service = new RecordingSwapService();
         SwapController controller = new SwapController(service);
+        TestAuthContext.loginAs(userId);
 
         assertEquals(SwapRequestStatus.ACCEPTED, controller.acceptProposal(proposalId).getBody().getStatus());
         assertEquals(proposalId, service.acceptedId);
@@ -44,8 +52,7 @@ public class SwapControllerTest {
         assertEquals(proposalId, service.rejectedId);
         assertEquals(SwapSessionStatus.COMPLETED, controller.completeSwapSession(sessionId).getBody().getStatus());
         assertEquals(sessionId, service.completedSessionId);
-        assertEquals(1, controller.getSwapHistory(userId).getBody().size());
-        assertEquals(userId, service.historyUserId);
+        assertEquals(1, controller.getSwapHistory().getBody().size());
     }
 
     private static class RecordingSwapService extends SwapService {
@@ -53,7 +60,6 @@ public class SwapControllerTest {
         private UUID acceptedId;
         private UUID rejectedId;
         private UUID completedSessionId;
-        private UUID historyUserId;
 
         RecordingSwapService() {
             super(null, null, null, null, null, null, null, null);
@@ -87,8 +93,7 @@ public class SwapControllerTest {
         }
 
         @Override
-        public List<SwapRequestResponse> getSwapHistory(UUID userId) {
-            this.historyUserId = userId;
+        public List<SwapRequestResponse> getSwapHistory() {
             return List.of(requestResponse(SwapRequestStatus.COMPLETED));
         }
 

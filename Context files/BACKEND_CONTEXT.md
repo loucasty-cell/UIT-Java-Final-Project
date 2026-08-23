@@ -45,6 +45,15 @@ Neon PostgreSQL is the business-data system of record. Use UUID keys, foreign ke
 
 Flyway owns schema changes and Hibernate is validation-only. Runtime and migration roles should be separate. Credentials remain in environment variables or a secret manager and never cross the API boundary.
 
+### Implemented migrations (current dev state)
+
+- `V1` init schema, `V2` mentor/forum, `V3` forum likes, `V4` admin/moderation, `V5` user profile + wallet.
+- `V4.1` skills catalog table.
+- `V6` swap requests and sessions (`swap_requests`, `swap_sessions`) with FK/CHECK constraints and version columns; escrow is tracked via `points_held` plus wallet holds.
+- `V7` reviews (unique per session+reviewer), `V8` notifications (indexed for newest-first and unread counts).
+
+Note: the implemented swap flow models proposals directly as `swap_requests` rather than the planned `learning_requests` + `skill_swaps` split; POINTS-mode semantics are covered by the wallet hold/release/refund coordination inside `SwapService`.
+
 ## Transaction boundaries
 
 - Registration: user, role, wallet, and starter award.

@@ -4,6 +4,7 @@ import com.skillbridge.request.api.dto.request.CreateRequestProposalRequest;
 import com.skillbridge.request.api.dto.response.RequestProposalResponse;
 import com.skillbridge.request.api.mapper.RequestMapper;
 import com.skillbridge.request.infrastructure.persistence.RequestProposalRepository;
+import com.skillbridge.shared.security.SecurityUtils;
 import com.skillbridge.swap.application.SwapService;
 import com.skillbridge.swap.domain.model.SwapRequestStatus;
 import lombok.RequiredArgsConstructor;
@@ -41,14 +42,15 @@ public class RequestService {
     }
 
     @Transactional(readOnly = true)
-    public List<RequestProposalResponse> getSwapHistory(UUID userId) {
-        return swapService.getSwapHistory(userId).stream()
+    public List<RequestProposalResponse> getSwapHistory() {
+        return swapService.getSwapHistory().stream()
                 .map(requestMapper::toProposalResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<RequestProposalResponse> getPendingSwapProposalsForResponder(UUID responderId) {
+    public List<RequestProposalResponse> getPendingSwapProposalsForResponder() {
+        UUID responderId = SecurityUtils.getCurrentUserId();
         return requestProposalRepository
                 .findByResponderIdAndStatusOrderByCreatedAtDesc(responderId, SwapRequestStatus.PENDING)
                 .stream()

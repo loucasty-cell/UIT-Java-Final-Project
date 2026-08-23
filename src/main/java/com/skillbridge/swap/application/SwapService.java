@@ -3,6 +3,7 @@ package com.skillbridge.swap.application;
 import com.skillbridge.auth.infrastructure.persistence.UserRepository;
 import com.skillbridge.notification.application.NotificationService;
 import com.skillbridge.notification.domain.model.NotificationType;
+import com.skillbridge.shared.security.SecurityUtils;
 import com.skillbridge.skill.infrastructure.SkillRepository;
 import com.skillbridge.swap.api.dto.request.CreateSwapProposalRequest;
 import com.skillbridge.swap.api.dto.response.SwapRequestResponse;
@@ -17,6 +18,7 @@ import com.skillbridge.swap.infrastructure.persistence.SwapSessionRepository;
 import com.skillbridge.wallet.application.command.WalletService;
 import com.skillbridge.wallet.infrastructure.persistence.WalletRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,17 +43,18 @@ public class SwapService {
     private final NotificationService notificationService;
 
     public SwapRequestResponse createProposal(CreateSwapProposalRequest request) {
-        validateParticipants(request.getRequesterId(), request.getResponderId());
+        UUID requesterId = SecurityUtils.getCurrentUserId();
+        validateParticipants(requesterId, request.getResponderId());
         validateSkill(request.getOfferedSkillId(), "Offered skill not found");
         validateSkill(request.getRequestedSkillId(), "Requested skill not found");
 
         int pointCost = request.getPointCost() != null ? request.getPointCost() : 0;
-        validatePointCost(request.getRequesterId(), pointCost);
+        validatePointCost(requesterId, pointCost);
 
         OffsetDateTime now = OffsetDateTime.now();
         SwapRequest swapRequest = new SwapRequest();
         swapRequest.setId(UUID.randomUUID());
-        swapRequest.setRequesterId(request.getRequesterId());
+        swapRequest.setRequesterId(requesterId);
         swapRequest.setResponderId(request.getResponderId());
         swapRequest.setOfferedSkillId(request.getOfferedSkillId());
         swapRequest.setRequestedSkillId(request.getRequestedSkillId());
@@ -74,6 +77,7 @@ public class SwapService {
 
     public SwapRequestResponse acceptProposal(UUID requestId) {
         SwapRequest swapRequest = loadRequest(requestId);
+        requireParticipant(swapRequest, SecurityUtils.getCurrentUserId(), true, "Only the responder can accept this proposal");
         requireStatus(swapRequest, SwapRequestStatus.PENDING, "Only pending swap proposals can be accepted");
 
         OffsetDateTime now = OffsetDateTime.now();
@@ -120,6 +124,7 @@ public class SwapService {
 
     public SwapRequestResponse rejectProposal(UUID requestId) {
         SwapRequest swapRequest = loadRequest(requestId);
+        requireParticipant(swapRequest, SecurityUtils.getCurrentUserId(), true, "Only the responder can reject this proposal");
         requireStatus(swapRequest, SwapRequestStatus.PENDING, "Only pending swap proposals can be rejected");
 
         OffsetDateTime now = OffsetDateTime.now();
@@ -144,6 +149,7 @@ public class SwapService {
     public SwapSessionResponse completeSwapSession(UUID sessionId) {
         SwapSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Swap session not found: " + sessionId));
+        requireSessionParticipant(session, SecurityUtils.getCurrentUserId(), "Only session participants can complete this session");
         if (session.getStatus() != SwapSessionStatus.ACCEPTED && session.getStatus() != SwapSessionStatus.STARTED) {
             throw new IllegalStateException("Only accepted or started swap sessions can be completed");
         }
@@ -187,11 +193,9 @@ public class SwapService {
         return swapMapper.toSessionResponse(savedSession);
     }
 
-    public List<SwapRequestResponse> getSwapHistory(UUID userId) {
-        if (!userRepository.existsById(userId)) {
-            throw new IllegalArgumentException("User not found: " + userId);
-        }
-
+    @Transactional(readOnly = true)
+    public List<SwapRequestResponse> getSwapHistory() {
+        UUID userId = SecurityUtils.getCurrentUserId();
         return requestRepository.findByRequesterIdOrResponderIdOrderByCreatedAtDesc(userId, userId).stream()
                 .map(swapMapper::toRequestResponse)
                 .toList();
@@ -199,6 +203,7 @@ public class SwapService {
 
     public SwapRequestResponse cancelProposal(UUID requestId) {
         SwapRequest swapRequest = loadRequest(requestId);
+        requireParticipant(swapRequest, SecurityUtils.getCurrentUserId(), false, "Only the requester can cancel this proposal");
         if (swapRequest.getStatus() != SwapRequestStatus.PENDING && swapRequest.getStatus() != SwapRequestStatus.ACCEPTED) {
             throw new IllegalStateException("Only pending or accepted swap proposals can be cancelled");
         }
@@ -271,6 +276,19 @@ public class SwapService {
     private void requireStatus(SwapRequest swapRequest, SwapRequestStatus expected, String message) {
         if (swapRequest.getStatus() != expected) {
             throw new IllegalStateException(message);
+        }
+    }
+
+    private void requireParticipant(SwapRequest swapRequest, UUID userId, boolean responderOnly, String message) {
+        UUID expected = responderOnly ? swapRequest.getResponderId() : swapRequest.getRequesterId();
+        if (!expected.equals(userId)) {
+            throw new AccessDeniedException(message);
+        }
+    }
+
+    private void requireSessionParticipant(SwapSession session, UUID userId, String message) {
+        if (!session.getRequesterId().equals(userId) && !session.getResponderId().equals(userId)) {
+            throw new AccessDeniedException(message);
         }
     }
 

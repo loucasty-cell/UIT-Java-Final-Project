@@ -1,6 +1,14 @@
 # Testing Matrix
 
-This matrix describes current and planned automated coverage. The repository has a Maven build and a basic Spring Boot test; the broader web, PostgreSQL, contract, concurrency, and end-to-end coverage remains to be implemented.
+This matrix describes current and planned automated coverage.
+
+## Current state
+
+- `mvnw test` runs **39 tests, all passing** (JUnit 5) on JDK 25 with the Maven wrapper (`.\mvnw.cmd`).
+- Coverage is per-module unit testing: swap (controller 2, service 6, entity mapping 2), request (3 + repository), review (4), session (2), skill (11 incl. entity mapping and repository), notification (2), moderation (2), plus the Spring context smoke test.
+- Services are tested through hand-rolled `java.lang.reflect.Proxy` fakes for repositories and recording subclasses for collaborators — no Mockito.
+- `src/test/java/com/skillbridge/support/TestAuthContext.java` simulates JWT authentication in tests: call `TestAuthContext.loginAs(userId)` after creating fixtures whose services read `SecurityUtils.getCurrentUserId()`, and add an `@AfterEach` calling `TestAuthContext.logout()` to avoid leaking the security context between tests.
+- Each module has a `*ModuleTestRunner` aggregating its suites.
 
 ## Test layers
 

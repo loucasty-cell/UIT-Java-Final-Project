@@ -5,7 +5,7 @@ import com.skillbridge.skill.api.dto.request.CreateSkillRequest;
 import com.skillbridge.skill.api.dto.response.SkillResponse;
 import com.skillbridge.skill.api.mapper.SkillMapper;
 import com.skillbridge.skill.application.SkillService;
-import com.skillbridge.skill.domain.Skill;
+import com.skillbridge.skill.domain.entity.Skill;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

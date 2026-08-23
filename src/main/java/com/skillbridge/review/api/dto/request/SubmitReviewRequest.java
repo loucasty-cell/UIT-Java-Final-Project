@@ -12,9 +12,6 @@ import java.util.UUID;
 public class SubmitReviewRequest {
 
     @NotNull
-    private UUID reviewerId;
-
-    @NotNull
     private UUID revieweeId;
 
     @NotNull

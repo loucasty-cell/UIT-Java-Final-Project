@@ -1,7 +1,7 @@
 package com.skillbridge.skill.api.mapper;
 
 import com.skillbridge.skill.api.dto.response.SkillResponse;
-import com.skillbridge.skill.domain.Skill;
+import com.skillbridge.skill.domain.entity.Skill;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;

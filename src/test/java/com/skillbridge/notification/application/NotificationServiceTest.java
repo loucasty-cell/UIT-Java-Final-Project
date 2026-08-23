@@ -5,6 +5,8 @@ import com.skillbridge.notification.api.mapper.NotificationMapper;
 import com.skillbridge.notification.domain.entity.Notification;
 import com.skillbridge.notification.domain.model.NotificationType;
 import com.skillbridge.notification.infrastructure.persistence.NotificationRepository;
+import com.skillbridge.support.TestAuthContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Proxy;
@@ -19,6 +21,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class NotificationServiceTest {
+
+    @AfterEach
+    void logout() {
+        TestAuthContext.logout();
+    }
 
     @Test
     void createsFetchesMarksReadAndDeletesNotifications() {
@@ -36,15 +43,17 @@ public class NotificationServiceTest {
                 referenceId
         );
 
-        assertEquals(1, service.getUserNotifications(userId).size());
+        TestAuthContext.loginAs(userId);
+
+        assertEquals(1, service.getUserNotifications().size());
         assertEquals(referenceId, created.getReferenceId());
         assertEquals(false, created.getRead());
 
         NotificationResponse read = service.markAsRead(created.getId());
         assertTrue(read.getRead());
 
-        service.deleteNotification(userId, created.getId());
-        assertEquals(0, service.getUserNotifications(userId).size());
+        service.deleteNotification(created.getId());
+        assertEquals(0, service.getUserNotifications().size());
     }
 
     private NotificationRepository repository(Map<UUID, Notification> notifications) {
@@ -69,6 +78,11 @@ public class NotificationServiceTest {
                             .toList();
                     case "deleteByIdAndUserId" -> {
                         notifications.remove((UUID) args[0]);
+                        yield null;
+                    }
+                    case "delete" -> {
+                        Notification notification = (Notification) args[0];
+                        notifications.remove(notification.getId());
                         yield null;
                     }
                     case "equals" -> proxy == args[0];

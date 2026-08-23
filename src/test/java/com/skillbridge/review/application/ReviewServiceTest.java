@@ -10,6 +10,8 @@ import com.skillbridge.skill.infrastructure.SkillRepository;
 import com.skillbridge.swap.domain.entity.SwapSession;
 import com.skillbridge.swap.domain.model.SwapSessionStatus;
 import com.skillbridge.swap.infrastructure.persistence.SwapSessionRepository;
+import com.skillbridge.support.TestAuthContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Proxy;
@@ -24,9 +26,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class ReviewServiceTest {
 
+    @AfterEach
+    void logout() {
+        TestAuthContext.logout();
+    }
+
     @Test
     void submitsReviewForCompletedSessionAndReturnsUpdatedAverages() {
         Fixture fixture = new Fixture();
+        TestAuthContext.loginAs(fixture.requesterId);
         fixture.existingReviews.add(review(4));
 
         ReviewResponse response = fixture.service.submitReview(fixture.session.getId(), fixture.request(2));
@@ -41,6 +49,7 @@ public class ReviewServiceTest {
     @Test
     void rejectsReviewForUncompletedSession() {
         Fixture fixture = new Fixture();
+        TestAuthContext.loginAs(fixture.requesterId);
         fixture.session.setStatus(SwapSessionStatus.STARTED);
 
         IllegalStateException exception = assertThrows(
@@ -54,6 +63,7 @@ public class ReviewServiceTest {
     @Test
     void rejectsDuplicateReviewerForSession() {
         Fixture fixture = new Fixture();
+        TestAuthContext.loginAs(fixture.requesterId);
         fixture.duplicateExists = true;
 
         IllegalStateException exception = assertThrows(
@@ -89,7 +99,6 @@ public class ReviewServiceTest {
 
         SubmitReviewRequest request(int rating) {
             SubmitReviewRequest request = new SubmitReviewRequest();
-            request.setReviewerId(requesterId);
             request.setRevieweeId(responderId);
             request.setSkillId(skillId);
             request.setRating(rating);

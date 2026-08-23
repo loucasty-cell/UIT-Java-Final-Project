@@ -2,6 +2,8 @@ package com.skillbridge.notification.api.controller;
 
 import com.skillbridge.notification.api.dto.response.NotificationResponse;
 import com.skillbridge.notification.application.NotificationService;
+import com.skillbridge.support.TestAuthContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 
@@ -12,6 +14,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class NotificationControllerTest {
 
+    @AfterEach
+    void logout() {
+        TestAuthContext.logout();
+    }
+
     @Test
     void exposesNotificationEndpoints() {
         RecordingNotificationService service = new RecordingNotificationService();
@@ -19,11 +26,13 @@ public class NotificationControllerTest {
         UUID userId = UUID.randomUUID();
         UUID notificationId = UUID.randomUUID();
 
-        assertEquals(1, controller.getUserNotifications(userId).getBody().size());
+        TestAuthContext.loginAs(userId);
+
+        assertEquals(1, controller.getCurrentUserNotifications().getBody().size());
         assertEquals(userId, service.loadedUserId);
         assertEquals(notificationId, controller.markAsRead(notificationId).getBody().getId());
         assertEquals(notificationId, service.readId);
-        assertEquals(HttpStatus.NO_CONTENT, controller.deleteNotification(userId, notificationId).getStatusCode());
+        assertEquals(HttpStatus.NO_CONTENT, controller.deleteNotification(notificationId).getStatusCode());
         assertEquals(notificationId, service.deletedId);
     }
 
@@ -37,8 +46,8 @@ public class NotificationControllerTest {
         }
 
         @Override
-        public List<NotificationResponse> getUserNotifications(UUID userId) {
-            this.loadedUserId = userId;
+        public List<NotificationResponse> getUserNotifications() {
+            this.loadedUserId = com.skillbridge.shared.security.SecurityUtils.getCurrentUserId();
             NotificationResponse response = new NotificationResponse();
             response.setId(UUID.randomUUID());
             return List.of(response);
@@ -54,7 +63,7 @@ public class NotificationControllerTest {
         }
 
         @Override
-        public void deleteNotification(UUID userId, UUID notificationId) {
+        public void deleteNotification(UUID notificationId) {
             this.deletedId = notificationId;
         }
     }

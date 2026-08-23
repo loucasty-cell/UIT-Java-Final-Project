@@ -4,6 +4,8 @@ import com.skillbridge.session.api.dto.request.UpdateSessionRequest;
 import com.skillbridge.session.api.dto.response.SessionResponse;
 import com.skillbridge.session.application.SessionService;
 import com.skillbridge.swap.domain.model.SwapSessionStatus;
+import com.skillbridge.support.TestAuthContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -13,6 +15,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class SessionControllerTest {
 
+    @AfterEach
+    void logout() {
+        TestAuthContext.logout();
+    }
+
     @Test
     void exposesSessionEndpoints() {
         RecordingSessionService service = new RecordingSessionService();
@@ -20,8 +27,9 @@ public class SessionControllerTest {
         UUID sessionId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UpdateSessionRequest update = new UpdateSessionRequest();
+        TestAuthContext.loginAs(userId);
 
-        assertEquals(1, controller.getActiveSwapSessions(userId).getBody().size());
+        assertEquals(1, controller.getActiveSwapSessions().getBody().size());
         assertEquals(userId, service.activeUserId);
         assertEquals(SwapSessionStatus.STARTED, controller.startSession(sessionId).getBody().getStatus());
         assertEquals(sessionId, service.startedId);
@@ -42,8 +50,8 @@ public class SessionControllerTest {
         }
 
         @Override
-        public List<SessionResponse> getActiveSwapSessions(UUID userId) {
-            this.activeUserId = userId;
+        public List<SessionResponse> getActiveSwapSessions() {
+            this.activeUserId = com.skillbridge.shared.security.SecurityUtils.getCurrentUserId();
             return List.of(response(SwapSessionStatus.ACCEPTED));
         }
 

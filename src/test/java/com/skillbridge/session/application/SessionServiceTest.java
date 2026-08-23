@@ -10,6 +10,8 @@ import com.skillbridge.swap.application.SwapService;
 import com.skillbridge.swap.domain.entity.SwapSession;
 import com.skillbridge.swap.domain.model.SwapSessionStatus;
 import com.skillbridge.swap.infrastructure.persistence.SwapSessionRepository;
+import com.skillbridge.support.TestAuthContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Proxy;
@@ -25,13 +27,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class SessionServiceTest {
 
+    @AfterEach
+    void logout() {
+        TestAuthContext.logout();
+    }
+
     @Test
     void fetchesActiveStartsUpdatesAndCompletesSessions() {
         Fixture fixture = new Fixture();
         SwapSession session = session(SwapSessionStatus.ACCEPTED);
         fixture.sessions.put(session.getId(), session);
+        TestAuthContext.loginAs(session.getRequesterId());
 
-        assertEquals(1, fixture.service.getActiveSwapSessions(session.getRequesterId()).size());
+        assertEquals(1, fixture.service.getActiveSwapSessions().size());
 
         SessionResponse started = fixture.service.startSession(session.getId());
         assertEquals(SwapSessionStatus.STARTED, started.getStatus());

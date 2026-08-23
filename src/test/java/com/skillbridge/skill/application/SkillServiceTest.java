@@ -4,7 +4,7 @@ import com.skillbridge.skill.SkillTestRepositoryFactory;
 import com.skillbridge.skill.api.dto.request.CreateSkillRequest;
 import com.skillbridge.skill.api.dto.response.SkillResponse;
 import com.skillbridge.skill.api.mapper.SkillMapper;
-import com.skillbridge.skill.domain.Skill;
+import com.skillbridge.skill.domain.entity.Skill;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

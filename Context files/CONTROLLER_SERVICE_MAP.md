@@ -17,8 +17,25 @@ For every feature, the related classes belong in the following packages:
 
 The feature names are `admin`, `auth`, `forum`, `mentor`, `moderation`,
 `notification`, `request`, `review`, `search`, `session`, `skill`, `swap`,
-`user`, and `wallet`. These are planned package locations; implementation
-classes have not been added yet.
+`user`, and `wallet`.
+
+Implemented controllers and services as of the latest `dev` state:
+
+| Area | Controllers | Application ownership |
+|---|---|---|
+| Auth | AuthController | RegistrationService, AuthenticationService, RefreshTokenService, RefreshTokenIssuer |
+| Skill catalog | SkillController | SkillService (CRUD + search) |
+| Swap proposals | SwapController | SwapService (lifecycle + escrow coordination) |
+| Request facade | RequestController | RequestService (delegates to SwapService) |
+| Sessions | SessionController | SessionService (start/update/complete) |
+| Reviews | ReviewController | ReviewService (submit + averages) |
+| Notifications | NotificationController | NotificationService (list/mark-read/delete/create) |
+| Moderation | ModerationController | ModerationService (flag/resolve) |
+| Forum | ForumPostController, ForumCommentController, ForumLikeController | ForumService, ForumQueryService |
+| Mentor offerings | MentorOfferingController | MentorOfferingService, MentorQueryService |
+| Wallet | WalletController | WalletService, WalletRepository |
+
+All controllers use constructor injection (Lombok `@RequiredArgsConstructor` or explicit constructors); there is no field injection. Services resolve the acting user from the JWT via `SecurityUtils.getCurrentUserId()` — see [AUTHENTICATION_AUTHORIZATION.md](AUTHENTICATION_AUTHORIZATION.md).
 
 ## Controllers
 

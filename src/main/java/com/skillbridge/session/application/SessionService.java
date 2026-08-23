@@ -5,11 +5,13 @@ import com.skillbridge.notification.domain.model.NotificationType;
 import com.skillbridge.session.api.dto.request.UpdateSessionRequest;
 import com.skillbridge.session.api.dto.response.SessionResponse;
 import com.skillbridge.session.api.mapper.SessionMapper;
+import com.skillbridge.shared.security.SecurityUtils;
 import com.skillbridge.swap.application.SwapService;
 import com.skillbridge.swap.domain.entity.SwapSession;
 import com.skillbridge.swap.domain.model.SwapSessionStatus;
 import com.skillbridge.swap.infrastructure.persistence.SwapSessionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +30,8 @@ public class SessionService {
     private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
-    public List<SessionResponse> getActiveSwapSessions(UUID userId) {
+    public List<SessionResponse> getActiveSwapSessions() {
+        UUID userId = SecurityUtils.getCurrentUserId();
         return sessionRepository
                 .findActiveByUserId(userId, List.of(SwapSessionStatus.ACCEPTED, SwapSessionStatus.STARTED))
                 .stream()
@@ -38,6 +41,7 @@ public class SessionService {
 
     public SessionResponse startSession(UUID sessionId) {
         SwapSession session = loadSession(sessionId);
+        requireParticipant(session, "Only session participants can start this session");
         if (session.getStatus() != SwapSessionStatus.ACCEPTED) {
             throw new IllegalStateException("Only accepted sessions can be started");
         }
@@ -57,6 +61,7 @@ public class SessionService {
 
     public SessionResponse updateSession(UUID sessionId, UpdateSessionRequest request) {
         SwapSession session = loadSession(sessionId);
+        requireParticipant(session, "Only session participants can update this session");
         if (session.getStatus() == SwapSessionStatus.COMPLETED || session.getStatus() == SwapSessionStatus.CANCELLED) {
             throw new IllegalStateException("Completed or cancelled sessions cannot be updated");
         }
@@ -74,6 +79,13 @@ public class SessionService {
     private SwapSession loadSession(UUID sessionId) {
         return sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));
+    }
+
+    private void requireParticipant(SwapSession session, String message) {
+        UUID userId = SecurityUtils.getCurrentUserId();
+        if (!session.getRequesterId().equals(userId) && !session.getResponderId().equals(userId)) {
+            throw new AccessDeniedException(message);
+        }
     }
 
     private void notifyParticipants(SwapSession session, NotificationType type) {

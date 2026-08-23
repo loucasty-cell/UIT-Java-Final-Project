@@ -3,7 +3,7 @@ package com.skillbridge.skill;
 import com.skillbridge.skill.api.controller.SkillControllerTest;
 import com.skillbridge.skill.api.mapper.SkillMapperTest;
 import com.skillbridge.skill.application.SkillServiceTest;
-import com.skillbridge.skill.domain.SkillEntityMappingTest;
+import com.skillbridge.skill.domain.entity.SkillEntityMappingTest;
 import com.skillbridge.skill.infrastructure.SkillRepositoryTest;
 import org.junit.jupiter.api.Test;
 

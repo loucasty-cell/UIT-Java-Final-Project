@@ -8,7 +8,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,7 +20,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/swaps")
-@CrossOrigin(origins = "http://localhost:8081")
 @RequiredArgsConstructor
 public class SwapController {
 
@@ -49,8 +47,8 @@ public class SwapController {
         return ResponseEntity.ok(swapService.completeSwapSession(sessionId));
     }
 
-    @GetMapping("/history/users/{userId}")
-    public ResponseEntity<List<SwapRequestResponse>> getSwapHistory(@PathVariable UUID userId) {
-        return ResponseEntity.ok(swapService.getSwapHistory(userId));
+    @GetMapping("/history/me")
+    public ResponseEntity<List<SwapRequestResponse>> getSwapHistory() {
+        return ResponseEntity.ok(swapService.getSwapHistory());
     }
 }

@@ -4,7 +4,7 @@ import com.skillbridge.auth.domain.entity.User;
 import com.skillbridge.auth.infrastructure.persistence.UserRepository;
 import com.skillbridge.shared.api.dto.response.SkillSummaryResponse;
 import com.skillbridge.shared.api.dto.response.UserSummaryResponse;
-import com.skillbridge.skill.domain.Skill;
+import com.skillbridge.skill.domain.entity.Skill;
 import com.skillbridge.skill.infrastructure.SkillRepository;
 import com.skillbridge.swap.api.dto.response.SwapRequestResponse;
 import com.skillbridge.swap.api.dto.response.SwapSessionResponse;

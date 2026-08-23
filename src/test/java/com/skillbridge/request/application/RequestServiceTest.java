@@ -10,6 +10,8 @@ import com.skillbridge.swap.api.dto.response.SwapRequestResponse;
 import com.skillbridge.swap.application.SwapService;
 import com.skillbridge.swap.domain.entity.SwapRequest;
 import com.skillbridge.swap.domain.model.SwapRequestStatus;
+import com.skillbridge.support.TestAuthContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Proxy;
@@ -20,6 +22,11 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class RequestServiceTest {
+
+    @AfterEach
+    void logout() {
+        TestAuthContext.logout();
+    }
 
     @Test
     void delegatesCreateAcceptRejectCancelAndHistoryToSwapService() {
@@ -33,16 +40,17 @@ public class RequestServiceTest {
         UUID requestId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
+        TestAuthContext.loginAs(userId);
+
         assertEquals(SwapRequestStatus.PENDING, service.createSwapProposal(createRequest).getStatus());
-        assertEquals(createRequest.getRequesterId(), swapService.createRequest.getRequesterId());
+        assertEquals(userId, swapService.createRequestUserId);
         assertEquals(SwapRequestStatus.ACCEPTED, service.acceptSwapProposal(requestId).getStatus());
         assertEquals(requestId, swapService.acceptedId);
         assertEquals(SwapRequestStatus.REJECTED, service.rejectSwapProposal(requestId).getStatus());
         assertEquals(requestId, swapService.rejectedId);
         assertEquals(SwapRequestStatus.CANCELLED, service.cancelSwapProposal(requestId).getStatus());
         assertEquals(requestId, swapService.cancelledId);
-        assertEquals(1, service.getSwapHistory(userId).size());
-        assertEquals(userId, swapService.historyUserId);
+        assertEquals(1, service.getSwapHistory().size());
     }
 
     @Test
@@ -53,7 +61,9 @@ public class RequestServiceTest {
         RequestProposalRepository repository = repositoryWithPending(responderId, requestId);
         RequestService service = new RequestService(swapService, repository, new RequestMapper());
 
-        List<RequestProposalResponse> responses = service.getPendingSwapProposalsForResponder(responderId);
+        TestAuthContext.loginAs(responderId);
+
+        List<RequestProposalResponse> responses = service.getPendingSwapProposalsForResponder();
 
         assertEquals(1, responses.size());
         assertEquals(requestId, responses.get(0).getId());
@@ -62,7 +72,6 @@ public class RequestServiceTest {
 
     private CreateRequestProposalRequest createRequest() {
         CreateRequestProposalRequest request = new CreateRequestProposalRequest();
-        request.setRequesterId(UUID.randomUUID());
         request.setResponderId(UUID.randomUUID());
         request.setOfferedSkillId(UUID.randomUUID());
         request.setRequestedSkillId(UUID.randomUUID());
@@ -96,11 +105,10 @@ public class RequestServiceTest {
     }
 
     private static class RecordingSwapService extends SwapService {
-        private CreateSwapProposalRequest createRequest;
+        private UUID createRequestUserId;
         private UUID acceptedId;
         private UUID rejectedId;
         private UUID cancelledId;
-        private UUID historyUserId;
         private UUID loadedId;
 
         RecordingSwapService() {
@@ -109,7 +117,7 @@ public class RequestServiceTest {
 
         @Override
         public SwapRequestResponse createProposal(CreateSwapProposalRequest request) {
-            this.createRequest = request;
+            this.createRequestUserId = com.skillbridge.shared.security.SecurityUtils.getCurrentUserId();
             return response(UUID.randomUUID(), SwapRequestStatus.PENDING);
         }
 
@@ -138,8 +146,7 @@ public class RequestServiceTest {
         }
 
         @Override
-        public List<SwapRequestResponse> getSwapHistory(UUID userId) {
-            this.historyUserId = userId;
+        public List<SwapRequestResponse> getSwapHistory() {
             return List.of(response(UUID.randomUUID(), SwapRequestStatus.COMPLETED));
         }
 

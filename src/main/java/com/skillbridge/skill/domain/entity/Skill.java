@@ -1,4 +1,4 @@
-package com.skillbridge.skill.domain;
+package com.skillbridge.skill.domain.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;

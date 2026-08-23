@@ -6,7 +6,6 @@ import com.skillbridge.session.application.SessionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,15 +19,14 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/sessions")
-@CrossOrigin(origins = "http://localhost:8081")
 @RequiredArgsConstructor
 public class SessionController {
 
     private final SessionService sessionService;
 
-    @GetMapping("/active/users/{userId}")
-    public ResponseEntity<List<SessionResponse>> getActiveSwapSessions(@PathVariable UUID userId) {
-        return ResponseEntity.ok(sessionService.getActiveSwapSessions(userId));
+    @GetMapping("/active/me")
+    public ResponseEntity<List<SessionResponse>> getActiveSwapSessions() {
+        return ResponseEntity.ok(sessionService.getActiveSwapSessions());
     }
 
     @PostMapping("/{sessionId}/start")

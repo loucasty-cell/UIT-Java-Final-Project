@@ -7,7 +7,7 @@ import com.skillbridge.mentor.domain.entity.MentorOffering;
 import com.skillbridge.shared.api.dto.response.SkillSummaryResponse;
 import com.skillbridge.shared.api.dto.response.UserSummaryResponse;
 import com.skillbridge.shared.domain.model.Mode;
-import com.skillbridge.skill.domain.Skill;
+import com.skillbridge.skill.domain.entity.Skill;
 import com.skillbridge.skill.infrastructure.SkillRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

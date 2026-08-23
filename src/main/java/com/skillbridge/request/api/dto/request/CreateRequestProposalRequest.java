@@ -11,9 +11,6 @@ import java.util.UUID;
 public class CreateRequestProposalRequest {
 
     @NotNull
-    private UUID requesterId;
-
-    @NotNull
     private UUID responderId;
 
     @NotNull

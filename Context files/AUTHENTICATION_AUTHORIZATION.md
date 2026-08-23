@@ -16,6 +16,19 @@ Access tokens last exactly 12 hours (720 minutes). Refresh tokens are opaque, ro
 
 JWT claims never override current database role or account status.
 
+## Current implementation
+
+- `SecurityConfig` runs a stateless filter chain: CSRF off, explicit CORS origins (`skillbridge.cors.allowed-origins`), JWT via `NimbusJwtDecoder` with HMAC-SHA256 shared secret, BCrypt password encoder.
+- The `roles` claim is converted to Spring authorities in both `ADMIN` and `ROLE_ADMIN` forms so `@PreAuthorize` works either way.
+- Public routes: `/api/v1/auth/**`, `/actuator/health`, `/v3/api-docs/**`, `/swagger-ui/**`. Everything else requires a valid JWT.
+- Services resolve the acting user with `SecurityUtils.getCurrentUserId()`, which reads the JWT subject from the SecurityContext. Client-supplied user IDs are never accepted as proof of identity.
+- Module authorization rules currently enforced:
+  - Swap proposals: responder accepts/rejects; requester cancels; participants complete the session.
+  - Sessions: only participants start, update, or complete.
+  - Reviews: reviewer must be a session participant, reviewee must be the other participant, one review per reviewer/session.
+  - Notifications: list/mark-read/delete are restricted to the owning user.
+- Authorization violations throw Spring's `AccessDeniedException` (mapped to `403 FORBIDDEN` by `GlobalExceptionHandler`); invalid state transitions throw `IllegalStateException`/`IllegalArgumentException` (mapped to `400`).
+
 ## Credentials and session rules
 
 - Hash passwords with Argon2id or BCrypt.

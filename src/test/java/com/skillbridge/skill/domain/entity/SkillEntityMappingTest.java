@@ -1,4 +1,4 @@
-package com.skillbridge.skill.domain;
+package com.skillbridge.skill.domain.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -21,7 +21,7 @@ public class SkillEntityMappingTest {
 
     @Test
     void mapsSkillEntityWithUuidIdAndValidation() throws NoSuchFieldException {
-        assertEquals("com.skillbridge.skill.domain", Skill.class.getPackageName());
+        assertEquals("com.skillbridge.skill.domain.entity", Skill.class.getPackageName());
         assertTrue(Skill.class.isAnnotationPresent(Entity.class));
         assertEquals("skills", Skill.class.getAnnotation(Table.class).name());
 

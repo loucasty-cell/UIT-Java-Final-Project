@@ -5,7 +5,9 @@ import com.skillbridge.notification.api.mapper.NotificationMapper;
 import com.skillbridge.notification.domain.entity.Notification;
 import com.skillbridge.notification.domain.model.NotificationType;
 import com.skillbridge.notification.infrastructure.persistence.NotificationRepository;
+import com.skillbridge.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,23 +24,23 @@ public class NotificationService {
     private final NotificationMapper notificationMapper;
 
     @Transactional(readOnly = true)
-    public List<NotificationResponse> getUserNotifications(UUID userId) {
-        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+    public List<NotificationResponse> getUserNotifications() {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(SecurityUtils.getCurrentUserId()).stream()
                 .map(notificationMapper::toResponse)
                 .toList();
     }
 
     public NotificationResponse markAsRead(UUID notificationId) {
-        Notification notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new IllegalArgumentException("Notification not found: " + notificationId));
+        Notification notification = loadOwnedNotification(notificationId);
         if (notification.getReadAt() == null) {
             notification.setReadAt(OffsetDateTime.now());
         }
         return notificationMapper.toResponse(notificationRepository.save(notification));
     }
 
-    public void deleteNotification(UUID userId, UUID notificationId) {
-        notificationRepository.deleteByIdAndUserId(notificationId, userId);
+    public void deleteNotification(UUID notificationId) {
+        Notification notification = loadOwnedNotification(notificationId);
+        notificationRepository.delete(notification);
     }
 
     public NotificationResponse createNotification(
@@ -92,5 +94,14 @@ public class NotificationService {
                 "FORUM_COMMENT",
                 commentId
         );
+    }
+
+    private Notification loadOwnedNotification(UUID notificationId) {
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new IllegalArgumentException("Notification not found: " + notificationId));
+        if (!notification.getUserId().equals(SecurityUtils.getCurrentUserId())) {
+            throw new AccessDeniedException("Notification does not belong to the current user");
+        }
+        return notification;
     }
 }

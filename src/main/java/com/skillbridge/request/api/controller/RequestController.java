@@ -7,7 +7,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,7 +19,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/requests")
-@CrossOrigin(origins = "http://localhost:8081")
 @RequiredArgsConstructor
 public class RequestController {
 
@@ -48,15 +46,13 @@ public class RequestController {
         return ResponseEntity.ok(requestService.cancelSwapProposal(id));
     }
 
-    @GetMapping("/swaps/history/users/{userId}")
-    public ResponseEntity<List<RequestProposalResponse>> getSwapHistory(@PathVariable UUID userId) {
-        return ResponseEntity.ok(requestService.getSwapHistory(userId));
+    @GetMapping("/swaps/history/me")
+    public ResponseEntity<List<RequestProposalResponse>> getSwapHistory() {
+        return ResponseEntity.ok(requestService.getSwapHistory());
     }
 
-    @GetMapping("/swaps/pending/responders/{responderId}")
-    public ResponseEntity<List<RequestProposalResponse>> getPendingSwapProposalsForResponder(
-            @PathVariable UUID responderId
-    ) {
-        return ResponseEntity.ok(requestService.getPendingSwapProposalsForResponder(responderId));
+    @GetMapping("/swaps/pending/incoming")
+    public ResponseEntity<List<RequestProposalResponse>> getPendingSwapProposalsForResponder() {
+        return ResponseEntity.ok(requestService.getPendingSwapProposalsForResponder());
     }
 }

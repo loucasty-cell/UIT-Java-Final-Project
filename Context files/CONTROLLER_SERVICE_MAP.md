@@ -1,6 +1,6 @@
 # Controller and Service Map
 
-The classes below are planned locations, not implemented classes. Controllers translate HTTP only. Application commands own writes and transactions. Query services return read-only projections.
+The classes below describe the architecture and ownership. Controllers translate HTTP only. Application commands own writes and transactions. Query services return read-only projections. Auth, Admin, Mentor, and Forum packages contain fully implemented classes.
 
 ## Package locations
 

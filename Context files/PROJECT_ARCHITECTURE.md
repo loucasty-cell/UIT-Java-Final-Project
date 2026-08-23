@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository contains a Spring Boot Maven build, partial implementation, Flyway migrations, tests, and documentation. Mentor-offering and forum slices currently contain implementation classes; the other feature packages remain planned scaffold locations.
+The repository contains a Spring Boot Maven build, core implementation slices, Flyway migrations (V1-V4), and documentation. The `auth`, `admin`, `mentor`, and `forum` feature packages contain full Spring Boot implementations with 12-hour JWT authentication and administrative moderation; remaining domains are planned for subsequent milestones.
 
 ## Package layout
 

@@ -1,6 +1,6 @@
 # SkillBridge Context Index
 
-The root [forbackend.md](../forbackend.md) is the authoritative implementation guide. This checkout contains documentation and a partial backend implementation. The context files describe the implemented mentor/forum behavior plus planned behavior and contracts for features not yet implemented.
+The root [forbackend.md](../forbackend.md) is the authoritative implementation guide. This checkout contains documentation, Flyway migrations (V1-V4), and backend implementations for the `auth` (with 12-hour JWT tokens), `admin`, `mentor`, and `forum` domains alongside contracts for remaining domains.
 
 Read the guide first, then use the focused files:
 

@@ -2,7 +2,7 @@
 
 ## 1. Status and authority
 
-This checkout contains the backend documentation, a Maven Spring Boot build, partial Java implementation, and Flyway migrations. The currently implemented slices are the mentor-offering and forum areas; the remaining API contract is still planned until its implementation is added.
+This checkout contains the backend documentation, a Maven Spring Boot build, Java domain implementations, and Flyway migrations. The implemented slices are the auth (with 12-hour JWT token lifespan), admin, mentor-offering, and forum areas; the remaining API contract domains (such as wallet, learning requests, sessions) are planned for subsequent milestones.
 
 This guide is the implementation source of truth. The detailed public interfaces are kept in:
 
@@ -15,7 +15,7 @@ Features and endpoints without corresponding implementation files remain planned
 
 ## 2. Required stack and runtime
 
-- Java 21.
+- Java 25 (Temurin LTS).
 - Spring Boot 3.x.
 - Spring MVC REST with JSON, multipart PDF upload, and CSV export.
 - Embedded Tomcat 10.1+ or a WAR deployed to external Tomcat 10.1+.
@@ -27,6 +27,18 @@ Features and endpoints without corresponding implementation files remain planned
 - Actuator, JUnit 5, AssertJ, MockMvc, and PostgreSQL Testcontainers.
 
 Preferred deployment is an executable JAR. A WAR is permitted when external Tomcat is required; in that case the embedded servlet container is provided and the application uses SpringBootServletInitializer.
+
+### 2.1 How to build and run locally
+
+`mvn` is not on PATH in this checkout. Use the Maven bundled with IntelliJ:
+
+~~~powershell
+& "C:\Program Files\JetBrains\IntelliJ IDEA 2026.1.3\plugins\maven\lib\maven3\bin\mvn.cmd" -o compile
+~~~
+
+The project targets Java 25 (LTS). The JDK used is Temurin 25 installed at `C:\Users\ASUS\.jdks\temurin-25.0.4`; the user-level `JAVA_HOME` environment variable points there, and `.vscode/settings.json` registers it as the workspace runtime.
+
+Because the project targets JDK 25+ while the Spring Boot parent (3.3.x) manages an older Lombok, `pom.xml` pins `<lombok.version>1.18.46</lombok.version>`. Without that pin, Lombok annotation processing fails during compilation with misleading errors such as `cannot find symbol getId()`.
 
 ## 3. Actual repository layout
 
@@ -117,6 +129,42 @@ API client
 - Infrastructure implements repositories, locking queries, storage, configuration, and external adapters.
 - Features communicate through narrow application interfaces, never through another feature's repository.
 
+### 4.1 Worked example: what happens for `POST /api/v1/auth/login`
+
+This is the exact call chain in the implemented code; every auth endpoint follows the same pattern. Use it to explain the architecture to a teacher.
+
+~~~text
+1. HTTP arrives as JSON: { "email": "...", "password": "..." }
+2. AuthController.login()                       api/controller/AuthController.java
+   - @Valid triggers Bean Validation on LoginRequest BEFORE any business logic
+3. AuthenticationService.login()                application/command/AuthenticationService.java
+   - UserRepository.findByEmail()               infrastructure/persistence (Spring Data JPA -> SELECT on "users")
+   - PasswordEncoder.matches()                  BCrypt comparison against password_hash column
+   - status check                               DISABLED accounts are rejected (403)
+   - UserRoleRepository.findByUserId()          loads roles from "user_roles"
+   - JwtTokenService.generateAccessToken()      signs HS256 JWT with sub/email/roles/status claims
+   - RefreshTokenIssuer.issueNewFamily()        creates opaque refresh token, stores ONLY its SHA-256 hash
+4. AuthMapper.toAuthResponse()                  api/mapper: entity + tokens -> response DTOs
+5. AuthController returns 200 + AuthResponse JSON:
+   { accessToken, accessTokenExpiresAt, refreshToken, user: { id, email, ..., roles, accountStatus } }
+~~~
+
+Failure paths never reach step 4: invalid payload -> 400 via `MethodArgumentNotValidException`, wrong credentials -> 401 via `BadCredentialsException`, disabled account -> 403 via `AccessDeniedException`; all are converted to RFC 9457 ProblemDetail by `shared/error/GlobalExceptionHandler.java`.
+
+The same layering applies to every feature slice:
+
+| Layer | Package | Responsibility | Rule of thumb |
+|---|---|---|---|
+| Controller | `api/controller` | HTTP mapping, status codes, `@Valid` | No business logic |
+| Request DTO | `api/dto/request` | Input shape + validation annotations | Never an entity |
+| Response DTO | `api/dto/response` | Output shape, safe fields only | Never leak `passwordHash`, `version` |
+| Mapper | `api/mapper` | Entity <-> DTO translation | Only place that knows both shapes |
+| Command service | `application/command` | Use cases, `@Transactional`, security checks | Owns state changes |
+| Query service | `application/query` | Reads, pagination, projections | Read-only |
+| Entity | `domain/entity` | JPA table mapping (`@Entity`) | Mirrors one table |
+| Enum/model | `domain/model` | Domain vocabulary (e.g. `Role`, `AccountStatus`) | Stored as STRING columns |
+| Repository | `infrastructure/persistence` | Spring Data JPA interfaces | The only code touching SQL |
+
 ## 5. Product rules and workflow modes
 
 One account can learn, teach, volunteer, use points, participate in a reciprocal skill swap, post in the forum, and receive notifications.
@@ -183,6 +231,59 @@ Never edit an applied migration. Add a new version.
 
 Spring Boot owns registration, login, access-token issue, refresh rotation, logout, and account enforcement. Neon stores password hashes, roles, account status, and refresh-token hashes.
 
+### 7.1 Implemented auth module (com.skillbridge.auth)
+
+The auth slice is fully implemented and is the reference implementation for all other features.
+
+Endpoints exposed by `AuthController` (all public, no JWT required):
+
+| Method | Path | Service called | Success response |
+|---|---|---|---|
+| POST | `/api/v1/auth/register` | `RegistrationService.register()` | 201 + AuthResponse |
+| POST | `/api/v1/auth/login` | `AuthenticationService.login()` | 200 + AuthResponse |
+| POST | `/api/v1/auth/refresh` | `RefreshTokenService.refreshToken()` | 200 + rotated tokens |
+| POST | `/api/v1/auth/logout` | `RefreshTokenService.logout()` | 204 No Content |
+
+Components and their single responsibility:
+
+- `AuthController` - maps HTTP to one use case per method; no logic.
+- `LoginRequest` / `RegisterRequest` / `RefreshTokenRequest` (`api/dto/request`) - input contracts with Bean Validation annotations. Registration enforces email format + length, password length 8..100 with at least one letter and one digit (`@Pattern`).
+- `AuthResponse` / `AuthUserResponse` (`api/dto/response`) - output contracts; `AuthUserResponse` deliberately excludes `passwordHash`, `version`, and audit timestamps.
+- `AuthMapper` (`api/mapper`) - the only class that knows both entity and DTO shapes; builds the user summary via `toAuthUserResponse()`.
+- `RegistrationService`, `AuthenticationService`, `RefreshTokenService` (`application/command`) - transactional use cases.
+- `JwtTokenService` - signs HS256 access tokens (Nimbus JOSE) with claims `sub` (user id), `email`, `roles`, `status`; also generates opaque refresh tokens and their SHA-256 hex hashes.
+- `RefreshTokenIssuer` - single place that creates a refresh-token row: generate raw token -> store only hash -> return raw token once. `issueNewFamily(userId)` for register/login, `issueRotated(userId, familyId)` for refresh.
+- Repositories (`infrastructure/persistence`): `UserRepository.findByEmail/existsByEmail`, `UserRoleRepository.findByUserId`, `RefreshTokenRepository.findByTokenHash/revokeFamily/deleteExpiredTokens`.
+
+Token design:
+
+- Access token: HMAC-SHA256 signed JWT, default lifespan 1440 minutes (24h) via `skillbridge.security.jwt.access-token-minutes`; the `exp` claim is authoritative.
+- Refresh token: 64-character opaque random string, default 7 days; the client receives the raw value exactly once, PostgreSQL stores only its SHA-256 hash in `refresh_tokens`.
+- Rotation: every `/refresh` revokes the presented token and issues a new token inside the same `family_id`.
+- Reuse detection: presenting an already-revoked token is treated as theft; `revokeFamily(familyId)` invalidates the entire chain and returns 403.
+- Logout: revokes the whole family so every device sharing it is signed out.
+
+Identity database tables (Flyway V1):
+
+~~~text
+users            id UUID PK, email UNIQUE NOT NULL, password_hash NOT NULL,
+                 first_name, last_name, status (enum STRING), created_at, updated_at, version
+user_roles       composite PK (user_id, role)   -- Role enum: USER, MENTOR, ADMIN
+refresh_tokens   id UUID PK, user_id FK, token_hash UNIQUE, family_id,
+                 expires_at, created_at, revoked BOOLEAN
+~~~
+
+Error mapping for auth failures (handled by `shared/error/GlobalExceptionHandler.java`, RFC 9457 `application/problem+json`):
+
+| Exception | Status | Code |
+|---|---|---|
+| `MethodArgumentNotValidException` | 400 | VALIDATION_FAILED (+ fieldErrors map) |
+| `IllegalArgumentException` (e.g. duplicate email) | 400 | INVALID_ARGUMENT |
+| `BadCredentialsException` | 401 | UNAUTHENTICATED |
+| `AccessDeniedException` (disabled account, revoked/expired/reused token) | 403 | FORBIDDEN |
+
+### 7.2 Security rules
+
 - Access tokens expire after exactly 24 hours; JWT exp is authoritative.
 - Refresh tokens are opaque, rotated on every refresh, and stored only as hashes.
 - Validate signature, algorithm, issuer, audience, subject, issued-at, not-before, and expiry.
@@ -231,7 +332,7 @@ Certificate bytes are handled by a storage adapter. PostgreSQL stores owner-scop
 
 The backend is complete when:
 
-- It builds and runs on Java 21 with Tomcat 10.1+.
+- It builds and runs on Java 25 (Temurin LTS) with Tomcat 10.1+.
 - Flyway creates and validates the PostgreSQL schema on Neon.
 - Every route in API_CONTRACT has an authorized implementation and DTO.
 - Authentication, ownership, account state, and admin checks are enforced server-side.

@@ -1,5 +1,7 @@
 package com.skillbridge.shared.error;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.access.AccessDeniedException;
@@ -19,6 +21,9 @@ import java.util.UUID;
 // Linkage: Intercepts exceptions thrown by all Controllers, Services, and Security filters
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    // Server-side logger so unexpected failures leave a stack trace in application logs
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     // Handles validation errors triggered by @Valid / @Validated on Request DTOs
     // Linkage: Maps field-level validation constraints to structured RFC 9457 problem details
@@ -94,6 +99,9 @@ public class GlobalExceptionHandler {
     // Linkage: Prevents leaking internal stack traces to clients while returning standardized error format
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleGenericException(Exception ex) {
+        // Log the full trace server-side (with the requestId) while keeping the client response generic
+        String requestId = UUID.randomUUID().toString();
+        log.error("Unhandled internal error [requestId={}]", requestId, ex);
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "An unexpected internal error occurred."
@@ -102,7 +110,7 @@ public class GlobalExceptionHandler {
         problemDetail.setTitle("Internal Server Error");
         problemDetail.setProperty("code", "INTERNAL_ERROR");
         problemDetail.setProperty("timestamp", OffsetDateTime.now().toString());
-        problemDetail.setProperty("requestId", UUID.randomUUID().toString());
+        problemDetail.setProperty("requestId", requestId);
         return problemDetail;
     }
 }

@@ -151,6 +151,10 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <!-- Required: several *ModuleTestRunner helper classes in src/test also define
+                         public static void main, so auto-detection is ambiguous and fails.
+                         Pinning the real entrypoint makes spring-boot:run and repackage work. -->
+                    <mainClass>com.skillbridge.SkillBridgeApplication</mainClass>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>

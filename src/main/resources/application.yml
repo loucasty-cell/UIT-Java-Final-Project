@@ -2,6 +2,12 @@ spring:
   application:
     name: skillbridge-backend
 
+  # Load the developer's private .env file from the project root (KEY=value lines).
+  # "optional:" means the app still boots fine when .env is absent (e.g. in CI).
+  # Real OS environment variables always take precedence over .env values.
+  config:
+    import: "optional:file:.env[.properties]"
+
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/skillbridge?sslmode=disable}
     username: ${DATABASE_USERNAME:postgres}

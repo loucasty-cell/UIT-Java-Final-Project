@@ -124,8 +124,8 @@ public class SwapService {
     public SwapSessionResponse completeSwapSession(UUID sessionId) {
         SwapSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Swap session not found: " + sessionId));
-        if (session.getStatus() != SwapSessionStatus.ACCEPTED) {
-            throw new IllegalStateException("Only accepted swap sessions can be completed");
+        if (session.getStatus() != SwapSessionStatus.ACCEPTED && session.getStatus() != SwapSessionStatus.STARTED) {
+            throw new IllegalStateException("Only accepted or started swap sessions can be completed");
         }
 
         SwapRequest swapRequest = loadRequest(session.getSwapRequestId());

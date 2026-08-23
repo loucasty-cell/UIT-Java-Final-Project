@@ -76,8 +76,23 @@ public class SwapSession {
     @Column(name = "accepted_at", nullable = false)
     private OffsetDateTime acceptedAt;
 
+    @Column(name = "started_at")
+    private OffsetDateTime startedAt;
+
     @Column(name = "completed_at")
     private OffsetDateTime completedAt;
+
+    @Column(name = "scheduled_at")
+    private OffsetDateTime scheduledAt;
+
+    @Column(name = "duration_minutes")
+    private Integer durationMinutes;
+
+    @Column(name = "meeting_url", length = 500)
+    private String meetingUrl;
+
+    @Column(name = "notes", length = 1000)
+    private String notes;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;

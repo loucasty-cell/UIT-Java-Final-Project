@@ -31,7 +31,12 @@ CREATE TABLE swap_sessions (
     point_cost INTEGER NOT NULL DEFAULT 0 CHECK (point_cost >= 0),
     status VARCHAR(50) NOT NULL,
     accepted_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    started_at TIMESTAMP WITH TIME ZONE,
     completed_at TIMESTAMP WITH TIME ZONE,
+    scheduled_at TIMESTAMP WITH TIME ZONE,
+    duration_minutes INTEGER,
+    meeting_url VARCHAR(500),
+    notes VARCHAR(1000),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
     version BIGINT NOT NULL DEFAULT 0

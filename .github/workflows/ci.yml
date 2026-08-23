@@ -19,6 +19,10 @@ jobs:
           java-version: '25'
           cache: maven
 
-      - name: Compile with Maven Wrapper
+      - name: Make Maven Wrapper executable
         shell: bash
-        run: ./mvnw -B compile
+        run: chmod +x mvnw
+
+      - name: Build and Test with Maven Wrapper
+        shell: bash
+        run: ./mvnw -B test

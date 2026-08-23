@@ -1,6 +1,7 @@
 package com.skillbridge.session;
 
 import com.skillbridge.session.api.controller.SessionControllerTest;
+import com.skillbridge.session.api.mapper.SessionMapperTest;
 import com.skillbridge.session.application.SessionServiceTest;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +14,8 @@ public class SessionModuleTestRunner {
 
     private static final List<Class<?>> TEST_CLASSES = List.of(
             SessionServiceTest.class,
-            SessionControllerTest.class
+            SessionControllerTest.class,
+            SessionMapperTest.class
     );
 
     public static void main(String[] args) throws Exception {

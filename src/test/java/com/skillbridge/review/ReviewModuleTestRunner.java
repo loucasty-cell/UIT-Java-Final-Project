@@ -1,7 +1,9 @@
 package com.skillbridge.review;
 
 import com.skillbridge.review.api.controller.ReviewControllerTest;
+import com.skillbridge.review.api.mapper.ReviewMapperTest;
 import com.skillbridge.review.application.ReviewServiceTest;
+import com.skillbridge.review.domain.ReviewEntityMappingTest;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.InvocationTargetException;
@@ -12,6 +14,8 @@ import java.util.List;
 public class ReviewModuleTestRunner {
 
     private static final List<Class<?>> TEST_CLASSES = List.of(
+            ReviewEntityMappingTest.class,
+            ReviewMapperTest.class,
             ReviewServiceTest.class,
             ReviewControllerTest.class
     );

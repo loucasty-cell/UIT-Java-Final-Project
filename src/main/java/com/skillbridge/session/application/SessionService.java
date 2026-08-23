@@ -40,6 +40,9 @@ public class SessionService {
     }
 
     public SessionResponse startSession(UUID sessionId) {
+        if (sessionId == null) {
+            throw new IllegalArgumentException("Session ID must not be null");
+        }
         SwapSession session = loadSession(sessionId);
         requireParticipant(session, "Only session participants can start this session");
         if (session.getStatus() != SwapSessionStatus.ACCEPTED) {
@@ -55,11 +58,23 @@ public class SessionService {
     }
 
     public SessionResponse completeSession(UUID sessionId) {
+        if (sessionId == null) {
+            throw new IllegalArgumentException("Session ID must not be null");
+        }
         swapService.completeSwapSession(sessionId);
         return sessionMapper.toResponse(loadSession(sessionId));
     }
 
     public SessionResponse updateSession(UUID sessionId, UpdateSessionRequest request) {
+        if (sessionId == null) {
+            throw new IllegalArgumentException("Session ID must not be null");
+        }
+        if (request == null) {
+            throw new IllegalArgumentException("Update session request must not be null");
+        }
+        if (request.getDurationMinutes() != null && request.getDurationMinutes() < 1) {
+            throw new IllegalArgumentException("Duration minutes must be at least 1");
+        }
         SwapSession session = loadSession(sessionId);
         requireParticipant(session, "Only session participants can update this session");
         if (session.getStatus() == SwapSessionStatus.COMPLETED || session.getStatus() == SwapSessionStatus.CANCELLED) {
@@ -77,6 +92,9 @@ public class SessionService {
     }
 
     private SwapSession loadSession(UUID sessionId) {
+        if (sessionId == null) {
+            throw new IllegalArgumentException("Session ID must not be null");
+        }
         return sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));
     }

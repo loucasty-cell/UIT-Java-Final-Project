@@ -73,6 +73,9 @@ public class Review {
         if (id == null) {
             id = UUID.randomUUID();
         }
+        if (version == null) {
+            version = 0L;
+        }
         createdAt = OffsetDateTime.now();
     }
 }

@@ -32,6 +32,22 @@ public class ReviewService {
     private final ReviewMapper reviewMapper;
 
     public ReviewResponse submitReview(UUID sessionId, SubmitReviewRequest request) {
+        if (sessionId == null) {
+            throw new IllegalArgumentException("Session ID must not be null");
+        }
+        if (request == null) {
+            throw new IllegalArgumentException("Submit review request must not be null");
+        }
+        if (request.getRevieweeId() == null) {
+            throw new IllegalArgumentException("Reviewee ID must not be null");
+        }
+        if (request.getSkillId() == null) {
+            throw new IllegalArgumentException("Skill ID must not be null");
+        }
+        if (request.getRating() == null || request.getRating() < 1 || request.getRating() > 5) {
+            throw new IllegalArgumentException("Rating must be between 1 and 5");
+        }
+
         UUID reviewerId = SecurityUtils.getCurrentUserId();
         SwapSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));

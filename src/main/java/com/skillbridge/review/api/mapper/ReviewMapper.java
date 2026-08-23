@@ -14,6 +14,9 @@ public class ReviewMapper {
             double skillAverageRating,
             long skillReviewCount
     ) {
+        if (review == null) {
+            return null;
+        }
         ReviewResponse response = new ReviewResponse();
         response.setId(review.getId());
         response.setSessionId(review.getSessionId());

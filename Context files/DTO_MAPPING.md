@@ -24,9 +24,8 @@ com.skillbridge.{feature}.application.query
 ~~~
 
 This applies to `admin`, `auth`, `forum`, `mentor`, `moderation`,
-`notification`, `request`, `review`, `search`, `session`, `skill`, `swap`,
-`user`, and `wallet`. The folders are scaffold locations at present; DTO,
-mapper, controller, and service classes are not implemented yet.
+`notification`, `request`, `review`, `session`, `skill`, `swap`,
+`user`, and `wallet`. Every implemented feature has real DTO, mapper, controller, and service classes here; only `search` remains an empty scaffold.
 
 ## Write rules
 

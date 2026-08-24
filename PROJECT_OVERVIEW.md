@@ -114,6 +114,34 @@ This is the **CQS-flavored split** (`command` vs `query` packages): writes are t
 
 ## 4. The Life of a Request — "How It Cooks"
 
+### The whole journey at a glance
+
+Before zooming into one HTTP call, here is the full user journey the backend supports, end to end:
+
+```mermaid
+flowchart LR
+    A[Register / Login\nauth] --> B[Profile + Dashboard + Wallet\nuser, wallet]
+    B --> C[Skills catalog\nskill]
+    C --> D[Find mentor or peer\mentor]
+    D --> E[Send swap proposal\nswap / request facade]
+    E --> F{Response}
+    F -- accept --> G[Points escrowed atomically\nwallet]
+    G --> H[Session created\nsession]
+    H --> I[start / schedule / complete\nsession]
+    I --> J[Escrow released exactly once\nwallet]
+    J --> K[Review + rating averages\nreview]
+    E -- reject/cancel --> L[Refund if held\nwallet]
+    subgraph Side effects at every step
+      N[Notifications\nnotification] 
+      M[Forum posts, likes,\ncomments, +5 rewards\nforum]
+    end
+    subgraph Governance
+      O[Report content\nmoderation] --> P[Admin queue: users,\nreports, disputes, settings\nadmin]
+    end
+```
+
+### One request, stage by stage
+
 Let's follow a real request through every stage. Scenario:
 
 > Alice wants Bob to teach her Python. She sends:
@@ -453,11 +481,11 @@ Every problem detail carries `code`, `timestamp`, and `requestId` — so a suppo
 
 ## 11. Testing & CI
 
-**Test pyramid in practice** (`src/test/java/com/skillbridge/...`, 29 test classes ≈ 39 test cases):
+**Test pyramid in practice** (`src/test/java/com/skillbridge/...`, about 32 test classes / 62 test cases, all passing):
 
 | Layer | Style | Example |
 |---|---|---|
-| Unit | plain JUnit + Mockito-style doubles | `SwapServiceTest` (state-machine rules), `ReviewServiceTest` (self-review ban) |
+| Unit | plain JUnit + hand-rolled fakes (no Mockito) | `ReviewServiceTest` (14 cases: self-review ban, averages), `SessionServiceTest` (8), `SwapServiceTest` (state machine + escrow) |
 | Web slice | `MockMvc` standalone/controller tests | `SwapControllerTest`, `SessionControllerTest` (auth + JSON contract) |
 | Persistence | repository tests against real mapping behavior | `RequestProposalRepositoryTest`, `SkillRepositoryTest` |
 | Entity mapping | entity ⇄ table drift detectors | `SwapEntityMappingTest`, `SkillEntityMappingTest` |
@@ -515,3 +543,17 @@ Response DTO ──► JSON 200   (or ProblemDetail 400/401/403/500)
 ```
 
 Every design choice serves one theme: **the server is the sole source of truth**. Identity comes from signed tokens, not payloads; balances come from locked wallet rows plus an append-only ledger, not client claims; schema truth lives in versioned migrations, not hand-edited databases. That is what makes the point economy trustworthy — and, conveniently, it is also a textbook demonstration of layered architecture, ORM usage, declarative validation, transactional integrity, and stateless security working together.
+
+---
+
+## Where to Go Next (full documentation map)
+
+| Want... | Read |
+|---|---|
+| Setup & first run | [README.md](README.md) + [requirements.md](requirements.md) |
+| Canonical route list | ["Context files/API_CONTRACT.md"](Context%20files/API_CONTRACT.md) — Part 1 live, Part 2 planned |
+| DTOs, enums, validation | ["Context files/DTO_CATALOG.md"](Context%20files/DTO_CATALOG.md) |
+| Auth & permission rules | ["Context files/AUTHENTICATION_AUTHORIZATION.md"](Context%20files/AUTHENTICATION_AUTHORIZATION.md) |
+| Controller → service ownership | ["Context files/CONTROLLER_SERVICE_MAP.md"](Context%20files/CONTROLLER_SERVICE_MAP.md) |
+| Business invariants & DB rules | ["Context files/BACKEND_CONTEXT.md"](Context%20files/BACKEND_CONTEXT.md) |
+| Test strategy | ["Context files/TESTING_MATRIX.md"](Context%20files/TESTING_MATRIX.md) |

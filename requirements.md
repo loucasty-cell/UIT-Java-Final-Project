@@ -47,8 +47,9 @@ Run these once, from the repository root:
    .\mvnw.cmd spring-boot:run       # Windows
    ./mvnw spring-boot:run           # macOS/Linux
    ~~~
-   Flyway automatically applies migrations V1–V5 (users/roles/refresh tokens, forum, mentor,
-   admin/moderation, user profile columns, wallets + point ledger + escrows) to **your** Neon branch.
+   Flyway automatically applies migrations V1–V8 plus V4.1 (identity, forum, mentors, admin/moderation,
+   skills catalog, profiles + wallets + escrow, swap requests/sessions, reviews, notifications) to
+   **your** Neon branch. Out-of-order application of V4.1 is enabled by design.
 
 4. **Smoke check.** While the app is running:
    ~~~powershell
@@ -82,8 +83,7 @@ Run these once, from the repository root:
 
 The `pom.xml` does two things you never need to touch manually:
 
-- Pins `<lombok.version>1.18.46</lombok.version>` — the version managed by Spring Boot 3.3.x breaks on JDK 23+.
-- Declares Lombok under `maven-compiler-plugin → annotationProcessorPaths` — since javac 23, annotation processors are no longer run implicitly, so this declaration is what makes `@Getter`, `@Builder`, `@RequiredArgsConstructor` etc. actually generate code.
+- Pins `<lombok.version>` explicitly — the version managed by older Spring Boot parents breaks on recent JDKs, and since javac 23 annotation processors are no longer run implicitly, the `maven-compiler-plugin → annotationProcessorPaths` declaration in the committed `pom.xml` is what makes `@Getter`, `@Builder`, `@RequiredArgsConstructor` etc. actually generate code.
 
 If either were missing, compilation fails with misleading errors like `cannot find symbol getId()`.
 Both fixes are in the committed `pom.xml`, so teammates get them by simply pulling.
@@ -105,19 +105,8 @@ Both fixes are in the committed `pom.xml`, so teammates get them by simply pulli
 - Migrations are **forward-only**: never edit an applied migration file — always add a new `V<n>__*.sql`.
 - Hibernate runs with `JPA_DDL_AUTO=validate`: it checks the schema but never creates or updates tables. If startup fails validation, your branch is missing a migration, not the reverse.
 
-## 8. Known open item (next work session)
+## 8. Runtime verification status
 
-The full runtime verification passed for: build, Flyway V1–V5 on Neon, app boot on JDK 25 / port 9095,
-health check, and security (401 without token). One step remains:
-
-- **`POST /api/v1/auth/register` currently returns 500.** The root cause is not yet identified because
-  `GlobalExceptionHandler` used to swallow stack traces. It now logs them (`Unhandled internal error
-  [requestId=...]`), so the next session only needs to: start the app, call register once, read the
-  logged stack trace, and fix the underlying issue.
-
-To reproduce locally:
-~~~powershell
-.\mvnw.cmd -o package -DskipTests
-java -jar target\skillbridge-backend-0.0.1-SNAPSHOT.jar   # uses .env values, port 9095
-# then POST /api/v1/auth/register with {"email","password","firstName","lastName"} and watch app logs
-~~~
+All runtime checks have passed on `dev`: build, Flyway V1–V8 + V4.1 against Neon, app boot on JDK 25 /
+port 9095, health check (`/actuator/health` → UP), security (401 without token), and the full
+62-test suite (`.\mvnw.cmd test`).

@@ -114,7 +114,7 @@ com.skillbridge
 ## 🔄 Core Business Workflows & Invariants
 
 ### 1. Authentication, Identity & Wallet Onboarding
-* **Atomic Registration**: When a new user registers (`POST /api/auth/register`), the system creates:
+* **Atomic Registration**: When a new user registers (`POST /api/v1/auth/register`), the system creates:
   1. A `User` record with hashed credentials.
   2. A default `ROLE_USER` role.
   3. A `Wallet` with an automatic **+50 Starter Points** credit in the immutable `PointLedger`.
@@ -247,26 +247,26 @@ http://localhost:9095/swagger-ui.html
 
 ### Core API Endpoints
 
-#### Authentication (`/api/auth`)
-- `POST /api/auth/register` — Register a new account (+50 bonus points)
-- `POST /api/auth/login` — Authenticate and receive JWT + Refresh Token
-- `POST /api/auth/refresh` — Rotate refresh token family and obtain new JWT
-- `POST /api/auth/logout` — Invalidate active refresh token family
+#### Authentication (`/api/v1/auth`)
+- `POST /api/v1/auth/register` — Register a new account (+50 bonus points)
+- `POST /api/v1/auth/login` — Authenticate and receive JWT + Refresh Token
+- `POST /api/v1/auth/refresh` — Rotate refresh token family and obtain new JWT
+- `POST /api/v1/auth/logout` — Invalidate active refresh token family
 
 #### Skill Catalog (`/api/skills`)
 - `GET /api/skills` — List all available skills in catalog
 - `GET /api/skills/search?q={query}` — Search skills by name
 - `GET /api/skills/{id}` — Get single skill details
 - `POST /api/skills` — Create a new skill (Authenticated)
-- `DELETE /api/skills/{id}` — Delete a skill (Admin/Owner)
 
 #### Swaps & Learning Proposals (`/api/swaps` & `/api/requests`)
 - `POST /api/swaps/proposals` — Submit a new swap/learning proposal
-- `GET /api/swaps/proposals/{id}` — View proposal details
-- `GET /api/swaps/history/me` — List caller's proposal history
 - `POST /api/swaps/proposals/{id}/accept` — Accept proposal (Locks points in escrow)
 - `POST /api/swaps/proposals/{id}/reject` — Reject proposal
-- `POST /api/swaps/proposals/{id}/cancel` — Cancel proposal (Refunds held points)
+- `GET /api/swaps/history/me` — List caller's proposal history
+- `POST /api/swaps/sessions/{sessionId}/complete` — Complete a swap session (releases escrow)
+- `POST /api/requests/swaps` / `{id}/accept` / `{id}/reject` / `{id}/cancel` — Request facade equivalents (cancel refunds held points)
+- `GET /api/requests/swaps/history/me` — Caller's request history
 - `GET /api/requests/swaps/pending/incoming` — List pending requests awaiting response
 
 #### Sessions (`/api/sessions`)
@@ -289,7 +289,7 @@ http://localhost:9095/swagger-ui.html
 
 ### Prerequisites
 * **Java 25 JDK** (Adoptium Temurin 25 recommended)
-* **Docker & Docker Compose** (Optional, for quick PostgreSQL spin-up)
+* **PostgreSQL** — either a local instance or your own Neon branch
 
 ---
 
@@ -301,13 +301,9 @@ cd UIT-Java-Final-Project
 
 ---
 
-### Step 2: Start PostgreSQL Database
-Using Docker Compose:
-```bash
-docker compose up -d
-```
-
-Or ensure a local PostgreSQL instance is running on port `5432` with a database named `skillbridge`.
+### Step 2: Prepare the Database
+Either ensure a local PostgreSQL instance is running on port `5432` with a database named `skillbridge`
+(user `postgres` / password `postgres` by default), or create your own Neon branch and point `.env` at it.
 
 ---
 
@@ -372,15 +368,13 @@ The project features a comprehensive automated test suite spanning unit tests, W
 ```
 
 ### Test Suite Summary
-* **Total Tests**: 39 Automated Test Cases
+* **Total Tests**: 62 Automated Test Cases (all passing)
 * **Coverage Areas**:
-  - `auth`: Registration, password hashing, token validation
-  - `swap` & `request`: Proposal lifecycle, point validation, unauthorized transitions
-  - `session`: Participant authorization, meeting updates, completion triggers
-  - `review`: Unique constraints, self-review prevention, average score updates
-  - `notification`: Event listeners, unread counting, user isolation
-  - `moderation`: Report handling and admin privileges
-  - `skill`: Catalog queries, search filters, entity mappings
+  - `review`: Service rules (14), controller slice, mapper, entity mapping — unique constraints, self-review prevention, average score updates
+  - `session`: Participant authorization, meeting updates, start/complete transitions
+  - `swap` & `request`: Proposal lifecycle, point validation, unauthorized transitions, escrow coordination
+  - `skill`: Catalog queries, search filters, entity mappings, repository behavior
+  - `notification`, `moderation`: Event handling, report lifecycle, admin privileges
 
 ---
 
@@ -389,7 +383,7 @@ The project features a comprehensive automated test suite spanning unit tests, W
 Every commit and pull request triggers the GitHub Actions workflow in [`.github/workflows/ci.yml`](.github/workflows/ci.yml):
 1. Sets up JDK 25 (Temurin).
 2. Sets execute permissions on the Maven wrapper (`chmod +x mvnw`).
-3. Executes `./mvnw -B test` to compile and verify all 39 tests against Java 25.
+3. Executes `./mvnw -B test` to compile and verify all 62 tests against Java 25.
 
 ---
 

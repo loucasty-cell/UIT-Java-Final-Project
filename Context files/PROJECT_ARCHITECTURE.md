@@ -2,7 +2,7 @@
 
 ## Current repository state
 
-The repository contains a Spring Boot Maven build, core implementation slices, Flyway migrations (V1-V4), and documentation. The `auth`, `admin`, `mentor`, and `forum` feature packages contain full Spring Boot implementations with 12-hour JWT authentication and administrative moderation; remaining domains are planned for subsequent milestones.
+The repository contains a Spring Boot Maven build, Flyway migrations (V1-V8 plus V4.1), and documentation. **All feature domains are implemented** — `auth`, `user`, `skill`, `mentor`, `request`, `swap`, `session`, `review`, `wallet`, `forum`, `notification`, `moderation`, and `admin` — with 12-hour JWT authentication and administrative moderation; only `search/` is an empty scaffold reserved for the planned global-search endpoint.
 
 ## Package layout
 

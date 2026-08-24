@@ -2,8 +2,8 @@
 
 ## Contract
 
-- Base path: /api/v1.
-- Media types: application/json, multipart for certificates, and CSV for wallet export.
+- Base paths: `/api/v1` for auth, profile, dashboard, wallet, mentors, mentor-offerings, forum, and admin; unversioned `/api` for skills, swaps, requests, sessions, reviews, notifications, and moderation (new modules should use `/api/v1`).
+- Media types: application/json and CSV for wallet export.
 - Errors use RFC 9457 application/problem+json.
 - JSON uses camelCase; PostgreSQL uses snake_case.
 - IDs are UUID strings, points are integers, and instants are UTC ISO-8601 values.
@@ -21,8 +21,8 @@
 ## Security and reliability
 
 - Protected requests use Authorization: Bearer accessToken.
-- Access tokens expire after 24 hours; return TOKEN_EXPIRED when applicable.
-- Require Idempotency-Key for registration, workflow commands, point mutations, rewards, refunds, releases, and dispute resolution.
-- Use If-Match/version checks for mutable resources where specified.
+- Access tokens expire after 12 hours (720 minutes by default); return TOKEN_EXPIRED when applicable.
+- Idempotency-Key headers are planned for retry-sensitive commands; today, financial operations achieve idempotency inside services (e.g., escrow release exactly once).
+- If-Match/version checks are implemented for profile and mentor-offering updates.
 - Use explicit CORS origins and rate-limit authentication, search, uploads, reports, and commands.
 - Server owns identity, owner IDs, roles, prices, balances, rewards, counts, ratings, timestamps, and final states.

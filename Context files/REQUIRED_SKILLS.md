@@ -1,8 +1,8 @@
 # Required Skills
 
-These are contributor competencies for implementing the planned backend.
+These are contributor competencies for working on the backend.
 
-- Java 21: records, enums, validation types, time, exceptions, collections, and concurrency.
+- Java 25: records, enums, validation types, time, exceptions, collections, and concurrency.
 - Spring Boot 3.x: MVC, dependency injection, validation, configuration, Actuator, testing, and Tomcat 10.1+.
 - Jakarta APIs: use jakarta.* and never legacy javax.servlet.
 - Spring Security: password hashing, JWT validation, refresh rotation, roles, account states, ownership, CORS, and method security.

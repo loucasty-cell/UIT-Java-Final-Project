@@ -4,6 +4,8 @@ This file records the business invariants that implementation must preserve. The
 
 ## Domain modes
 
+Implemented today: the swap-request flow implements **POINTS-style semantics** — a positive point cost is escrowed on accept and released/refunded atomically. The SKILL_SWAP and VOLUNTEER modes below are designed but not yet built (see [API_CONTRACT.md](API_CONTRACT.md) Part 2):
+
 - POINTS: the requester pays the server-snapshotted offering price through wallet and escrow.
 - SKILL_SWAP: the requester offers an owned visible TEACH skill; the mentor must own a matching visible LEARN skill. Both are snapshotted and no financial rows are written.
 - VOLUNTEER: zero-point learning or forum-linked work with no wallet, escrow, or ledger rows.
@@ -24,9 +26,9 @@ Accept creates at most one session and transitions the request atomically. Only 
 
 ### Sessions and completion
 
-Only participants can read private meeting data, change a session under its allowed state, confirm completion, or open a dispute. Point completion releases escrow only after the second confirmation or the snapshotted auto-release deadline. Swap completion requires both confirmations and never moves points.
+Only participants can read private meeting data, change a session under its allowed state, or complete it. Completion is currently **single-action**: a participant completes the session/swap, escrow is released exactly once, and both parties are notified. The planned double-confirmation model (second confirmation or snapshotted auto-release deadline releases escrow) and user-facing disputes are not built yet — see [API_CONTRACT.md](API_CONTRACT.md) Part 2.
 
-A dispute blocks normal release or completion. Admin resolution is mode-specific, idempotent, and audited. Reviews are created only by an eligible participant after completion and are unique per reviewer/session.
+Admin dispute queues exist for moderation/admin flows; resolution is mode-specific, idempotent, and audited. Reviews are created only by an eligible participant after completion and are unique per reviewer/session.
 
 ### Forum and rewards
 
@@ -34,14 +36,7 @@ Authors own their posts and comments. Deletion is soft when moderation history c
 
 ## Persistence invariants
 
-Neon PostgreSQL is the business-data system of record. Use UUID keys, foreign keys, check and unique constraints, UTC timestamptz, version columns, and indexes. The planned tables are:
-
-- users, user_roles, refresh_tokens
-- skills, user_skills, mentor_offerings
-- learning_requests, skill_swaps, sessions, session_confirmations, reviews
-- wallets, point_ledger, escrows
-- forum_posts, forum_post_skills, forum_comments, forum_likes, notifications
-- reports, account_warnings, disputes, platform_settings, admin_audit_events
+Neon PostgreSQL is the business-data system of record. Use UUID keys, foreign keys, check and unique constraints, UTC timestamptz, version columns, and indexes. Tables that exist today are listed under "Implemented migrations" below; still-planned tables (`user_skills`, `learning_requests`, `skill_swaps`, `session_confirmations`, `forum_post_skills`) arrive with their features in [API_CONTRACT.md](API_CONTRACT.md) Part 2.
 
 Flyway owns schema changes and Hibernate is validation-only. Runtime and migration roles should be separate. Credentials remain in environment variables or a secret manager and never cross the API boundary.
 

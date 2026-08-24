@@ -2,9 +2,9 @@
 
 ## 1. Status and authority
 
-This checkout contains the backend documentation, a Maven Spring Boot build, Java domain implementations, and Flyway migrations. The implemented slices are the auth (with 12-hour JWT token lifespan), admin, mentor-offering, and forum areas; the remaining API contract domains (such as wallet, learning requests, sessions) are planned for subsequent milestones.
+This checkout contains the backend documentation, a Maven Spring Boot build, Java domain implementations, and Flyway migrations. **All feature domains are implemented**: auth, user profile/dashboard, skills, mentor discovery and offerings, swap requests (via both `swap` and `request` facade modules), sessions, reviews, wallet with escrow, notifications, forum, moderation, and admin (dashboard, settings, users, reports, disputes, audit). The `search` package is an empty scaffold reserved for the planned global-search endpoint. The suite runs **62 passing tests** via `mvnw test`.
 
-This guide is the implementation source of truth. The detailed public interfaces are kept in:
+This guide describes architecture and rules. The detailed public interfaces are kept in:
 
 - [Context files/API_CONTRACT.md](Context%20files/API_CONTRACT.md) for routes and status behavior.
 - [Context files/DTO_CATALOG.md](Context%20files/DTO_CATALOG.md) for request, response, enum, and validation fields.
@@ -30,15 +30,16 @@ Preferred deployment is an executable JAR. A WAR is permitted when external Tomc
 
 ### 2.1 How to build and run locally
 
-`mvn` is not on PATH in this checkout. Use the Maven bundled with IntelliJ:
+Use the committed Maven wrapper (no local Maven install needed):
 
 ~~~powershell
-& "C:\Program Files\JetBrains\IntelliJ IDEA 2026.1.3\plugins\maven\lib\maven3\bin\mvn.cmd" -o compile
+.\mvnw.cmd test          # run the 62-test suite
+.\mvnw.cmd spring-boot:run   # start the API on port 9095
 ~~~
 
 The project targets Java 25 (LTS). The JDK used is Temurin 25 installed at `C:\Users\ASUS\.jdks\temurin-25.0.4`; the user-level `JAVA_HOME` environment variable points there, and `.vscode/settings.json` registers it as the workspace runtime.
 
-Because the project targets JDK 25+ while the Spring Boot parent (3.3.x) manages an older Lombok, `pom.xml` pins `<lombok.version>1.18.46</lombok.version>`. Without that pin, Lombok annotation processing fails during compilation with misleading errors such as `cannot find symbol getId()`.
+The Spring Boot parent is **3.5.16**. `pom.xml` pins `<lombok.version>` explicitly so annotation processing works on JDK 25; without that pin, Lombok compilation can fail with misleading errors such as `cannot find symbol getId()`.
 
 ## 3. Actual repository layout
 
@@ -78,36 +79,21 @@ feature/
   infrastructure/persistence
 ~~~
 
-The shared package reserves configuration, errors, idempotency, security, storage, observability, time, events, scheduling, web, and persistence support.
+The shared package holds cross-cutting configuration, errors, security, and web support.
 
-Resources and tests are reserved here:
+Resources on disk:
 
 ~~~text
 src/main/resources/
-  config/
-  db/migration/
-  db/seed/
-  openapi/
-  storage/
-
-src/test/java/com/skillbridge/
-  unit/
-  integration/postgres/
-  integration/migration/
-  integration/concurrency/
-  web/security/
-  contract/openapi/
-  contract/frontend/
-  e2e/
-  support/fixtures/
-
-src/test/resources/
-  config/
-  db/
-  fixtures/
+  application.yml      # the only Spring config file; .env is imported from project root
+  db/migration/        # Flyway: V1..V8 plus V4.1 (skills catalog)
 ~~~
 
-No implementation should be added outside these boundaries without updating this guide.
+(`config/`, `db/seed/`, `openapi/`, and `storage/` are empty scaffolds reserved for planned features.)
+
+Tests live flat per module — one `*Test` class per controller/service/mapper/repository plus per-module `*ModuleTestRunner` suites and a shared `support/TestAuthContext` helper. Layered trees like `integration/postgres` or `e2e` are aspirational; none exist yet.
+
+Do not add implementation outside these boundaries without updating this guide.
 
 ## 4. Request path and layer rules
 
@@ -173,14 +159,11 @@ Roles are USER, MENTOR, and ADMIN. MENTOR is granted to an existing user when th
 
 Supported learning modes are POINTS, SKILL_SWAP, and VOLUNTEER.
 
-- POINTS requests snapshot the server price, lock the learner wallet, create escrow, and append an immutable ledger hold atomically.
-- SKILL_SWAP requests require an owned visible TEACH skill from the requester and a matching visible LEARN skill for the selected mentor. Both skills are snapshotted. No wallet, escrow, or ledger rows are created.
-- VOLUNTEER requests use zero points and have no financial rows. Forum-sourced requests must target the forum post author.
+- POINTS-style requests snapshot the server price, lock the learner wallet, create escrow, and append an immutable ledger hold atomically (this is what today's swap requests implement).
+- SKILL_SWAP and VOLUNTEER modes remain designed-but-unbuilt; see API_CONTRACT Part 2.
 - Accepting a request creates at most one session and changes the request state atomically.
-- Point completion requires both participant confirmations unless the configured, snapshotted auto-release deadline is reached without a dispute.
-- Swap completion requires both confirmations and never moves points.
-- Reject, cancel, expiry, refund, release, completion, reward, and dispute resolution operations are idempotent.
-- A dispute freezes normal release or completion until an authorized admin resolution.
+- Completion is currently single-action: a participant completes the session/swap, escrow is released exactly once, and both parties are notified. The double-confirmation model with `autoReleaseAt` is planned.
+- Reject, cancel, refund, release, completion, reward, and admin operations are idempotent where it matters financially.
 - Registration grants one default +50 point award. Marking one eligible forum comment helpful grants one default +5 reward. Values are stored in platform settings and are server-owned.
 
 Exact states, transitions, and response fields remain in the API and DTO contracts.
@@ -189,7 +172,7 @@ Exact states, transitions, and response fields remain in the API and DTO contrac
 
 Use environment variables from .env.example for local configuration and .env.test.example for isolated tests. Never commit real credentials.
 
-Required runtime settings include DATABASE_URL, DATABASE_USERNAME, DATABASE_PASSWORD, FRONTEND_ORIGINS, JWT_SECRET, ACCESS_TOKEN_MINUTES=1440, REFRESH_TOKEN_DAYS, FLYWAY_ENABLED, JPA_DDL_AUTO=validate, and OPEN_SESSION_IN_VIEW=false.
+Required runtime settings include DATABASE_URL, DATABASE_USERNAME, DATABASE_PASSWORD, FRONTEND_ORIGINS, JWT_SECRET, ACCESS_TOKEN_MINUTES (default 720 = 12 hours), REFRESH_TOKEN_DAYS (default 7), FLYWAY_ENABLED, JPA_DDL_AUTO=validate, and OPEN_SESSION_IN_VIEW=false.
 
 Database rules:
 
@@ -202,30 +185,18 @@ Database rules:
 - Flyway owns schema creation. Hibernate validates; it never creates or updates shared schemas.
 - Never run tests against production.
 
-The planned schema groups are:
+The actual schema groups (as shipped in migrations):
 
-- Identity: users, user_roles, refresh_tokens.
-- Skills and teaching: skills, user_skills, mentor_offerings.
-- Workflows: learning_requests, skill_swaps, sessions, session_confirmations, reviews.
-- Points: wallets, point_ledger, escrows.
-- Community: forum_posts, forum_post_skills, forum_comments, forum_likes, notifications.
-- Administration: reports, account_warnings, disputes, platform_settings, admin_audit_events.
+- Identity: users, user_roles, refresh_tokens (V1).
+- Mentors and forum: mentor_offerings, forum_posts, forum_comments, forum_likes (V2–V3).
+- Administration: reports, disputes, platform_settings, admin audit tables (V4).
+- Skills catalog: skills (V4.1 — applied out of order; `spring.flyway.out-of-order: true` is set because V4.1 was added after later migrations had already shipped).
+- Profiles and wallets: user profile columns, wallets, point ledger/transactions, escrows (V5).
+- Swap requests and sessions: swap_requests, swap_sessions (V6).
+- Reviews: reviews and rating stats (V7).
+- Notifications: notifications (V8).
 
-Recommended migration order:
-
-~~~text
-V1 users, roles, refresh tokens
-V2 skills and user skills
-V3 mentor offerings
-V4 wallets, ledger, escrow, settings
-V5 learning requests and skill swaps
-V6 sessions, confirmations, reviews
-V7 forum posts, comments, likes
-V8 notifications, reports, disputes, audit
-V9 indexes and initial skill catalog
-~~~
-
-Never edit an applied migration. Add a new version.
+Flyway validates all 9 migration files on startup (`baseline-on-migrate: true`); Hibernate only validates (`ddl-auto: validate`). Never edit an applied migration. Add a new version.
 
 ## 7. Authentication and authorization
 
@@ -257,7 +228,7 @@ Components and their single responsibility:
 
 Token design:
 
-- Access token: HMAC-SHA256 signed JWT, default lifespan 1440 minutes (24h) via `skillbridge.security.jwt.access-token-minutes`; the `exp` claim is authoritative.
+- Access token: HMAC-SHA256 signed JWT, default lifespan **720 minutes (12h)** via `skillbridge.security.jwt.access-token-minutes`; the `exp` claim is authoritative.
 - Refresh token: 64-character opaque random string, default 7 days; the client receives the raw value exactly once, PostgreSQL stores only its SHA-256 hash in `refresh_tokens`.
 - Rotation: every `/refresh` revokes the presented token and issues a new token inside the same `family_id`.
 - Reuse detection: presenting an already-revoked token is treated as theft; `revokeFamily(familyId)` invalidates the entire chain and returns 403.
@@ -284,7 +255,7 @@ Error mapping for auth failures (handled by `shared/error/GlobalExceptionHandler
 
 ### 7.2 Security rules
 
-- Access tokens expire after exactly 24 hours; JWT exp is authoritative.
+- Access tokens expire after 12 hours (720 minutes) by default; JWT exp is authoritative.
 - Refresh tokens are opaque, rotated on every refresh, and stored only as hashes.
 - Validate signature, algorithm, issuer, audience, subject, issued-at, not-before, and expiry.
 - Load current roles and account status from PostgreSQL; JWT claims do not override database state.
@@ -299,15 +270,13 @@ Account states are ACTIVE, WARNED, SUSPENDED, and DISABLED. Account state overri
 
 ## 8. REST contract rules
 
-- Base path is /api/v1.
+- Base paths: `/api/v1` for auth, profile, dashboard, wallet, mentors, forum, and admin; unversioned `/api` for skills, swaps, requests, sessions, reviews, notifications, and moderation. New modules should prefer `/api/v1`.
 - JSON uses camelCase; PostgreSQL uses snake_case.
 - IDs are UUID strings, points are integers, and timestamps are ISO-8601.
 - Controllers expose DTOs only; JPA entities and private fields never cross the API boundary.
 - Errors use RFC 9457 application/problem+json with stable codes and requestId.
 - Use GET for reads, POST for creation or commands, PATCH for partial updates, PUT for idempotent toggles, and DELETE for removal or soft deletion.
-- Use PageResponse with default page size 20 and maximum size 100.
-- Require Idempotency-Key on retry-sensitive commands.
-- Use If-Match/version checks for mutable resources where specified.
+- Collections currently return plain arrays (no pagination envelope yet); `PageResponse`, `Idempotency-Key` headers, and `If-Match` version checks are planned except where already implemented (profile and mentor-offering updates use `If-Match`).
 - API clients must display server-returned identities, balances, prices, counts, ratings, timestamps, and states.
 - Update API_CONTRACT, DTO_CATALOG, OpenAPI, tests, and this guide together when the contract changes.
 

@@ -1,10 +1,8 @@
 # Controller and Service Map
 
-The classes below describe the architecture and ownership. Controllers translate HTTP only. Application commands own writes and transactions. Query services return read-only projections. Auth, Admin, Mentor, and Forum packages contain fully implemented classes.
+Controllers translate HTTP only. Application services own writes and transactions. Query services return read-only projections. Every feature module follows the same package layout, and the tables below reflect the **actual code on `dev`** (22 controllers).
 
 ## Package locations
-
-For every feature, the related classes belong in the following packages:
 
 | Responsibility | Package path |
 |---|---|
@@ -12,51 +10,44 @@ For every feature, the related classes belong in the following packages:
 | Request DTOs | `com.skillbridge.{feature}.api.dto.request` |
 | Response DTOs | `com.skillbridge.{feature}.api.dto.response` |
 | Mappers and response assemblers | `com.skillbridge.{feature}.api.mapper` |
+| Entities and domain models | `com.skillbridge.{feature}.domain` |
+| Repositories | `com.skillbridge.{feature}.infrastructure.persistence` |
 | Write/transaction services | `com.skillbridge.{feature}.application.command` |
 | Read/query services | `com.skillbridge.{feature}.application.query` |
 
-The feature names are `admin`, `auth`, `forum`, `mentor`, `moderation`,
-`notification`, `request`, `review`, `search`, `session`, `skill`, `swap`,
-`user`, and `wallet`.
+Feature packages: `admin`, `auth`, `forum`, `mentor`, `moderation`, `notification`, `request`, `review`, `search`, `session`, `shared`, `skill`, `swap`, `user`, `wallet`. (`search` is an empty scaffold reserved for the planned global-search endpoint; `shared` holds cross-cutting security/config/error support.)
 
-Implemented controllers and services as of the latest `dev` state:
+## Live controller → service map
 
-| Area | Controllers | Application ownership |
+| Area | Controller(s) | Application ownership |
 |---|---|---|
-| Auth | AuthController | RegistrationService, AuthenticationService, RefreshTokenService, RefreshTokenIssuer |
-| Skill catalog | SkillController | SkillService (CRUD + search) |
-| Swap proposals | SwapController | SwapService (lifecycle + escrow coordination) |
-| Request facade | RequestController | RequestService (delegates to SwapService) |
-| Sessions | SessionController | SessionService (start/update/complete) |
-| Reviews | ReviewController | ReviewService (submit + averages) |
-| Notifications | NotificationController | NotificationService (list/mark-read/delete/create) |
-| Moderation | ModerationController | ModerationService (flag/resolve) |
-| Forum | ForumPostController, ForumCommentController, ForumLikeController | ForumService, ForumQueryService |
-| Mentor offerings | MentorOfferingController | MentorOfferingService, MentorQueryService |
-| Wallet | WalletController | WalletService, WalletRepository |
+| Auth | AuthController (`/api/v1/auth`) | RegistrationService, AuthenticationService, RefreshTokenService, JwtTokenService |
+| Profile & dashboard | ProfileController, DashboardController (`/api/v1`) | UserProfileService, UserProfileQueryService, DashboardQueryService |
+| Wallet | WalletController (`/api/v1/me/wallet*`) | WalletQueryService (reads); **WalletService is the only financial mutation boundary** |
+| Mentors | MentorController (`/api/v1/mentors`), MentorOfferingController (`/api/v1/me/mentor-offerings`) | MentorQueryService, AvailabilityQueryService, MentorOfferingService, MentorOfferingQueryService |
+| Skills | SkillController (`/api/skills`) | SkillService |
+| Swaps | SwapController (`/api/swaps`) | SwapService — lifecycle + escrow coordination |
+| Request facade | RequestController (`/api/requests`) | RequestService (delegates to SwapService) |
+| Sessions | SessionController (`/api/sessions`) | SessionService |
+| Reviews | ReviewController (`/api/reviews`) | ReviewService |
+| Notifications | NotificationController (`/api/notifications`) | NotificationService |
+| Forum | ForumPostController, ForumCommentController, ForumLikeController, ForumRewardController (`/api/v1/forum`) | ForumService, ForumQueryService, VolunteerRankingQueryService, ForumRewardService |
+| Moderation | ModerationController (`/api/moderation`) | ModerationService |
+| Admin ×6 | AdminDashboardController, AdminSettingsController, AdminUserController, AdminReportController, AdminDisputeController, AdminAuditController (`/api/v1/admin/**`) | AdminDashboardQueryService, PlatformSettingsService, AdminUserService, AdminReportService/AdminReportQueryService, AdminDisputeService/AdminDisputeQueryService, AdminAuditQueryService/AdminAuditService |
 
-All controllers use constructor injection (Lombok `@RequiredArgsConstructor` or explicit constructors); there is no field injection. Services resolve the acting user from the JWT via `SecurityUtils.getCurrentUserId()` — see [AUTHENTICATION_AUTHORIZATION.md](AUTHENTICATION_AUTHORIZATION.md).
+Planned controllers (certificates, user skills, global search, user-facing disputes) are listed in [API_CONTRACT.md](API_CONTRACT.md) Part 2 and are intentionally absent here.
 
-## Controllers
+## Conventions
 
-| Area | Controllers | Application ownership |
-|---|---|---|
-| Auth | AuthController | RegistrationService, AuthenticationService, RefreshTokenService |
-| Profile and skills | ProfileController, DashboardController, CertificateController, SkillCatalogController, MySkillController | Profile, dashboard, certificate, skill, and user-skill commands/queries |
-| Mentors | MentorController, MentorOfferingController | Mentor, availability, and offering queries/commands |
-| Requests and sessions | LearningRequestController, SessionController, DisputeController, ReviewController | Request, session, completion, dispute, and review use cases |
-| Wallet | WalletController | Wallet queries; all financial writes use WalletService |
-| Forum | ForumPostController, ForumCommentController, ForumLikeController, ForumRewardController | Forum, ranking, and reward use cases |
-| Notifications and search | NotificationController, SearchController | Notification and global-search queries/commands |
-| Reports and admin | ReportController, AdminDashboardController, AdminReportController, AdminUserController, AdminDisputeController, AdminSettingsController, AdminAuditController | Report, moderation, user, dispute, settings, and audit use cases |
+- All controllers use constructor injection (Lombok `@RequiredArgsConstructor` or explicit constructors); no field injection.
+- Services resolve the acting user from the JWT via `SecurityUtils.getCurrentUserId()` — see [AUTHENTICATION_AUTHORIZATION.md](AUTHENTICATION_AUTHORIZATION.md).
+- JPA `@Version` fields are managed by Hibernate only; application code never sets them manually.
+- Query services use read-only transactions and projections.
 
 ## Application rules
 
-- Registration creates user, role, wallet, and one starter award.
-- Authentication verifies credentials, account state, and token-family rules.
-- Profile, skills, offerings, requests, sessions, reviews, forum, notifications, reports, disputes, and settings enforce ownership and state transitions.
-- Learning requests coordinate POINTS escrow, SKILL_SWAP snapshots, or VOLUNTEER zero-point rules.
-- Session completion coordinates confirmations, reviews, points, escrow, swaps, and dispute locks.
-- WalletService is the only financial mutation boundary.
-- Query services use read-only transactions, projections, pagination, redaction, and allow-listed sorting.
-- Scheduled jobs call the same idempotent application operations as user commands.
+- Registration creates user, role, wallet, and one starter award in a single transaction.
+- Authentication verifies credentials, account state, and refresh-token-family rules.
+- Requests, sessions, reviews, forum, notifications, reports, and admin actions enforce ownership and state transitions inside their service layer.
+- Accepting a paid swap request atomically holds points in escrow; completing releases them; cancelling refunds them. `WalletService` is the only code path that mutates balances.
+- Session completion coordinates escrow release, swap completion, and notifications exactly once (idempotent).

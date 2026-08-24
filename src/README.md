@@ -1,6 +1,6 @@
 # SkillBridge source scaffold
 
-This directory contains the Java 21 Spring Boot backend described by `forbackend.md` and the files in `Context files/`. The mentor-offering and forum slices contain implementation classes, while the remaining feature folders are scaffold locations for planned controllers, services, entities, repositories, and tests.
+This directory contains the Java 25 Spring Boot backend described by `forbackend.md` and the files in `Context files/`. All feature domains are implemented (auth, user, skill, mentor, request, swap, session, review, wallet, forum, notification, moderation, admin); `search/` remains an empty scaffold for the planned global-search endpoint.
 
 ## Main source layout
 
@@ -17,10 +17,9 @@ The `shared` package is reserved for configuration, RFC 9457 errors, JWT/securit
 
 ## Resources and tests
 
-- `src/main/resources/db/migration` is reserved for Flyway migrations in the documented V1–V9 order.
-- `src/main/resources/openapi` is reserved for the OpenAPI 3.1 contract.
-- `src/test/java/com/skillbridge` is separated into unit, PostgreSQL/Testcontainers, migration, concurrency, web/security, OpenAPI/frontend contract, and end-to-end coverage.
-- `src/test/resources` is reserved for test fixtures and test-only configuration.
+- `src/main/resources/db/migration` holds the Flyway migrations V1–V8 plus V4.1 (skills catalog, applied out of order by design).
+- `src/test/java/com/skillbridge` contains per-module unit/controller/repository tests (62 total) with a shared `support/TestAuthContext` helper; layered integration/E2E trees are planned.
+- `src/test/resources` holds test configuration.
 
 ## Environment templates
 

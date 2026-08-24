@@ -4,15 +4,16 @@ This matrix describes current and planned automated coverage.
 
 ## Current state
 
-- `mvnw test` runs **39 tests, all passing** (JUnit 5) on JDK 25 with the Maven wrapper (`.\mvnw.cmd`).
-- Coverage is per-module unit testing: swap (controller 2, service 6, entity mapping 2), request (3 + repository), review (4), session (2), skill (11 incl. entity mapping and repository), notification (2), moderation (2), plus the Spring context smoke test.
+- `mvnw test` runs **62 tests, all passing** (JUnit 5) on JDK 25 with the Maven wrapper (`.\mvnw.cmd`).
+- Coverage is per-module unit testing: review is the largest suite (service 14, controller 1, mapper 2, entity mapping 1), session (service 8, controller 1, mapper 2), swap (controller 2, service 6, entity mapping 2), skill (controller 4, service 4, mapper 2, entity mapping 1, repository 2), request (service 2, controller 1, repository 2), moderation (controller 1, service 1), notification (controller 1, service 1), plus the Spring context smoke test.
 - Services are tested through hand-rolled `java.lang.reflect.Proxy` fakes for repositories and recording subclasses for collaborators — no Mockito.
 - `src/test/java/com/skillbridge/support/TestAuthContext.java` simulates JWT authentication in tests: call `TestAuthContext.loginAs(userId)` after creating fixtures whose services read `SecurityUtils.getCurrentUserId()`, and add an `@AfterEach` calling `TestAuthContext.logout()` to avoid leaking the security context between tests.
 - Each module has a `*ModuleTestRunner` aggregating its suites.
 
 ## Test layers
 
-- Unit: JUnit 5 and AssertJ for domain states, commands, validation, mapping, and error conversion.
+Implemented today: unit tests per module (JUnit 5 + AssertJ, MockMvc controller slices, repository tests) — everything below is **required when added**, none exist yet:
+
 - Web/security: MockMvc with signed JWT fixtures, roles, account states, owners, participants, and admins.
 - PostgreSQL integration: Testcontainers, real Flyway migrations, constraints, locks, and transactions; never H2.
 - Storage: adapter tests with isolated fake/test storage.

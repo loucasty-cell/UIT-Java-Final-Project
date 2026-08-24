@@ -52,7 +52,6 @@ public class WalletService {
             wallet.setTotalSpent(0);
             wallet.setCreatedAt(now);
             wallet.setUpdatedAt(now);
-            wallet.setVersion(0L);
             return walletRepository.save(wallet);
         });
     }
@@ -122,7 +121,6 @@ public class WalletService {
         escrow.setStatus(EscrowStatus.HELD);
         escrow.setCreatedAt(now);
         escrow.setUpdatedAt(now);
-        escrow.setVersion(0L);
         escrowRepository.save(escrow);
 
         // Step 4: Ledger entry records both signed deltas (available down, held up)

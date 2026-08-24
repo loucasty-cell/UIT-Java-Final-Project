@@ -32,7 +32,6 @@ public class PlatformSettingsService {
                     defaultSetting.setForumContributionReward(5);
                     defaultSetting.setEscrowReleaseHours(18);
                     defaultSetting.setUpdatedAt(OffsetDateTime.now());
-                    defaultSetting.setVersion(0L);
                     return defaultSetting;
                 });
 
@@ -50,7 +49,6 @@ public class PlatformSettingsService {
                     newSetting.setForumContributionReward(5);
                     newSetting.setEscrowReleaseHours(18);
                     newSetting.setUpdatedAt(OffsetDateTime.now());
-                    newSetting.setVersion(0L);
                     return newSetting;
                 });
 

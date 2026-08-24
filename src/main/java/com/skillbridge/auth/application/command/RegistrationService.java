@@ -73,7 +73,6 @@ public class RegistrationService {
         user.setStatus(AccountStatus.ACTIVE);
         user.setCreatedAt(OffsetDateTime.now());
         user.setUpdatedAt(OffsetDateTime.now());
-        user.setVersion(0L);
 
         // Step 3: Persist User in PostgreSQL database
         User savedUser = userRepository.save(user);

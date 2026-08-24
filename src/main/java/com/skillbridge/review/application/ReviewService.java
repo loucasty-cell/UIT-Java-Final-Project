@@ -85,7 +85,6 @@ public class ReviewService {
         review.setRating(request.getRating());
         review.setFeedback(request.getFeedback());
         review.setCreatedAt(OffsetDateTime.now());
-        review.setVersion(0L);
 
         Review saved = reviewRepository.save(review);
         RatingStats userStats = stats(reviewRepository.findByRevieweeId(request.getRevieweeId()));

@@ -64,7 +64,6 @@ public class SwapService {
         swapRequest.setStatus(SwapRequestStatus.PENDING);
         swapRequest.setCreatedAt(now);
         swapRequest.setUpdatedAt(now);
-        swapRequest.setVersion(0L);
 
         SwapRequest saved = requestRepository.save(swapRequest);
         notificationService.notifySwapProposalUpdate(
@@ -109,7 +108,6 @@ public class SwapService {
         session.setAcceptedAt(now);
         session.setCreatedAt(now);
         session.setUpdatedAt(now);
-        session.setVersion(0L);
 
         requestRepository.save(swapRequest);
         sessionRepository.save(session);

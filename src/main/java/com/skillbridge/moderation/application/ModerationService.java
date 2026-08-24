@@ -49,7 +49,6 @@ public class ModerationService {
         report.setStatus(ReportStatus.OPEN);
         report.setCreatedAt(now);
         report.setUpdatedAt(now);
-        report.setVersion(0L);
 
         return moderationMapper.toResponse(reportRepository.save(report));
     }

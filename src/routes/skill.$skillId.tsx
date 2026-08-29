@@ -40,7 +40,7 @@ function SkillDetailPage() {
   const description =
     skillData?.description ||
     `Master ${title} with verified peer mentors. Learn fundamentals, best practices, real-world project applications, and exam preparation with senior students.`;
-  const category = skillData?.category?.name || "Computer Science & Engineering";
+  const category = skillData?.category || "Computer Science & Engineering";
 
   const inWatchlist = isInWatchlist(skillId);
 
@@ -55,8 +55,12 @@ function SkillDetailPage() {
   };
 
   const relatedMentors = useMemo(() => {
-    if (mentorsData && mentorsData.length > 0) {
-      return mentorsData.slice(0, 3);
+    if (mentorsData) {
+      if (Array.isArray(mentorsData)) {
+        return mentorsData.slice(0, 3);
+      } else if (mentorsData.content && Array.isArray(mentorsData.content)) {
+        return mentorsData.content.slice(0, 3);
+      }
     }
     return [
       {

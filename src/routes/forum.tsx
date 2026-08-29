@@ -353,7 +353,7 @@ function PostCard({
     try {
       await commentMutation.mutateAsync({
         postId: post.id,
-        data: { content: commentBody.trim() },
+        data: { body: commentBody.trim() },
       });
       setCommentBody("");
       toast.success("Comment added!");
@@ -367,7 +367,10 @@ function PostCard({
     try {
       await rewardMutation.mutateAsync({
         postId: post.id,
-        commentId,
+        data: {
+          commentId,
+          points: 5,
+        },
       });
       toast.success("Marked helpful! Commenter awarded +5 points 🎉");
     } catch {

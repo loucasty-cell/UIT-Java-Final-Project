@@ -33,6 +33,8 @@ public class ReviewService {
     private final UserRepository userRepository;
     private final SkillRepository skillRepository;
     private final ReviewMapper reviewMapper;
+    private final com.skillbridge.wallet.application.command.WalletService walletService;
+    private final com.skillbridge.milestone.application.MilestoneService milestoneService;
 
     public ReviewResponse submitReview(UUID sessionId, SubmitReviewRequest request) {
         if (sessionId == null) {
@@ -90,6 +92,20 @@ public class ReviewService {
         review.setCreatedAt(OffsetDateTime.now());
 
         Review saved = reviewRepository.save(review);
+
+        // Review reward: +3 points to reviewer
+        walletService.creditPoints(
+                reviewerId,
+                3,
+                com.skillbridge.wallet.domain.model.PointEventType.REVIEW_REWARD,
+                "REVIEW",
+                saved.getId()
+        );
+
+        // Milestone progression evaluations
+        milestoneService.checkAndAwardMilestones(reviewerId);
+        milestoneService.checkAndAwardMilestones(request.getRevieweeId());
+
         RatingStats userStats = stats(reviewRepository.findByRevieweeId(request.getRevieweeId()));
         RatingStats skillStats = stats(reviewRepository.findBySkillId(request.getSkillId()));
 

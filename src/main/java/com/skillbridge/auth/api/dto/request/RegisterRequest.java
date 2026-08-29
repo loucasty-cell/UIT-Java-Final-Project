@@ -41,4 +41,5 @@ public class RegisterRequest {
     private String displayName;
     private String major;
     private Integer yearOfStudy;
+    private String referralCode;
 }

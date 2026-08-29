@@ -705,3 +705,249 @@ _(Requires user to have `ROLE_ADMIN`)_
 ### 12.5 Audit Logs
 
 - **`GET /api/v1/admin/audit-logs?page=0&size=20`** -> `PageResponse<AdminAuditEventResponse>`
+
+---
+
+## 13. Learning Requests & 15-Minute Buffer Scheduling (`/api/v1/learning-requests`)
+
+### 13.1 Create Learning Request
+
+- **`POST /api/v1/learning-requests`**
+- **Auth:** Bearer Token (Learner)
+- **Request Body:**
+
+```json
+{
+    "mentorId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "mentorOfferingId": "5fa85f64-5717-4562-b3fc-2c963f66afa7",
+    "requestedSkillId": "4fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "offeredUserSkillId": null,
+    "mode": "POINTS",
+    "scheduledStart": "2026-09-05T14:00:00Z",
+    "durationMinutes": 60,
+    "message": "I'd like assistance preparing for my Java concurrent systems exam."
+}
+```
+
+- **Modes Supported:**
+  - `POINTS`: Deducts points from learner and puts them into escrow (held).
+  - `SKILL_SWAP`: Requires `offeredUserSkillId` (no points held).
+  - `VOLUNTEER`: Free session for learner. Upon mentor double-confirmation completion, system awards mentor **+5 points** volunteer bonus.
+- **Validation:** Enforces 15-minute buffer before & after scheduled session for both learner and mentor.
+- **Error Response on Conflict (409 Conflict):**
+
+```json
+{
+    "timestamp": "2026-09-05T14:00:00Z",
+    "status": 409,
+    "error": "Conflict",
+    "message": "Time slot conflicts with an existing session (with 15-minute buffer).",
+    "path": "/api/v1/learning-requests"
+}
+```
+
+### 13.2 List Learning Requests
+
+- **`GET /api/v1/learning-requests?direction=INCOMING&status=PENDING`**
+- **`GET /api/v1/learning-requests?direction=OUTGOING`**
+- **Auth:** Bearer Token
+- **Query Params:**
+  - `direction`: `INCOMING` (requests received as mentor) or `OUTGOING` (requests sent as learner)
+  - `status`: Optional filter (`PENDING`, `ACCEPTED`, `REJECTED`, `CANCELLED`, `EXPIRED`)
+
+### 13.3 Accept Learning Request
+
+- **`POST /api/v1/learning-requests/{id}/accept`**
+- **Auth:** Bearer Token (Mentor)
+- **Action:** Validates schedule conflict, transitions request to `ACCEPTED`, and generates a `SCHEDULED` `SwapSession`.
+
+### 13.4 Reject Learning Request
+
+- **`POST /api/v1/learning-requests/{id}/reject`**
+- **Auth:** Bearer Token (Mentor)
+- **Request Body (Optional):**
+
+```json
+{
+    "reason": "Prior conflicting engagement during this timeframe."
+}
+```
+
+- **Action:** Transitions request to `REJECTED` and automatically refunds any held escrow points back to the learner.
+
+### 13.5 Cancel Learning Request
+
+- **`POST /api/v1/learning-requests/{id}/cancel`**
+- **Auth:** Bearer Token (Learner)
+- **Action:** Transitions pending request to `CANCELLED` and immediately unlocks/refunds learner's held escrow points.
+
+---
+
+## 14. Mentor Applications & Verification (`/api/v1/me/mentor-application`, `/api/v1/admin/mentor-applications`)
+
+### 14.1 Submit Mentor Application
+
+- **`POST /api/v1/me/mentor-application`**
+- **Auth:** Bearer Token
+- **Request Body:**
+
+```json
+{
+    "teachSkillIds": [
+        "4fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "7fa85f64-5717-4562-b3fc-2c963f66afa8"
+    ],
+    "experience": "4 years building distributed systems and mentoring university sophomores in algorithms.",
+    "motivation": "Passionate about giving back to the student tech community.",
+    "certificateIds": []
+}
+```
+
+### 14.2 View My Mentor Application
+
+- **`GET /api/v1/me/mentor-application`**
+- **Auth:** Bearer Token
+
+### 14.3 Admin List Pending Applications
+
+- **`GET /api/v1/admin/mentor-applications`**
+- **Auth:** Admin Role
+
+### 14.4 Admin Approve Mentor Application
+
+- **`POST /api/v1/admin/mentor-applications/{id}/approve`**
+- **Auth:** Admin Role
+- **Action:** Sets status to `APPROVED`, automatically grants `ROLE_MENTOR` to the applicant, and issues celebratory notification.
+
+### 14.5 Admin Reject Mentor Application
+
+- **`POST /api/v1/admin/mentor-applications/{id}/reject`**
+- **Auth:** Admin Role
+- **Request Body:**
+
+```json
+{
+    "adminNotes": "Please add verified certification links or university transcripts."
+}
+```
+
+---
+
+## 15. Referral System (`/api/v1/me/referral-code`, `/api/v1/me/referrals`)
+
+### 15.1 Get or Create My Referral Code
+
+- **`GET /api/v1/me/referral-code`**
+- **`GET /api/v1/me/referrals`**
+- **Auth:** Bearer Token
+- **Success Response (200 OK):**
+
+```json
+{
+    "referralCode": "SB7K9X2M",
+    "totalReferred": 3,
+    "totalPointsEarned": 15,
+    "rewards": [
+        {
+            "id": "1fa85f64-5717-4562-b3fc-2c963f66af11",
+            "referredUserId": "2fa85f64-5717-4562-b3fc-2c963f66af22",
+            "referredUserName": "Sarah Jenkins",
+            "pointsAwarded": 5,
+            "createdAt": "2026-08-28T10:15:00Z"
+        }
+    ]
+}
+```
+
+- **Usage:** New users can pass `"referralCode": "SB7K9X2M"` during registration (`POST /api/v1/auth/register`). When completed, the referrer automatically receives **+5 points** bonus.
+
+---
+
+## 16. Gamification & Milestones (`/api/v1/me/milestones`, `/api/v1/admin/milestones`)
+
+### 16.1 List User Milestones & Progress
+
+- **`GET /api/v1/me/milestones`**
+- **Auth:** Bearer Token
+- **Success Response (200 OK):**
+
+```json
+[
+    {
+        "id": "1fa85f64-5717-4562-b3fc-2c963f66af01",
+        "code": "FIRST_SESSION",
+        "title": "First Step",
+        "description": "Complete your first learning session",
+        "conditionType": "SESSIONS_COMPLETED",
+        "conditionValue": 1,
+        "pointsReward": 5,
+        "icon": "🎓",
+        "achieved": true,
+        "achievedAt": "2026-08-25T14:30:00Z",
+        "currentProgress": 1
+    },
+    {
+        "id": "1fa85f64-5717-4562-b3fc-2c963f66af02",
+        "code": "FIVE_SESSIONS",
+        "title": "Dedicated Learner",
+        "description": "Complete 5 learning sessions",
+        "conditionType": "SESSIONS_COMPLETED",
+        "conditionValue": 5,
+        "pointsReward": 10,
+        "icon": "⭐",
+        "achieved": false,
+        "achievedAt": null,
+        "currentProgress": 3
+    }
+]
+```
+
+### 16.2 Admin Milestone Management
+
+- **`GET /api/v1/admin/milestones`** -> List all platform milestones
+- **`POST /api/v1/admin/milestones`** -> Create new custom milestone
+- **`PUT /api/v1/admin/milestones/{id}`** -> Update milestone target or reward
+
+---
+
+## 17. Watchlist & Bookmarks (`/api/v1/me/watchlist`)
+
+### 17.1 Add Item to Watchlist
+
+- **`POST /api/v1/me/watchlist`**
+- **Auth:** Bearer Token
+- **Request Body:**
+
+```json
+{
+    "itemType": "MENTOR",
+    "itemId": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+}
+```
+
+- **Supported `itemType`:** `SKILL`, `MENTOR`
+
+### 17.2 Get My Watchlist
+
+- **`GET /api/v1/me/watchlist`**
+- **Auth:** Bearer Token
+
+### 17.3 Remove Item from Watchlist
+
+- **`DELETE /api/v1/me/watchlist/{id}`**
+- **Auth:** Bearer Token
+
+---
+
+## 18. Points Economy & Reward Distribution Reference
+
+| Trigger Event | Points Delta | Mode / Type | Idempotent |
+| :--- | :--- | :--- | :--- |
+| **New Account Registration** | `+30 pts` (or platform default) | `REGISTRATION_BONUS` | Yes |
+| **Refer a Friend** | `+5 pts` (to Referrer) | `REFERRAL_BONUS` | Yes |
+| **Volunteer Mentoring Session** | `+5 pts` (to Mentor upon completion) | `VOLUNTEER_REWARD` | Yes |
+| **Review Submission** | `+3 pts` (to Reviewer upon review) | `REVIEW_REWARD` | Yes |
+| **Milestone Achievement** | `+5 to +10 pts` (upon reaching milestone threshold) | `MILESTONE_BONUS` | Yes |
+| **Forum Contribution** | `+5 to +10 pts` | `FORUM_CONTRIBUTION` | Yes |
+| **Paid Session Escrow** | `-pointCost` (Learner) $\to$ `+pointCost` (Mentor) | `POINTS_RELEASE` / `POINTS_HOLD` | Yes |
+

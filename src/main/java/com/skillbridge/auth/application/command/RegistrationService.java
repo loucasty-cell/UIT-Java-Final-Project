@@ -54,6 +54,9 @@ public class RegistrationService {
     // Mapper to convert User entity and tokens into standardized AuthResponse DTO
     private final AuthMapper authMapper;
 
+    // Referral service to process referrer bonuses and generate referral codes
+    private final com.skillbridge.referral.application.ReferralService referralService;
+
     // Executes atomic registration: creates user record, assigns USER role, generates 12h JWT and refresh token family
     // Linkage: Invoked by AuthController.register() during client registration request
     public AuthResponse register(RegisterRequest request) {
@@ -97,6 +100,10 @@ public class RegistrationService {
             );
         }
 
+        // Step 4c: Process referral reward if referralCode was supplied and auto-generate referral code
+        referralService.processReferral(savedUser, request.getReferralCode());
+        referralService.getOrCreateReferralCode(userId);
+
         List<String> roles = Collections.singletonList(Role.USER.name());
 
         // Step 5: Issue signed HMAC-SHA256 JWT access token with 12-hour (720 min) lifespan
@@ -120,10 +127,13 @@ public class RegistrationService {
         );
     }
 
-    // Reads the server-owned registration bonus from platform settings; falls back to 50 when absent
+    @org.springframework.beans.factory.annotation.Value("${skillbridge.registration-bonus-points:30}")
+    private int defaultRegistrationBonus;
+
+    // Reads the server-owned registration bonus from platform settings; falls back to configured default (30) when absent
     private int loadRegistrationBonus() {
         return platformSettingRepository.findTopByOrderByUpdatedAtDesc()
                 .map(PlatformSetting::getRegistrationBonus)
-                .orElse(50);
+                .orElse(defaultRegistrationBonus);
     }
 }

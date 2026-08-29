@@ -151,7 +151,7 @@ public class SessionDisputeTest {
 
     private static class DummySwapService extends SwapService {
         DummySwapService() {
-            super(null, null, null, null, null, null, null, null);
+            super(null, null, null, null, null, null, null, null, null);
         }
     }
 
@@ -217,6 +217,11 @@ public class SessionDisputeTest {
         @Override public List<SwapSession> findByRequesterIdOrResponderIdOrderByCreatedAtDesc(UUID requesterId, UUID responderId) { return List.of(); }
         @Override public List<SwapSession> findActiveByUserId(UUID userId, List<SwapSessionStatus> statuses) { return List.of(); }
         @Override public List<SwapSession> findSessionsEligibleForAutoRelease(List<SwapSessionStatus> statuses, OffsetDateTime now) { return List.of(); }
+        @Override public List<SwapSession> findConflictingSessions(UUID userId, OffsetDateTime bufferStart, OffsetDateTime bufferEnd, List<SwapSessionStatus> statuses) { return List.of(); }
+        @Override public long countCompletedSessionsByUserId(UUID userId) { return 0L; }
+        @Override public long countTaughtSessionsByUserId(UUID userId) { return 0L; }
+        @Override public long countCompletedSwapsByUserId(UUID userId) { return 0L; }
+        @Override public long countVolunteerSessionsByUserId(UUID userId) { return 0L; }
         @Override public <S extends SwapSession> S save(S entity) {
             if (entity.getId() == null) entity.setId(UUID.randomUUID());
             store.put(entity.getId(), entity);

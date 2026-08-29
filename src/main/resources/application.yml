@@ -48,5 +48,6 @@ skillbridge:
       secret: ${JWT_SECRET:very_secret_default_key_that_should_be_changed_in_prod}
       access-token-minutes: ${ACCESS_TOKEN_MINUTES:720}
       refresh-token-days: ${REFRESH_TOKEN_DAYS:7}
+  registration-bonus-points: ${REGISTRATION_BONUS_POINTS:30}
   cors:
-    allowed-origins: ${FRONTEND_ORIGINS:http://localhost:3000}
+    allowed-origins: ${FRONTEND_ORIGINS:http://localhost:5173,http://localhost:3000,http://localhost:8080}

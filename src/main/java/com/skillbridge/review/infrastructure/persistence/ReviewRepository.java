@@ -19,4 +19,8 @@ public interface ReviewRepository extends JpaRepository<Review, UUID> {
     Page<Review> findByRevieweeIdOrderByCreatedAtDesc(UUID revieweeId, Pageable pageable);
 
     List<Review> findBySkillId(UUID skillId);
+
+    long countByReviewerId(UUID reviewerId);
+
+    long countByRevieweeId(UUID revieweeId);
 }

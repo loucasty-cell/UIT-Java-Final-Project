@@ -107,6 +107,17 @@ public class NotificationService {
         );
     }
 
+    public void notifyUser(UUID userId, String title, String message, String referenceType, UUID referenceId) {
+        createNotification(
+                userId,
+                NotificationType.SYSTEM_ALERT,
+                title,
+                message,
+                referenceType,
+                referenceId
+        );
+    }
+
     private Notification loadOwnedNotification(UUID notificationId) {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new IllegalArgumentException("Notification not found: " + notificationId));

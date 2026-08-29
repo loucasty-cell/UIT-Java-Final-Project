@@ -208,6 +208,14 @@ public class SwapServiceTest {
         private final UserRepository userRepository = userRepository();
         private final SkillRepository skillRepository = skillRepository();
         private final SwapSessionRepository sessionRepository = sessionRepository();
+        private final com.skillbridge.milestone.application.MilestoneService milestoneService = new com.skillbridge.milestone.application.MilestoneService(
+                proxy(com.skillbridge.milestone.infrastructure.persistence.MilestoneRepository.class, (m, a) -> java.util.Collections.emptyList()),
+                proxy(com.skillbridge.milestone.infrastructure.persistence.UserMilestoneRepository.class, (m, a) -> java.util.Collections.emptyList()),
+                sessionRepository,
+                proxy(com.skillbridge.review.infrastructure.persistence.ReviewRepository.class, (m, a) -> 0L),
+                walletService,
+                notificationService
+        );
         private final SwapService service = new SwapService(
                 requestRepository(),
                 sessionRepository,
@@ -216,7 +224,8 @@ public class SwapServiceTest {
                 walletRepository(),
                 walletService,
                 new SwapMapper(userRepository, skillRepository, sessionRepository),
-                notificationService
+                notificationService,
+                milestoneService
         );
 
         void addUsers() {

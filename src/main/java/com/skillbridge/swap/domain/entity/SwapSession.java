@@ -88,11 +88,21 @@ public class SwapSession {
     @Column(name = "scheduled_at")
     private OffsetDateTime scheduledAt;
 
+    @Column(name = "scheduled_end")
+    private OffsetDateTime scheduledEnd;
+
     @Column(name = "duration_minutes")
     private Integer durationMinutes;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "mode", length = 20)
+    private com.skillbridge.shared.domain.model.SessionMode mode;
+
     @Column(name = "meeting_url", length = 500)
     private String meetingUrl;
+
+    @Column(name = "recording_url", length = 500)
+    private String recordingUrl;
 
     @Column(name = "notes", length = 1000)
     private String notes;

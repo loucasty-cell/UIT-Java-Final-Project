@@ -252,7 +252,7 @@ public class SessionServiceTest {
         private UUID completedSessionId;
 
         RecordingSwapService(Map<UUID, SwapSession> sessions) {
-            super(null, null, null, null, null, null, null, null);
+            super(null, null, null, null, null, null, null, null, null);
             this.sessions = sessions;
         }
 

@@ -84,6 +84,17 @@ public class WalletService {
         appendLedgerEntry(wallet, eventType, amount, 0, description, referenceType, referenceId, idempotencyKey);
     }
 
+    public void creditPoints(
+            UUID userId,
+            int amount,
+            PointEventType eventType,
+            String referenceType,
+            UUID referenceId
+    ) {
+        String idempotencyKey = eventType.name() + ":" + referenceType + ":" + referenceId;
+        awardOnce(userId, eventType, amount, "Awarded " + amount + " pts for " + eventType, referenceType, referenceId, idempotencyKey);
+    }
+
     // Moves points from the learner's available balance into held escrow for one learning request
     // Linkage: Future LearningRequestService (POINTS mode accept flow); creates the HELD escrow row
     public void holdPoints(

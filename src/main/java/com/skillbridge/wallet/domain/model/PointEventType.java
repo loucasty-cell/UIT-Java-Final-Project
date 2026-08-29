@@ -20,5 +20,20 @@ public enum PointEventType {
     POINTS_RELEASE,
 
     // Rejection, cancellation, expiry, or dispute refund: returns held points to the learner
-    POINTS_REFUND
+    POINTS_REFUND,
+
+    // +5 for mentor after volunteer session completed
+    VOLUNTEER_REWARD,
+
+    // +3 for submitting a session review
+    REVIEW_REWARD,
+
+    // +5 when referred user registers
+    REFERRAL_BONUS,
+
+    // +5 to +10 for reaching milestone achievements
+    MILESTONE_BONUS,
+
+    // Direct student-to-student transfer
+    POINT_TRANSFER
 }

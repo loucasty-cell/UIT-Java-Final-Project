@@ -29,7 +29,7 @@ public class ReviewControllerTest {
         private SubmitReviewRequest request;
 
         RecordingReviewService() {
-            super(null, null, null, null, null);
+            super(null, null, null, null, null, null, null);
         }
 
         @Override

@@ -40,4 +40,49 @@ public interface SwapSessionRepository extends JpaRepository<SwapSession, UUID> 
             @Param("statuses") List<SwapSessionStatus> statuses,
             @Param("now") OffsetDateTime now
     );
+
+    @Query("""
+            SELECT s FROM SwapSession s
+            WHERE (s.requesterId = :userId OR s.responderId = :userId)
+              AND s.status IN :statuses
+              AND s.scheduledAt IS NOT NULL
+              AND s.scheduledAt < :bufferEnd
+              AND (s.scheduledEnd IS NULL OR s.scheduledEnd > :bufferStart)
+            """)
+    List<SwapSession> findConflictingSessions(
+            @Param("userId") UUID userId,
+            @Param("bufferStart") OffsetDateTime bufferStart,
+            @Param("bufferEnd") OffsetDateTime bufferEnd,
+            @Param("statuses") List<SwapSessionStatus> statuses
+    );
+
+    @Query("""
+            SELECT COUNT(s) FROM SwapSession s
+            WHERE (s.requesterId = :userId OR s.responderId = :userId)
+              AND s.status = 'COMPLETED'
+            """)
+    long countCompletedSessionsByUserId(@Param("userId") UUID userId);
+
+    @Query("""
+            SELECT COUNT(s) FROM SwapSession s
+            WHERE s.responderId = :userId
+              AND s.status = 'COMPLETED'
+            """)
+    long countTaughtSessionsByUserId(@Param("userId") UUID userId);
+
+    @Query("""
+            SELECT COUNT(s) FROM SwapSession s
+            WHERE (s.requesterId = :userId OR s.responderId = :userId)
+              AND s.status = 'COMPLETED'
+              AND s.mode = 'SKILL_SWAP'
+            """)
+    long countCompletedSwapsByUserId(@Param("userId") UUID userId);
+
+    @Query("""
+            SELECT COUNT(s) FROM SwapSession s
+            WHERE s.responderId = :userId
+              AND s.status = 'COMPLETED'
+              AND s.mode = 'VOLUNTEER'
+            """)
+    long countVolunteerSessionsByUserId(@Param("userId") UUID userId);
 }

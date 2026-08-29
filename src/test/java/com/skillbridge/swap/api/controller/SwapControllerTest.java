@@ -62,7 +62,7 @@ public class SwapControllerTest {
         private UUID completedSessionId;
 
         RecordingSwapService() {
-            super(null, null, null, null, null, null, null, null);
+            super(null, null, null, null, null, null, null, null, null);
         }
 
         @Override

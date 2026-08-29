@@ -112,7 +112,7 @@ public class RequestServiceTest {
         private UUID loadedId;
 
         RecordingSwapService() {
-            super(null, null, null, null, null, null, null, null);
+            super(null, null, null, null, null, null, null, null, null);
         }
 
         @Override

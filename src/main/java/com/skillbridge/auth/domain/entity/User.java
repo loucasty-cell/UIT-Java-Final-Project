@@ -52,6 +52,12 @@ public class User {
     @Column(name = "status", nullable = false, length = 50)
     private AccountStatus status;
 
+    @Column(name = "referral_code", length = 12, unique = true)
+    private String referralCode;
+
+    @Column(name = "referred_by")
+    private UUID referredBy;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 

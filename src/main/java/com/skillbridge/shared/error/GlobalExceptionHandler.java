@@ -79,6 +79,26 @@ public class GlobalExceptionHandler {
         return problemDetail;
     }
 
+    // Handles schedule time overlap conflicts (status 409 Conflict)
+    @ExceptionHandler(ScheduleConflictException.class)
+    public ProblemDetail handleScheduleConflictException(ScheduleConflictException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT,
+                ex.getMessage()
+        );
+        problemDetail.setType(URI.create("https://skillbridge.edu/errors/schedule-conflict"));
+        problemDetail.setTitle("Schedule Conflict");
+        problemDetail.setProperty("code", "SCHEDULE_CONFLICT");
+        problemDetail.setProperty("timestamp", OffsetDateTime.now().toString());
+        problemDetail.setProperty("requestId", UUID.randomUUID().toString());
+        if (ex.getConflictingSessionId() != null) {
+            problemDetail.setProperty("conflictingSessionId", ex.getConflictingSessionId().toString());
+            problemDetail.setProperty("scheduledStart", ex.getScheduledStart() != null ? ex.getScheduledStart().toString() : null);
+            problemDetail.setProperty("scheduledEnd", ex.getScheduledEnd() != null ? ex.getScheduledEnd().toString() : null);
+        }
+        return problemDetail;
+    }
+
     // Handles invalid domain operations and contract argument constraints
     // Linkage: Thrown by command services when business invariant checks fail
     @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})

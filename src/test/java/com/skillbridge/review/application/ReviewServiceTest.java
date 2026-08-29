@@ -282,12 +282,67 @@ public class ReviewServiceTest {
             validSkillIds.add(offeredSkillId);
             validSkillIds.add(requestedSkillId);
 
+            com.skillbridge.wallet.application.command.WalletService walletService = new com.skillbridge.wallet.application.command.WalletService(
+                    com.skillbridge.wallet.infrastructure.persistence.WalletRepository.class.cast(Proxy.newProxyInstance(
+                            com.skillbridge.wallet.infrastructure.persistence.WalletRepository.class.getClassLoader(),
+                            new Class<?>[]{com.skillbridge.wallet.infrastructure.persistence.WalletRepository.class},
+                            (proxy, method, args) -> switch (method.getName()) {
+                                case "findWithLockByUserId", "findByUserId" -> {
+                                    com.skillbridge.wallet.domain.entity.Wallet w = new com.skillbridge.wallet.domain.entity.Wallet();
+                                    w.setId(UUID.randomUUID());
+                                    w.setUserId((UUID) args[0]);
+                                    w.setAvailablePoints(100);
+                                    w.setHeldPoints(0);
+                                    w.setTotalEarned(100);
+                                    w.setTotalSpent(0);
+                                    yield Optional.of(w);
+                                }
+                                case "save" -> args[0];
+                                default -> Optional.empty();
+                            }
+                    )),
+                    com.skillbridge.wallet.infrastructure.persistence.PointTransactionRepository.class.cast(Proxy.newProxyInstance(
+                            com.skillbridge.wallet.infrastructure.persistence.PointTransactionRepository.class.getClassLoader(),
+                            new Class<?>[]{com.skillbridge.wallet.infrastructure.persistence.PointTransactionRepository.class},
+                            (proxy, method, args) -> switch (method.getName()) {
+                                case "findByIdempotencyKey" -> Optional.empty();
+                                case "existsByIdempotencyKey" -> false;
+                                case "save" -> args[0];
+                                default -> null;
+                            }
+                    )),
+                    com.skillbridge.wallet.infrastructure.persistence.EscrowRepository.class.cast(Proxy.newProxyInstance(
+                            com.skillbridge.wallet.infrastructure.persistence.EscrowRepository.class.getClassLoader(),
+                            new Class<?>[]{com.skillbridge.wallet.infrastructure.persistence.EscrowRepository.class},
+                            (proxy, method, args) -> Optional.empty()
+                    ))
+            );
+
+            com.skillbridge.milestone.application.MilestoneService milestoneService = new com.skillbridge.milestone.application.MilestoneService(
+                    com.skillbridge.milestone.infrastructure.persistence.MilestoneRepository.class.cast(Proxy.newProxyInstance(
+                            com.skillbridge.milestone.infrastructure.persistence.MilestoneRepository.class.getClassLoader(),
+                            new Class<?>[]{com.skillbridge.milestone.infrastructure.persistence.MilestoneRepository.class},
+                            (proxy, method, args) -> java.util.Collections.emptyList()
+                    )),
+                    com.skillbridge.milestone.infrastructure.persistence.UserMilestoneRepository.class.cast(Proxy.newProxyInstance(
+                            com.skillbridge.milestone.infrastructure.persistence.UserMilestoneRepository.class.getClassLoader(),
+                            new Class<?>[]{com.skillbridge.milestone.infrastructure.persistence.UserMilestoneRepository.class},
+                            (proxy, method, args) -> java.util.Collections.emptyList()
+                    )),
+                    sessionRepository(),
+                    reviewRepository(),
+                    walletService,
+                    new com.skillbridge.notification.application.NotificationService(null, null)
+            );
+
             this.service = new ReviewService(
                     reviewRepository(),
                     sessionRepository(),
                     userRepository(),
                     skillRepository(),
-                    new ReviewMapper()
+                    new ReviewMapper(),
+                    walletService,
+                    milestoneService
             );
         }
 

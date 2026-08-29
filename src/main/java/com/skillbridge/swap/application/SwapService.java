@@ -41,6 +41,7 @@ public class SwapService {
     private final WalletService walletService;
     private final SwapMapper swapMapper;
     private final NotificationService notificationService;
+    private final com.skillbridge.milestone.application.MilestoneService milestoneService;
 
     public SwapRequestResponse createProposal(CreateSwapProposalRequest request) {
         UUID requesterId = SecurityUtils.getCurrentUserId();
@@ -178,6 +179,22 @@ public class SwapService {
 
         requestRepository.save(swapRequest);
         SwapSession savedSession = sessionRepository.save(session);
+
+        // Volunteer reward: +5 points to mentor if volunteer mode
+        if (savedSession.getMode() == com.skillbridge.shared.domain.model.SessionMode.VOLUNTEER) {
+            walletService.creditPoints(
+                    savedSession.getResponderId(),
+                    5,
+                    com.skillbridge.wallet.domain.model.PointEventType.VOLUNTEER_REWARD,
+                    "SESSION_VOLUNTEER",
+                    savedSession.getId()
+            );
+        }
+
+        // Milestone progression evaluations for both participants
+        milestoneService.checkAndAwardMilestones(savedSession.getRequesterId());
+        milestoneService.checkAndAwardMilestones(savedSession.getResponderId());
+
         notificationService.notifySessionStatusChange(
                 swapRequest.getRequesterId(),
                 NotificationType.SESSION_COMPLETED,

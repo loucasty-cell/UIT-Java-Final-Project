@@ -39,7 +39,8 @@ public class WalletService {
         ensureWallet(userId);
     }
 
-    // Returns the wallet for the user, creating an empty one for legacy accounts that predate V5
+    // Returns the wallet for the user, creating an empty one for legacy accounts
+    // that predate V5
     public Wallet ensureWallet(UUID userId) {
         return walletRepository.findByUserId(userId).orElseGet(() -> {
             OffsetDateTime now = OffsetDateTime.now();
@@ -56,8 +57,10 @@ public class WalletService {
         });
     }
 
-    // Grants a one-time award guarded by a unique idempotency key (registration bonus, forum reward)
-    // Linkage: RegistrationService ("REG:" + userId), ForumRewardService ("FORUM_HELPFUL:" + commentId)
+    // Grants a one-time award guarded by a unique idempotency key (registration
+    // bonus, forum reward)
+    // Linkage: RegistrationService ("REG:" + userId), ForumRewardService
+    // ("FORUM_HELPFUL:" + commentId)
     public void awardOnce(
             UUID userId,
             PointEventType eventType,
@@ -65,9 +68,9 @@ public class WalletService {
             String description,
             String referenceType,
             UUID referenceId,
-            String idempotencyKey
-    ) {
-        // Step 1: Replay check - if the ledger already holds this key the award was granted before
+            String idempotencyKey) {
+        // Step 1: Replay check - if the ledger already holds this key the award was
+        // granted before
         if (isAlreadyProcessed(idempotencyKey)) {
             return;
         }
@@ -89,22 +92,23 @@ public class WalletService {
             int amount,
             PointEventType eventType,
             String referenceType,
-            UUID referenceId
-    ) {
+            UUID referenceId) {
         String idempotencyKey = eventType.name() + ":" + referenceType + ":" + referenceId;
-        awardOnce(userId, eventType, amount, "Awarded " + amount + " pts for " + eventType, referenceType, referenceId, idempotencyKey);
+        awardOnce(userId, eventType, amount, "Awarded " + amount + " pts for " + eventType, referenceType, referenceId,
+                idempotencyKey);
     }
 
-    // Moves points from the learner's available balance into held escrow for one learning request
-    // Linkage: Future LearningRequestService (POINTS mode accept flow); creates the HELD escrow row
+    // Moves points from the learner's available balance into held escrow for one
+    // learning request
+    // Linkage: Future LearningRequestService (POINTS mode accept flow); creates the
+    // HELD escrow row
     public void holdPoints(
             UUID learnerId,
             UUID mentorId,
             int amount,
             String referenceType,
             UUID referenceId,
-            String idempotencyKey
-    ) {
+            String idempotencyKey) {
         if (isAlreadyProcessed(idempotencyKey)) {
             return;
         }
@@ -139,15 +143,15 @@ public class WalletService {
                 "Points held for " + referenceType, referenceType, referenceId, idempotencyKey);
     }
 
-    // Releases held points from the learner to the mentor exactly once upon session completion
+    // Releases held points from the learner to the mentor exactly once upon session
+    // completion
     // Linkage: Future SessionCompletionService / auto-release scheduled job
     public void releaseHeldPoints(
             UUID learnerId,
             UUID mentorId,
             String referenceType,
             UUID referenceId,
-            String idempotencyKey
-    ) {
+            String idempotencyKey) {
         if (isAlreadyProcessed(idempotencyKey)) {
             return;
         }
@@ -175,7 +179,8 @@ public class WalletService {
         mentorWallet.setAvailablePoints(mentorWallet.getAvailablePoints() + amount);
         mentorWallet.setTotalEarned(mentorWallet.getTotalEarned() + amount);
 
-        // Step 4: Close the escrow and write both ledger entries in the same transaction
+        // Step 4: Close the escrow and write both ledger entries in the same
+        // transaction
         closeEscrow(escrow, EscrowStatus.RELEASED);
         appendLedgerEntry(learnerWallet, PointEventType.POINTS_RELEASE, 0, -amount,
                 "Points released to mentor", referenceType, referenceId, idempotencyKey + ":LEARNER");
@@ -183,14 +188,15 @@ public class WalletService {
                 "Points received from session", referenceType, referenceId, idempotencyKey + ":MENTOR");
     }
 
-    // Returns held points to the learner's available balance exactly once (reject/cancel/expiry/dispute refund)
-    // Linkage: Future LearningRequestService reject/cancel flows and dispute REFUND_LEARNER resolution
+    // Returns held points to the learner's available balance exactly once
+    // (reject/cancel/expiry/dispute refund)
+    // Linkage: Future LearningRequestService reject/cancel flows and dispute
+    // REFUND_LEARNER resolution
     public void refundHeldPoints(
             UUID learnerId,
             String referenceType,
             UUID referenceId,
-            String idempotencyKey
-    ) {
+            String idempotencyKey) {
         if (isAlreadyProcessed(idempotencyKey)) {
             return;
         }
@@ -210,8 +216,10 @@ public class WalletService {
                 "Refund of held points", referenceType, referenceId, idempotencyKey);
     }
 
-    // Applies a signed admin adjustment (-10000..10000, never zero) with a mandatory reason
-    // Linkage: AdminUserController POST /api/v1/admin/users/{userId}/wallet-adjustments
+    // Applies a signed admin adjustment (-10000..10000, never zero) with a
+    // mandatory reason
+    // Linkage: AdminUserController POST
+    // /api/v1/admin/users/{userId}/wallet-adjustments
     public void adjust(UUID targetUserId, int delta, String reason) {
         if (delta == 0) {
             throw new IllegalArgumentException("Adjustment delta must not be zero");
@@ -233,20 +241,23 @@ public class WalletService {
             wallet.setTotalEarned(wallet.getTotalEarned() + delta);
         }
 
-        // Step 3: Append the ADMIN_ADJUSTMENT ledger entry with the reason as description
+        // Step 3: Append the ADMIN_ADJUSTMENT ledger entry with the reason as
+        // description
         appendLedgerEntry(wallet, PointEventType.ADMIN_ADJUSTMENT, delta, 0,
                 reason, "ADMIN", null, null);
     }
 
     // --- internal helpers ---
 
-    // Loads the wallet with a pessimistic write lock so concurrent financial commands serialize
+    // Loads the wallet with a pessimistic write lock so concurrent financial
+    // commands serialize
     private Wallet lockWallet(UUID userId) {
         return walletRepository.findWithLockByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Wallet not found for user: " + userId));
     }
 
-    // True when a ledger row already exists for the retry key; makes commands replay-safe
+    // True when a ledger row already exists for the retry key; makes commands
+    // replay-safe
     private boolean isAlreadyProcessed(String idempotencyKey) {
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             return false;
@@ -254,7 +265,8 @@ public class WalletService {
         return pointTransactionRepository.findByIdempotencyKey(idempotencyKey).isPresent();
     }
 
-    // Appends one immutable ledger row snapshotting balances immediately after the applied deltas
+    // Appends one immutable ledger row snapshotting balances immediately after the
+    // applied deltas
     private void appendLedgerEntry(
             Wallet wallet,
             PointEventType eventType,
@@ -263,8 +275,7 @@ public class WalletService {
             String description,
             String referenceType,
             UUID referenceId,
-            String idempotencyKey
-    ) {
+            String idempotencyKey) {
         PointTransaction transaction = new PointTransaction();
         transaction.setId(UUID.randomUUID());
         transaction.setWalletId(wallet.getId());
@@ -285,11 +296,13 @@ public class WalletService {
         walletRepository.save(wallet);
     }
 
-    // Finds the single open escrow for a reference; its absence means nothing is held to settle
+    // Finds the single open escrow for a reference; its absence means nothing is
+    // held to settle
     private Escrow openEscrow(String referenceType, UUID referenceId) {
         return escrowRepository
                 .findByReferenceTypeAndReferenceIdAndStatus(referenceType, referenceId, EscrowStatus.HELD)
-                .orElseThrow(() -> new IllegalStateException("No open escrow for " + referenceType + ": " + referenceId));
+                .orElseThrow(
+                        () -> new IllegalStateException("No open escrow for " + referenceType + ": " + referenceId));
     }
 
     // Transitions an escrow to a terminal state exactly once

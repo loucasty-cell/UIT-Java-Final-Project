@@ -101,16 +101,16 @@ public class SessionServiceTest {
 
         // 1st participant confirms -> AWAITING_CONFIRMATION
         TestAuthContext.loginAs(session.getRequesterId());
-        com.skillbridge.session.api.dto.response.SessionConfirmationResponse firstConf =
-                fixture.service.confirmCompletion(session.getId());
+        com.skillbridge.session.api.dto.response.SessionConfirmationResponse firstConf = fixture.service
+                .confirmCompletion(session.getId());
         assertEquals(SwapSessionStatus.AWAITING_CONFIRMATION, firstConf.getStatus());
         assertTrue(firstConf.getConfirmedByMe());
         assertNotNull(firstConf.getAutoReleaseAt());
 
         // 2nd participant confirms -> COMPLETED + escrow points released
         TestAuthContext.loginAs(session.getResponderId());
-        com.skillbridge.session.api.dto.response.SessionConfirmationResponse secondConf =
-                fixture.service.confirmCompletion(session.getId());
+        com.skillbridge.session.api.dto.response.SessionConfirmationResponse secondConf = fixture.service
+                .confirmCompletion(session.getId());
         assertEquals(SwapSessionStatus.COMPLETED, secondConf.getStatus());
         assertTrue(secondConf.getConfirmedByMe());
         assertEquals(25, secondConf.getPointsReleased());
@@ -125,8 +125,7 @@ public class SessionServiceTest {
 
         AccessDeniedException exception = assertThrows(
                 AccessDeniedException.class,
-                () -> fixture.service.startSession(session.getId())
-        );
+                () -> fixture.service.startSession(session.getId()));
         assertEquals("Only session participants can start this session", exception.getMessage());
     }
 
@@ -139,8 +138,7 @@ public class SessionServiceTest {
 
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
-                () -> fixture.service.startSession(session.getId())
-        );
+                () -> fixture.service.startSession(session.getId()));
         assertEquals("Only accepted sessions can be started", exception.getMessage());
     }
 
@@ -158,15 +156,13 @@ public class SessionServiceTest {
 
         IllegalStateException completedEx = assertThrows(
                 IllegalStateException.class,
-                () -> fixture.service.updateSession(completed.getId(), update)
-        );
+                () -> fixture.service.updateSession(completed.getId(), update));
         assertTrue(completedEx.getMessage().contains("cannot be updated"));
 
         TestAuthContext.loginAs(cancelled.getRequesterId());
         IllegalStateException cancelledEx = assertThrows(
                 IllegalStateException.class,
-                () -> fixture.service.updateSession(cancelled.getId(), update)
-        );
+                () -> fixture.service.updateSession(cancelled.getId(), update));
         assertTrue(cancelledEx.getMessage().contains("cannot be updated"));
     }
 
@@ -177,12 +173,14 @@ public class SessionServiceTest {
         fixture.sessions.put(session.getId(), session);
         TestAuthContext.loginAs(session.getRequesterId());
 
-        assertThrows(IllegalArgumentException.class, () -> fixture.service.updateSession(null, new UpdateSessionRequest()));
+        assertThrows(IllegalArgumentException.class,
+                () -> fixture.service.updateSession(null, new UpdateSessionRequest()));
         assertThrows(IllegalArgumentException.class, () -> fixture.service.updateSession(session.getId(), null));
 
         UpdateSessionRequest invalidDuration = new UpdateSessionRequest();
         invalidDuration.setDurationMinutes(0);
-        assertThrows(IllegalArgumentException.class, () -> fixture.service.updateSession(session.getId(), invalidDuration));
+        assertThrows(IllegalArgumentException.class,
+                () -> fixture.service.updateSession(session.getId(), invalidDuration));
     }
 
     @Test
@@ -214,28 +212,27 @@ public class SessionServiceTest {
         private final List<UUID> confirmedUsers = new ArrayList<>();
         private final RecordingSwapService swapService = new RecordingSwapService(sessions);
         private final RecordingNotificationService notificationService = new RecordingNotificationService();
-        private final SessionConfirmationRepository confirmationRepository = (SessionConfirmationRepository) Proxy.newProxyInstance(
-                SessionConfirmationRepository.class.getClassLoader(),
-                new Class<?>[]{SessionConfirmationRepository.class},
-                (proxy, method, args) -> switch (method.getName()) {
-                    case "existsBySessionIdAndConfirmedBy" -> confirmedUsers.contains((UUID) args[1]);
-                    case "save" -> {
-                        confirmedUsers.add(com.skillbridge.shared.security.SecurityUtils.getCurrentUserId());
-                        yield args[0];
-                    }
-                    default -> null;
-                }
-        );
+        private final SessionConfirmationRepository confirmationRepository = (SessionConfirmationRepository) Proxy
+                .newProxyInstance(
+                        SessionConfirmationRepository.class.getClassLoader(),
+                        new Class<?>[] { SessionConfirmationRepository.class },
+                        (proxy, method, args) -> switch (method.getName()) {
+                            case "existsBySessionIdAndConfirmedBy" -> confirmedUsers.contains((UUID) args[1]);
+                            case "save" -> {
+                                confirmedUsers.add(com.skillbridge.shared.security.SecurityUtils.getCurrentUserId());
+                                yield args[0];
+                            }
+                            default -> null;
+                        });
         private final DisputeRepository disputeRepository = (DisputeRepository) Proxy.newProxyInstance(
                 DisputeRepository.class.getClassLoader(),
-                new Class<?>[]{DisputeRepository.class},
-                (proxy, method, args) -> null
-        );
-        private final PlatformSettingRepository platformSettingRepository = (PlatformSettingRepository) Proxy.newProxyInstance(
-                PlatformSettingRepository.class.getClassLoader(),
-                new Class<?>[]{PlatformSettingRepository.class},
-                (proxy, method, args) -> Optional.empty()
-        );
+                new Class<?>[] { DisputeRepository.class },
+                (proxy, method, args) -> null);
+        private final PlatformSettingRepository platformSettingRepository = (PlatformSettingRepository) Proxy
+                .newProxyInstance(
+                        PlatformSettingRepository.class.getClassLoader(),
+                        new Class<?>[] { PlatformSettingRepository.class },
+                        (proxy, method, args) -> Optional.empty());
         private final SessionService service = new SessionService(
                 repository(),
                 swapService,
@@ -244,13 +241,12 @@ public class SessionServiceTest {
                 disputeRepository,
                 new AdminMapper(),
                 confirmationRepository,
-                platformSettingRepository
-        );
+                platformSettingRepository);
 
         private SwapSessionRepository repository() {
             return (SwapSessionRepository) Proxy.newProxyInstance(
                     SwapSessionRepository.class.getClassLoader(),
-                    new Class<?>[]{SwapSessionRepository.class},
+                    new Class<?>[] { SwapSessionRepository.class },
                     (proxy, method, args) -> switch (method.getName()) {
                         case "findById" -> Optional.ofNullable(sessions.get((UUID) args[0]));
                         case "save" -> {
@@ -259,15 +255,15 @@ public class SessionServiceTest {
                             yield session;
                         }
                         case "findActiveByUserId" -> sessions.values().stream()
-                                .filter(session -> session.getRequesterId().equals(args[0]) || session.getResponderId().equals(args[0]))
+                                .filter(session -> session.getRequesterId().equals(args[0])
+                                        || session.getResponderId().equals(args[0]))
                                 .filter(session -> ((List<?>) args[1]).contains(session.getStatus()))
                                 .toList();
                         case "equals" -> proxy == args[0];
                         case "hashCode" -> System.identityHashCode(proxy);
                         case "toString" -> "SwapSessionRepository test proxy";
                         default -> throw new UnsupportedOperationException(method.getName());
-                    }
-            );
+                    });
         }
     }
 
@@ -305,6 +301,7 @@ public class SessionServiceTest {
             recordedNotifications.add(new RecordedNotification(userId, type, sessionId));
         }
 
-        private record RecordedNotification(UUID userId, NotificationType type, UUID sessionId) {}
+        private record RecordedNotification(UUID userId, NotificationType type, UUID sessionId) {
+        }
     }
 }

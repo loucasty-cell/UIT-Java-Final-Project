@@ -13,3 +13,4 @@ ON CONFLICT (id) DO UPDATE SET
     registration_bonus = EXCLUDED.registration_bonus,
     forum_contribution_reward = EXCLUDED.forum_contribution_reward,
     escrow_release_hours = EXCLUDED.escrow_release_hours;
+

@@ -31,6 +31,8 @@ public class CreateLearningRequest {
 
     private Integer durationMinutes = 60;
 
+    private UUID sourceForumPostId;
+
     @Size(max = 2000, message = "Message must not exceed 2000 characters")
     private String message;
 }

@@ -118,7 +118,8 @@ public class SessionService {
             session.setUpdatedAt(OffsetDateTime.now());
             sessionRepository.save(session);
 
-            notificationService.notifySessionStatusChange(otherParticipantId, NotificationType.SESSION_UPDATED, sessionId);
+            notificationService.notifySessionStatusChange(otherParticipantId, NotificationType.SESSION_UPDATED,
+                    sessionId);
         }
 
         return sessionMapper.toResponse(loadSession(sessionId));
@@ -164,7 +165,8 @@ public class SessionService {
             session.setUpdatedAt(OffsetDateTime.now());
             session = sessionRepository.save(session);
 
-            notificationService.notifySessionStatusChange(otherParticipantId, NotificationType.SESSION_UPDATED, sessionId);
+            notificationService.notifySessionStatusChange(otherParticipantId, NotificationType.SESSION_UPDATED,
+                    sessionId);
         }
 
         return SessionConfirmationResponse.builder()
@@ -189,7 +191,8 @@ public class SessionService {
         }
         SwapSession session = loadSession(sessionId);
         requireParticipant(session, "Only session participants can update this session");
-        if (session.getStatus() == SwapSessionStatus.COMPLETED || session.getStatus() == SwapSessionStatus.CANCELLED || session.getStatus() == SwapSessionStatus.DISPUTED) {
+        if (session.getStatus() == SwapSessionStatus.COMPLETED || session.getStatus() == SwapSessionStatus.CANCELLED
+                || session.getStatus() == SwapSessionStatus.DISPUTED) {
             throw new IllegalStateException("Completed, cancelled, or disputed sessions cannot be updated");
         }
 
@@ -226,7 +229,8 @@ public class SessionService {
         Dispute dispute = new Dispute();
         dispute.setId(UUID.randomUUID());
         dispute.setSessionId(sessionId);
-        dispute.setSessionMode(session.getPointCost() != null && session.getPointCost() > 0 ? Mode.POINTS : Mode.SKILL_SWAP);
+        dispute.setSessionMode(
+                session.getPointCost() != null && session.getPointCost() > 0 ? Mode.POINTS : Mode.SKILL_SWAP);
         dispute.setOpenedBy(currentUserId);
         dispute.setReason(request.getReason());
         dispute.setDetails(request.getDetails());
@@ -239,8 +243,10 @@ public class SessionService {
         session.setUpdatedAt(now);
         sessionRepository.save(session);
 
-        notificationService.notifySessionStatusChange(session.getRequesterId(), NotificationType.SESSION_UPDATED, sessionId);
-        notificationService.notifySessionStatusChange(session.getResponderId(), NotificationType.SESSION_UPDATED, sessionId);
+        notificationService.notifySessionStatusChange(session.getRequesterId(), NotificationType.SESSION_UPDATED,
+                sessionId);
+        notificationService.notifySessionStatusChange(session.getResponderId(), NotificationType.SESSION_UPDATED,
+                sessionId);
 
         return adminMapper.toResponse(savedDispute);
     }

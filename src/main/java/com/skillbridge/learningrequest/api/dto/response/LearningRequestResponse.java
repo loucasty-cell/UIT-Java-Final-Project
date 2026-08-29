@@ -25,6 +25,7 @@ public class LearningRequestResponse {
     private UUID mentorOfferingId;
     private SkillSummaryResponse requestedSkill;
     private UUID offeredUserSkillId;
+    private UUID sourceForumPostId;
     private SessionMode mode;
     private Integer pointCost;
     private Boolean pointsHeld;

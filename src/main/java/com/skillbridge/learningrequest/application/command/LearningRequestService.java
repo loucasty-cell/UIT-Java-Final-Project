@@ -58,10 +58,18 @@ public class LearningRequestService {
     private final LearningRequestMapper learningRequestMapper;
 
     public LearningRequestResponse createLearningRequest(CreateLearningRequest request) {
+        return createLearningRequest(request, null);
+    }
+
+    public LearningRequestResponse createLearningRequest(CreateLearningRequest request, String idempotencyKey) {
         UUID learnerId = SecurityUtils.getCurrentUserId();
 
         if (learnerId.equals(request.getMentorId())) {
             throw new IllegalArgumentException("You cannot request a learning session with yourself");
+        }
+
+        if (request.getSourceForumPostId() != null) {
+            request.setMode(SessionMode.VOLUNTEER);
         }
 
         User learner = userRepository.findById(learnerId)
@@ -69,12 +77,14 @@ public class LearningRequestService {
         User mentor = userRepository.findById(request.getMentorId())
                 .orElseThrow(() -> new IllegalArgumentException("Mentor user not found"));
         Skill requestedSkill = skillRepository.findById(request.getRequestedSkillId())
-                .orElseThrow(() -> new IllegalArgumentException("Requested skill not found: " + request.getRequestedSkillId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Requested skill not found: " + request.getRequestedSkillId()));
 
         int pointCost = 0;
         boolean pointsHeld = false;
         int durationMinutes = (request.getDurationMinutes() != null && request.getDurationMinutes() > 0)
-                ? request.getDurationMinutes() : 60;
+                ? request.getDurationMinutes()
+                : 60;
 
         // Mode specific validation
         if (request.getMode() == SessionMode.POINTS) {
@@ -89,15 +99,17 @@ public class LearningRequestService {
             if (pointCost > 0) {
                 Wallet learnerWallet = walletService.ensureWallet(learnerId);
                 if (learnerWallet.getAvailablePoints() < pointCost) {
-                    throw new IllegalArgumentException("Insufficient points: you have " + learnerWallet.getAvailablePoints()
-                            + " available, but this session requires " + pointCost);
+                    throw new IllegalArgumentException(
+                            "Insufficient points: you have " + learnerWallet.getAvailablePoints()
+                                    + " available, but this session requires " + pointCost);
                 }
             }
         } else if (request.getMode() == SessionMode.SKILL_SWAP) {
             if (request.getOfferedUserSkillId() == null) {
                 throw new IllegalArgumentException("Offered skill is required for SKILL_SWAP mode");
             }
-            UserSkill offeredUserSkill = userSkillRepository.findByIdAndUserId(request.getOfferedUserSkillId(), learnerId)
+            UserSkill offeredUserSkill = userSkillRepository
+                    .findByIdAndUserId(request.getOfferedUserSkillId(), learnerId)
                     .orElseThrow(() -> new IllegalArgumentException("Offered skill does not belong to you"));
 
             if (offeredUserSkill.getDirection() != Direction.TEACH) {
@@ -120,24 +132,27 @@ public class LearningRequestService {
         entity.setRequestedSkillId(request.getRequestedSkillId());
         entity.setOfferedUserSkillId(request.getOfferedUserSkillId());
         entity.setMode(request.getMode());
-        entity.setPointCost(pointCost);
         entity.setScheduledStart(request.getScheduledStart());
         entity.setDurationMinutes(durationMinutes);
+        entity.setPointCost(pointCost);
         entity.setMessage(request.getMessage());
         entity.setStatus(LearningRequestStatus.PENDING);
+        entity.setSourceForumPostId(request.getSourceForumPostId());
 
-        // Hold points in escrow if POINTS mode and cost > 0
-        if (request.getMode() == SessionMode.POINTS && pointCost > 0) {
+        if (pointCost > 0 && request.getMode() == SessionMode.POINTS) {
+            String holdKey = (idempotencyKey != null && !idempotencyKey.isBlank())
+                    ? idempotencyKey
+                    : "HOLD:LR:" + entity.getId();
             walletService.holdPoints(
                     learnerId,
                     request.getMentorId(),
                     pointCost,
                     "LEARNING_REQUEST",
                     entity.getId(),
-                    "HOLD:LR:" + entity.getId()
-            );
-            entity.setPointsHeld(true);
+                    holdKey);
+            pointsHeld = true;
         }
+        entity.setPointsHeld(pointsHeld);
 
         LearningRequest saved = learningRequestRepository.save(entity);
 
@@ -147,8 +162,7 @@ public class LearningRequestService {
                 "Learning Request Received",
                 "New " + request.getMode() + " learning request received from " + learner.getFirstName(),
                 "LEARNING_REQUEST",
-                saved.getId()
-        );
+                saved.getId());
 
         return learningRequestMapper.toResponse(saved, learner, mentor, requestedSkill);
     }
@@ -206,13 +220,16 @@ public class LearningRequestService {
         }
 
         // Re-validate conflict check before final acceptance
-        scheduleConflictService.validateNoConflict(entity.getMentorId(), entity.getScheduledStart(), entity.getDurationMinutes());
-        scheduleConflictService.validateNoConflict(entity.getLearnerId(), entity.getScheduledStart(), entity.getDurationMinutes());
+        scheduleConflictService.validateNoConflict(entity.getMentorId(), entity.getScheduledStart(),
+                entity.getDurationMinutes());
+        scheduleConflictService.validateNoConflict(entity.getLearnerId(), entity.getScheduledStart(),
+                entity.getDurationMinutes());
 
         // Create backing SwapRequest and SwapSession records
         OffsetDateTime now = OffsetDateTime.now();
         UUID offeredSkillId = entity.getOfferedUserSkillId() != null
-                ? userSkillRepository.findById(entity.getOfferedUserSkillId()).map(UserSkill::getSkillId).orElse(entity.getRequestedSkillId())
+                ? userSkillRepository.findById(entity.getOfferedUserSkillId()).map(UserSkill::getSkillId)
+                        .orElse(entity.getRequestedSkillId())
                 : entity.getRequestedSkillId();
 
         SwapRequest swapRequest = new SwapRequest();
@@ -259,8 +276,7 @@ public class LearningRequestService {
                 "Learning Request Accepted",
                 "Your learning request was accepted! Session scheduled for " + entity.getScheduledStart(),
                 "SWAP_SESSION",
-                savedSession.getId()
-        );
+                savedSession.getId());
 
         User learner = userRepository.findById(entity.getLearnerId()).orElse(null);
         User mentor = userRepository.findById(entity.getMentorId()).orElse(null);
@@ -287,8 +303,7 @@ public class LearningRequestService {
                     entity.getLearnerId(),
                     "LEARNING_REQUEST",
                     entity.getId(),
-                    "REFUND:LR:" + entity.getId()
-            );
+                    "REFUND:LR:" + entity.getId());
             entity.setPointsHeld(false);
         }
 
@@ -296,14 +311,14 @@ public class LearningRequestService {
         LearningRequest saved = learningRequestRepository.save(entity);
 
         String reasonNote = (rejectRequest != null && rejectRequest.getReason() != null)
-                ? ": " + rejectRequest.getReason() : ".";
+                ? ": " + rejectRequest.getReason()
+                : ".";
         notificationService.notifyUser(
                 entity.getLearnerId(),
                 "Learning Request Declined",
                 "Your learning request was declined by the mentor" + reasonNote,
                 "LEARNING_REQUEST",
-                entity.getId()
-        );
+                entity.getId());
 
         User learner = userRepository.findById(entity.getLearnerId()).orElse(null);
         User mentor = userRepository.findById(entity.getMentorId()).orElse(null);
@@ -330,8 +345,7 @@ public class LearningRequestService {
                     entity.getLearnerId(),
                     "LEARNING_REQUEST",
                     entity.getId(),
-                    "REFUND:CANCEL_LR:" + entity.getId()
-            );
+                    "REFUND:CANCEL_LR:" + entity.getId());
             entity.setPointsHeld(false);
         }
 
@@ -343,8 +357,7 @@ public class LearningRequestService {
                 "Learning Request Cancelled",
                 "A pending learning request was cancelled by the learner.",
                 "LEARNING_REQUEST",
-                entity.getId()
-        );
+                entity.getId());
 
         User learner = userRepository.findById(entity.getLearnerId()).orElse(null);
         User mentor = userRepository.findById(entity.getMentorId()).orElse(null);

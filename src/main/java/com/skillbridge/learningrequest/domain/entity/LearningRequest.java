@@ -1,6 +1,7 @@
 package com.skillbridge.learningrequest.domain.entity;
 
 import com.skillbridge.auth.domain.entity.User;
+import com.skillbridge.forum.domain.entity.ForumPost;
 import com.skillbridge.learningrequest.domain.model.LearningRequestStatus;
 import com.skillbridge.mentor.domain.entity.MentorOffering;
 import com.skillbridge.shared.domain.model.SessionMode;
@@ -57,6 +58,13 @@ public class LearningRequest {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "offered_user_skill_id", insertable = false, updatable = false)
     private UserSkill offeredUserSkill;
+
+    @Column(name = "source_forum_post_id")
+    private UUID sourceForumPostId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "source_forum_post_id", insertable = false, updatable = false)
+    private ForumPost sourceForumPost;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "mode", nullable = false, length = 20)

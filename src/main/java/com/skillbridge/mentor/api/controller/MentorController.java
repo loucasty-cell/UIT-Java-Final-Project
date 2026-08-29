@@ -42,17 +42,15 @@ public class MentorController {
     @GetMapping("/{mentorId}/availability")
     public ResponseEntity<AvailabilityResponse> getAvailability(
             @PathVariable UUID mentorId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to
-    ) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to) {
         return ResponseEntity.ok(availabilityQueryService.getAvailability(mentorId, from, to));
     }
 
     @GetMapping("/{mentorId}/reviews")
     public ResponseEntity<PageResponse<ReviewResponse>> getMentorReviews(
             @PathVariable UUID mentorId,
-            @PageableDefault(size = 10) Pageable pageable
-    ) {
+            @PageableDefault(size = 10) Pageable pageable) {
         return ResponseEntity.ok(reviewService.getMentorReviews(mentorId, pageable));
     }
 }

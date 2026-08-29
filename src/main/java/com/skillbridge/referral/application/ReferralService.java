@@ -117,18 +117,18 @@ public class ReferralService {
                     REFERRAL_BONUS_POINTS,
                     PointEventType.REFERRAL_BONUS,
                     "REFERRAL",
-                    newUser.getId()
-            );
+                    newUser.getId());
 
             notificationService.notifyUser(
                     referrer.getId(),
                     "Referral Reward",
-                    "🎁 Referral reward: " + newUser.getFirstName() + " registered using your referral code! +" + REFERRAL_BONUS_POINTS + " points awarded.",
+                    "🎁 Referral reward: " + newUser.getFirstName() + " registered using your referral code! +"
+                            + REFERRAL_BONUS_POINTS + " points awarded.",
                     "REFERRAL",
-                    reward.getId()
-            );
+                    reward.getId());
 
-            log.info("Referral bonus of {} pts awarded to referrer {} for user {}", REFERRAL_BONUS_POINTS, referrer.getId(), newUser.getId());
+            log.info("Referral bonus of {} pts awarded to referrer {} for user {}", REFERRAL_BONUS_POINTS,
+                    referrer.getId(), newUser.getId());
         });
     }
 

@@ -1,55 +1,55 @@
 spring:
-  application:
-    name: skillbridge-backend
+    application:
+        name: skillbridge-backend
 
-  # Load the developer's private .env file from the project root (KEY=value lines).
-  # "optional:" means the app still boots fine when .env is absent (e.g. in CI).
-  # Real OS environment variables always take precedence over .env values.
-  config:
-    import: "optional:file:.env[.properties]"
+    # Load the developer's private .env file from the project root (KEY=value lines).
+    # "optional:" means the app still boots fine when .env is absent (e.g. in CI).
+    # Real OS environment variables always take precedence over .env values.
+    config:
+        import: "optional:file:.env[.properties]"
 
-  datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/skillbridge?sslmode=disable}
-    username: ${DATABASE_USERNAME:postgres}
-    password: ${DATABASE_PASSWORD:postgres}
-    driver-class-name: org.postgresql.Driver
-    hikari:
-      maximum-pool-size: 5
-      minimum-idle: 1
+    datasource:
+        url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/skillbridge?sslmode=disable}
+        username: ${DATABASE_USERNAME:postgres}
+        password: ${DATABASE_PASSWORD:postgres}
+        driver-class-name: org.postgresql.Driver
+        hikari:
+            maximum-pool-size: 5
+            minimum-idle: 1
 
-  jpa:
-    open-in-view: false
-    hibernate:
-      ddl-auto: validate
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+    jpa:
+        open-in-view: false
+        hibernate:
+            ddl-auto: validate
+        properties:
+            hibernate:
+                dialect: org.hibernate.dialect.PostgreSQLDialect
+                format_sql: true
 
-  flyway:
-    enabled: ${FLYWAY_ENABLED:true}
-    locations: classpath:db/migration
-    baseline-on-migrate: true
-    # V4.1 (skills catalog) was added after V5 had already shipped to databases,
-    # so it must be allowed to apply out of version order on existing schemas.
-    out-of-order: true
+    flyway:
+        enabled: ${FLYWAY_ENABLED:true}
+        locations: classpath:db/migration
+        baseline-on-migrate: true
+        # V4.1 (skills catalog) was added after V5 had already shipped to databases,
+        # so it must be allowed to apply out of version order on existing schemas.
+        out-of-order: true
 
 server:
-  # 9095: uncommon port chosen to avoid clashes with 3000/5173 (frontends), 5432 (Postgres),
-  # and 8080/8081 (other common local web servers)
-  port: ${SERVER_PORT:9095}
-  error:
-    include-message: always
-    include-binding-errors: always
+    # 9095: uncommon port chosen to avoid clashes with 3000/5173 (frontends), 5432 (Postgres),
+    # and 8080/8081 (other common local web servers)
+    port: ${SERVER_PORT:9095}
+    error:
+        include-message: always
+        include-binding-errors: always
 
 skillbridge:
-  security:
-    jwt:
-      secret: ${JWT_SECRET:very_secret_default_key_that_should_be_changed_in_prod}
-      access-token-minutes: ${ACCESS_TOKEN_MINUTES:720}
-      refresh-token-days: ${REFRESH_TOKEN_DAYS:7}
-  registration-bonus-points: ${REGISTRATION_BONUS_POINTS:30}
-  helpful-reward: ${HELPFUL_REWARD:5}
-  escrow-auto-release-hours: ${ESCROW_AUTO_RELEASE_HOURS:18}
-  cors:
-    allowed-origins: ${FRONTEND_ORIGINS:http://localhost:5173,http://localhost:3000,http://localhost:8080}
+    security:
+        jwt:
+            secret: ${JWT_SECRET:very_secret_default_key_that_should_be_changed_in_prod}
+            access-token-minutes: ${ACCESS_TOKEN_MINUTES:720}
+            refresh-token-days: ${REFRESH_TOKEN_DAYS:7}
+    registration-bonus-points: ${REGISTRATION_BONUS_POINTS:30}
+    helpful-reward: ${HELPFUL_REWARD:5}
+    escrow-auto-release-hours: ${ESCROW_AUTO_RELEASE_HOURS:18}
+    cors:
+        allowed-origins: ${FRONTEND_ORIGINS:http://localhost:5173,http://localhost:3000,http://localhost:8080}

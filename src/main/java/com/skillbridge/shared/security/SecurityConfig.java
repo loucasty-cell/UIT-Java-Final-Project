@@ -41,8 +41,10 @@ public class SecurityConfig {
     @Value("${skillbridge.security.jwt.secret}")
     private String jwtSecret;
 
-    // Configures HTTP security filter chain: stateless sessions, public auth matchers, and OAuth2 resource server
-    // Linkage: Applied to every incoming HTTP request before reaching REST controllers
+    // Configures HTTP security filter chain: stateless sessions, public auth
+    // matchers, and OAuth2 resource server
+    // Linkage: Applied to every incoming HTTP request before reaching REST
+    // controllers
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -50,15 +52,19 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/api/v1/auth/**", "/actuator/health", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/skills/**", "/api/v1/mentors/**", "/api/v1/forum/**", "/api/requests/**").permitAll()
+                        .requestMatchers("/api/v1/auth/**", "/actuator/health", "/v3/api-docs/**", "/swagger-ui/**",
+                                "/swagger-ui.html")
+                        .permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/skills/**",
+                                "/api/v1/mentors/**", "/api/v1/forum/**", "/api/requests/**")
+                        .permitAll()
                         .requestMatchers("/api/v1/admin/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN")
-                        .requestMatchers("/api/v1/me/mentor-offerings/**").hasAnyAuthority("MENTOR", "ROLE_MENTOR", "ADMIN", "ROLE_ADMIN")
-                        .anyRequest().authenticated()
-                )
+                        .requestMatchers("/api/v1/me/mentor-offerings/**")
+                        .hasAnyAuthority("MENTOR", "ROLE_MENTOR", "ADMIN", "ROLE_ADMIN")
+                        .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt.decoder(jwtDecoder()).jwtAuthenticationConverter(jwtAuthenticationConverter()))
-                );
+                        .jwt(jwt -> jwt.decoder(jwtDecoder())
+                                .jwtAuthenticationConverter(jwtAuthenticationConverter())));
         return http.build();
     }
 
@@ -70,8 +76,10 @@ public class SecurityConfig {
         return NimbusJwtDecoder.withSecretKey(secretKey).build();
     }
 
-    // Converts custom 'roles' claim in JWT to Spring Security GrantedAuthorities (both 'ADMIN' and 'ROLE_ADMIN' formats)
-    // Linkage: Bridges JWT claims with @PreAuthorize method security on controllers and services
+    // Converts custom 'roles' claim in JWT to Spring Security GrantedAuthorities
+    // (both 'ADMIN' and 'ROLE_ADMIN' formats)
+    // Linkage: Bridges JWT claims with @PreAuthorize method security on controllers
+    // and services
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
@@ -92,7 +100,8 @@ public class SecurityConfig {
         return jwtAuthenticationConverter;
     }
 
-    // Configures CORS filter to permit requests from specified frontend origin domains
+    // Configures CORS filter to permit requests from specified frontend origin
+    // domains
     // Linkage: Handles CORS preflight OPTIONS requests from web browser clients
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -107,8 +116,10 @@ public class SecurityConfig {
         return source;
     }
 
-    // Password encoder bean (BCrypt) used by RegistrationService and AuthenticationService
-    // Linkage: Hashes plaintext passwords during registration and checks passwords during login
+    // Password encoder bean (BCrypt) used by RegistrationService and
+    // AuthenticationService
+    // Linkage: Hashes plaintext passwords during registration and checks passwords
+    // during login
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

@@ -10,6 +10,7 @@ export default defineConfig({
   vite: {
     server: {
       port: 8081,
+      strictPort: true,
     },
   },
   tanstackStart: {

@@ -41,8 +41,8 @@ export function MentorPreviewCard({ item, onRequest }: MentorPreviewCardProps) {
   };
 
   return (
-    <div className="group relative flex-none w-[280px] sm:w-[320px] transition-all duration-300 hover:z-20">
-      <Card className="h-full rounded-2xl border-border/70 bg-card shadow-sm transition-all duration-300 group-hover:-translate-y-1.5 group-hover:shadow-xl group-hover:border-primary/40">
+    <div className="group relative flex-none w-[280px] sm:w-[320px] transition-all duration-300 hover:z-20 hover:scale-110 origin-center will-change-transform">
+      <Card className="h-full rounded-2xl border-border bg-card shadow-lg transition-all duration-300 group-hover:-translate-y-2 group-hover:shadow-2xl group-hover:border-primary/40">
         <CardContent className="p-5 flex flex-col justify-between h-full space-y-4">
           {/* Top Header */}
           <div className="flex items-start justify-between gap-2">
@@ -58,12 +58,12 @@ export function MentorPreviewCard({ item, onRequest }: MentorPreviewCardProps) {
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <h4 className="font-bold text-sm truncate text-foreground">{item.name}</h4>
-                <p className="text-[11px] text-muted-foreground truncate">{item.major}</p>
+                <h4 className="font-bold text-sm truncate text-white">{item.name}</h4>
+                <p className="text-[11px] text-gray-400 truncate">{item.major}</p>
                 <div className="flex items-center gap-1 text-[11px] mt-0.5">
                   <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                   <span className="font-semibold">{item.rating.toFixed(1)}</span>
-                  <span className="text-muted-foreground">({item.reviews})</span>
+                  <span className="text-muted-foreground text-gray-500">({item.reviews})</span>
                 </div>
               </div>
             </div>
@@ -84,7 +84,7 @@ export function MentorPreviewCard({ item, onRequest }: MentorPreviewCardProps) {
 
           {/* Teaches Skills */}
           <div className="space-y-1.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
               Teaches
             </p>
             <div className="flex flex-wrap gap-1">
@@ -92,7 +92,7 @@ export function MentorPreviewCard({ item, onRequest }: MentorPreviewCardProps) {
                 <Badge
                   key={s.name}
                   variant="outline"
-                  className="rounded-full text-[10px] px-2 py-0 border-indigo-200/80 bg-indigo-50/50 text-indigo-700 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300"
+                  className="rounded-full text-[10px] px-2 py-0 border-neutral-700/80 bg-neutral-800/50 text-gray-300"
                 >
                   {s.name}
                 </Badge>
@@ -111,7 +111,7 @@ export function MentorPreviewCard({ item, onRequest }: MentorPreviewCardProps) {
               size="sm"
               onClick={() => onRequest?.(item)}
               asChild={!onRequest}
-              className="rounded-xl text-xs h-8 px-3 shadow-sm font-semibold"
+              className="rounded-xl text-xs h-8 px-3 shadow-lg font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {onRequest ? (
                 <span>Request</span>

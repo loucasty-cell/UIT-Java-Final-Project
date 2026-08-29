@@ -33,7 +33,7 @@ export function SkillRail({ title, subtitle, items, onRequestItem }: SkillRailPr
       {/* Header with Chevrons */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold tracking-tight sm:text-2xl text-foreground">{title}</h2>
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl text-foreground">{title}</h2>
           {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
         </div>
 
@@ -42,7 +42,7 @@ export function SkillRail({ title, subtitle, items, onRequestItem }: SkillRailPr
             variant="outline"
             size="icon"
             onClick={scrollPrev}
-            className="h-8 w-8 rounded-full border-border/80 shadow-sm"
+            className="h-8 w-8 rounded-full border-border bg-muted text-foreground hover:bg-muted/80 shadow-md"
             aria-label="Scroll left"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -51,7 +51,7 @@ export function SkillRail({ title, subtitle, items, onRequestItem }: SkillRailPr
             variant="outline"
             size="icon"
             onClick={scrollNext}
-            className="h-8 w-8 rounded-full border-border/80 shadow-sm"
+            className="h-8 w-8 rounded-full border-border bg-muted text-foreground hover:bg-muted/80 shadow-md"
             aria-label="Scroll right"
           >
             <ChevronRight className="h-4 w-4" />
@@ -61,7 +61,7 @@ export function SkillRail({ title, subtitle, items, onRequestItem }: SkillRailPr
 
       {/* Embla Viewport */}
       <div className="overflow-hidden py-2 -my-2" ref={emblaRef}>
-        <div className="flex gap-4">
+        <div className="flex gap-3">
           {items.map((item) => (
             <MentorPreviewCard key={item.id} item={item} onRequest={onRequestItem} />
           ))}

@@ -194,12 +194,12 @@ function BrowsePage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-10 p-4 sm:p-6 lg:p-8">
+    <div className="mx-auto w-full max-w-7xl space-y-8 p-4 sm:p-6 lg:p-8">
       {/* Hero Billboard */}
       <HeroBanner />
 
       {/* Netflix Rails */}
-      <div className="space-y-10">
+      <div className="space-y-8">
         {/* Top 10 Rail */}
         <SkillRail
           title="Top 10 Mentors in SkillBridge This Week"

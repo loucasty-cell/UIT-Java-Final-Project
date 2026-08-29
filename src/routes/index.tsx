@@ -330,7 +330,7 @@ function Dashboard() {
       {/* Metrics Row */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Wallet Balance */}
-        <Card className="rounded-2xl border-border/70 shadow-sm">
+        <Card className="rounded-2xl bg-card border-border shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Available Balance
@@ -350,7 +350,7 @@ function Dashboard() {
         </Card>
 
         {/* Total Earned */}
-        <Card className="rounded-2xl border-border/70 shadow-sm">
+        <Card className="rounded-2xl bg-card border-border shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Total Earned
@@ -366,7 +366,7 @@ function Dashboard() {
         </Card>
 
         {/* Total Spent */}
-        <Card className="rounded-2xl border-border/70 shadow-sm">
+        <Card className="rounded-2xl bg-card border-border shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Total Spent
@@ -382,7 +382,7 @@ function Dashboard() {
         </Card>
 
         {/* Completed Sessions */}
-        <Card className="rounded-2xl border-border/70 shadow-sm">
+        <Card className="rounded-2xl bg-card border-border shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Completed Sessions
@@ -400,7 +400,7 @@ function Dashboard() {
 
       {/* Continue Learning Rail (Netflix-inspired) */}
       {scheduledSessions.length > 0 && (
-        <Card className="rounded-2xl border-border/70 shadow-sm">
+        <Card className="rounded-2xl bg-card border-border shadow-lg">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div>

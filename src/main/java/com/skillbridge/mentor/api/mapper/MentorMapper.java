@@ -52,7 +52,7 @@ public class MentorMapper {
         return response;
     }
 
-    private UserSummaryResponse toUserSummary(UUID userId, boolean mentorBadge) {
+    public UserSummaryResponse toUserSummary(UUID userId, boolean mentorBadge) {
         UserSummaryResponse summary = new UserSummaryResponse();
         summary.setId(userId);
         summary.setMentorBadge(mentorBadge);
@@ -71,7 +71,7 @@ public class MentorMapper {
         return summary;
     }
 
-    private SkillSummaryResponse toSkillSummary(UUID skillId) {
+    public SkillSummaryResponse toSkillSummary(UUID skillId) {
         SkillSummaryResponse summary = new SkillSummaryResponse();
         summary.setId(skillId);
 

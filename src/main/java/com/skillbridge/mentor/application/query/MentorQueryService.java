@@ -75,14 +75,18 @@ public class MentorQueryService {
                 continue;
             }
 
-            List<UserSkill> teachSkills = userSkillRepository.findByUserIdAndDirectionOrderByCreatedAtDesc(userId, Direction.TEACH);
-            List<UserSkill> learnSkills = userSkillRepository.findByUserIdAndDirectionOrderByCreatedAtDesc(userId, Direction.LEARN);
+            List<UserSkill> teachSkills = userSkillRepository.findByUserIdAndDirectionOrderByCreatedAtDesc(userId,
+                    Direction.TEACH);
+            List<UserSkill> learnSkills = userSkillRepository.findByUserIdAndDirectionOrderByCreatedAtDesc(userId,
+                    Direction.LEARN);
             List<MentorOffering> offerings = mentorOfferingRepository.findByMentorIdAndActiveTrue(userId);
 
             if (query != null && query.getQ() != null && !query.getQ().isBlank()) {
                 String qLower = query.getQ().toLowerCase(Locale.ROOT);
-                boolean matchesUser = (user.getDisplayName() != null && user.getDisplayName().toLowerCase(Locale.ROOT).contains(qLower))
-                        || (user.getFirstName() != null && user.getFirstName().toLowerCase(Locale.ROOT).contains(qLower))
+                boolean matchesUser = (user.getDisplayName() != null
+                        && user.getDisplayName().toLowerCase(Locale.ROOT).contains(qLower))
+                        || (user.getFirstName() != null
+                                && user.getFirstName().toLowerCase(Locale.ROOT).contains(qLower))
                         || (user.getLastName() != null && user.getLastName().toLowerCase(Locale.ROOT).contains(qLower))
                         || (user.getBio() != null && user.getBio().toLowerCase(Locale.ROOT).contains(qLower))
                         || (user.getMajor() != null && user.getMajor().toLowerCase(Locale.ROOT).contains(qLower));
@@ -114,9 +118,12 @@ public class MentorQueryService {
 
             Set<Mode> modes = new LinkedHashSet<>();
             for (MentorOffering off : offerings) {
-                if (Boolean.TRUE.equals(off.getPointsEnabled())) modes.add(Mode.POINTS);
-                if (Boolean.TRUE.equals(off.getSkillSwapEnabled())) modes.add(Mode.SKILL_SWAP);
-                if (Boolean.TRUE.equals(off.getVolunteerEnabled())) modes.add(Mode.VOLUNTEER);
+                if (Boolean.TRUE.equals(off.getPointsEnabled()))
+                    modes.add(Mode.POINTS);
+                if (Boolean.TRUE.equals(off.getSkillSwapEnabled()))
+                    modes.add(Mode.SKILL_SWAP);
+                if (Boolean.TRUE.equals(off.getVolunteerEnabled()))
+                    modes.add(Mode.VOLUNTEER);
             }
             if (modes.isEmpty()) {
                 modes.add(Mode.SKILL_SWAP);
@@ -127,7 +134,8 @@ public class MentorQueryService {
             }
 
             List<Review> reviews = reviewRepository.findByRevieweeId(userId);
-            double avgRating = reviews.isEmpty() ? 5.0 : reviews.stream().mapToInt(Review::getRating).average().orElse(5.0);
+            double avgRating = reviews.isEmpty() ? 5.0
+                    : reviews.stream().mapToInt(Review::getRating).average().orElse(5.0);
             int ratingCount = reviews.size();
 
             int minCost = offerings.stream()
@@ -181,8 +189,10 @@ public class MentorQueryService {
                 .map(mentorMapper::toResponse)
                 .collect(Collectors.toList());
 
-        List<UserSkill> teachSkills = userSkillRepository.findByUserIdAndDirectionOrderByCreatedAtDesc(mentorId, Direction.TEACH);
-        List<UserSkill> learnSkills = userSkillRepository.findByUserIdAndDirectionOrderByCreatedAtDesc(mentorId, Direction.LEARN);
+        List<UserSkill> teachSkills = userSkillRepository.findByUserIdAndDirectionOrderByCreatedAtDesc(mentorId,
+                Direction.TEACH);
+        List<UserSkill> learnSkills = userSkillRepository.findByUserIdAndDirectionOrderByCreatedAtDesc(mentorId,
+                Direction.LEARN);
 
         List<SkillSummaryResponse> teachSkillDtos = teachSkills.stream()
                 .map(ts -> mentorMapper.toSkillSummary(ts.getSkillId()))

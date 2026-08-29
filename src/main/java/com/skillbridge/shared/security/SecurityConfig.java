@@ -56,7 +56,7 @@ public class SecurityConfig {
                                 "/swagger-ui.html")
                         .permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/skills/**",
-                                "/api/v1/mentors/**", "/api/v1/forum/**", "/api/requests/**")
+                                "/api/skills/**", "/api/v1/mentors/**", "/api/v1/forum/**", "/api/requests/**")
                         .permitAll()
                         .requestMatchers("/api/v1/admin/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN")
                         .requestMatchers("/api/v1/me/mentor-offerings/**")

@@ -12,7 +12,10 @@ import java.util.UUID;
 @Repository
 public interface MentorOfferingRepository extends JpaRepository<MentorOffering, UUID> {
     Page<MentorOffering> findByMentorId(UUID mentorId, Pageable pageable);
+
     List<MentorOffering> findByMentorId(UUID mentorId);
+
     List<MentorOffering> findByMentorIdAndActiveTrue(UUID mentorId);
+
     List<MentorOffering> findByActiveTrue();
 }

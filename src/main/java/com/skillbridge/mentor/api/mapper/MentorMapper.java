@@ -37,9 +37,12 @@ public class MentorMapper {
         response.setPrice(entity.getPointCost());
 
         List<Mode> modes = new ArrayList<>();
-        if (Boolean.TRUE.equals(entity.getPointsEnabled())) modes.add(Mode.POINTS);
-        if (Boolean.TRUE.equals(entity.getSkillSwapEnabled())) modes.add(Mode.SKILL_SWAP);
-        if (Boolean.TRUE.equals(entity.getVolunteerEnabled())) modes.add(Mode.VOLUNTEER);
+        if (Boolean.TRUE.equals(entity.getPointsEnabled()))
+            modes.add(Mode.POINTS);
+        if (Boolean.TRUE.equals(entity.getSkillSwapEnabled()))
+            modes.add(Mode.SKILL_SWAP);
+        if (Boolean.TRUE.equals(entity.getVolunteerEnabled()))
+            modes.add(Mode.VOLUNTEER);
         response.setModes(modes);
 
         response.setDuration(entity.getDurationMinutes());

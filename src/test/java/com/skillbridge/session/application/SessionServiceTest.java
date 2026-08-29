@@ -93,6 +93,30 @@ public class SessionServiceTest {
     }
 
     @Test
+    void doubleConfirmationTransitionsFromAwaitingToCompleted() {
+        Fixture fixture = new Fixture();
+        SwapSession session = session(SwapSessionStatus.STARTED);
+        session.setPointCostSnapshot(25);
+        fixture.sessions.put(session.getId(), session);
+
+        // 1st participant confirms -> AWAITING_CONFIRMATION
+        TestAuthContext.loginAs(session.getRequesterId());
+        com.skillbridge.session.api.dto.response.SessionConfirmationResponse firstConf =
+                fixture.service.confirmCompletion(session.getId());
+        assertEquals(SwapSessionStatus.AWAITING_CONFIRMATION, firstConf.getStatus());
+        assertTrue(firstConf.getConfirmedByMe());
+        assertNotNull(firstConf.getAutoReleaseAt());
+
+        // 2nd participant confirms -> COMPLETED + escrow points released
+        TestAuthContext.loginAs(session.getResponderId());
+        com.skillbridge.session.api.dto.response.SessionConfirmationResponse secondConf =
+                fixture.service.confirmCompletion(session.getId());
+        assertEquals(SwapSessionStatus.COMPLETED, secondConf.getStatus());
+        assertTrue(secondConf.getConfirmedByMe());
+        assertEquals(25, secondConf.getPointsReleased());
+    }
+
+    @Test
     void rejectsStartSessionByNonParticipant() {
         Fixture fixture = new Fixture();
         SwapSession session = session(SwapSessionStatus.ACCEPTED);

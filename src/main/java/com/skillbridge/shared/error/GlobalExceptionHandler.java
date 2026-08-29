@@ -22,13 +22,22 @@ import java.util.UUID;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // Server-side logger so unexpected failures leave a stack trace in application logs
+    public record ApiErrorResponse(ErrorDetail error) {}
+    public record ErrorDetail(String code, String message, Map<String, String> fieldErrors, String requestId, String timestamp) {}
+
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     // Handles validation errors triggered by @Valid / @Validated on Request DTOs
-    // Linkage: Maps field-level validation constraints to structured RFC 9457 problem details
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail handleValidationException(MethodArgumentNotValidException ex) {
+        String requestId = UUID.randomUUID().toString();
+        String timestamp = OffsetDateTime.now().toString();
+
+        Map<String, String> fieldErrors = new HashMap<>();
+        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+            fieldErrors.put(fieldError.getField(), fieldError.getDefaultMessage());
+        }
+
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST,
                 "One or more fields failed validation."
@@ -36,21 +45,38 @@ public class GlobalExceptionHandler {
         problemDetail.setType(URI.create("https://skillbridge.edu/errors/validation-failed"));
         problemDetail.setTitle("Validation Failed");
         problemDetail.setProperty("code", "VALIDATION_FAILED");
-        problemDetail.setProperty("timestamp", OffsetDateTime.now().toString());
-        problemDetail.setProperty("requestId", UUID.randomUUID().toString());
-
-        Map<String, String> fieldErrors = new HashMap<>();
-        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
-            fieldErrors.put(fieldError.getField(), fieldError.getDefaultMessage());
-        }
+        problemDetail.setProperty("timestamp", timestamp);
+        problemDetail.setProperty("requestId", requestId);
         problemDetail.setProperty("fieldErrors", fieldErrors);
+        problemDetail.setProperty("error", new ErrorDetail("VALIDATION_FAILED", "One or more fields failed validation.", fieldErrors, requestId, timestamp));
+        return problemDetail;
+    }
+
+    // Handles custom domain ApiException (e.g. INSUFFICIENT_POINTS, SCHEDULE_CONFLICT, TOKEN_EXPIRED)
+    @ExceptionHandler(ApiException.class)
+    public ProblemDetail handleApiException(ApiException ex) {
+        String requestId = UUID.randomUUID().toString();
+        String timestamp = OffsetDateTime.now().toString();
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                ex.getStatus(),
+                ex.getMessage()
+        );
+        problemDetail.setType(URI.create("https://skillbridge.edu/errors/" + ex.getCode().toLowerCase()));
+        problemDetail.setTitle(ex.getCode());
+        problemDetail.setProperty("code", ex.getCode());
+        problemDetail.setProperty("timestamp", timestamp);
+        problemDetail.setProperty("requestId", requestId);
+        problemDetail.setProperty("error", new ErrorDetail(ex.getCode(), ex.getMessage(), null, requestId, timestamp));
         return problemDetail;
     }
 
     // Handles authentication failures such as invalid password or non-existent user
-    // Linkage: Thrown by AuthenticationService during login check
     @ExceptionHandler(BadCredentialsException.class)
     public ProblemDetail handleBadCredentialsException(BadCredentialsException ex) {
+        String requestId = UUID.randomUUID().toString();
+        String timestamp = OffsetDateTime.now().toString();
+
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.UNAUTHORIZED,
                 ex.getMessage()
@@ -58,15 +84,18 @@ public class GlobalExceptionHandler {
         problemDetail.setType(URI.create("https://skillbridge.edu/errors/unauthenticated"));
         problemDetail.setTitle("Authentication Failed");
         problemDetail.setProperty("code", "UNAUTHENTICATED");
-        problemDetail.setProperty("timestamp", OffsetDateTime.now().toString());
-        problemDetail.setProperty("requestId", UUID.randomUUID().toString());
+        problemDetail.setProperty("timestamp", timestamp);
+        problemDetail.setProperty("requestId", requestId);
+        problemDetail.setProperty("error", new ErrorDetail("UNAUTHENTICATED", ex.getMessage(), null, requestId, timestamp));
         return problemDetail;
     }
 
     // Handles authorization and permission violations
-    // Linkage: Thrown by @PreAuthorize on Controllers or SecurityUtils / domain services
     @ExceptionHandler(AccessDeniedException.class)
     public ProblemDetail handleAccessDeniedException(AccessDeniedException ex) {
+        String requestId = UUID.randomUUID().toString();
+        String timestamp = OffsetDateTime.now().toString();
+
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.FORBIDDEN,
                 ex.getMessage()
@@ -74,14 +103,18 @@ public class GlobalExceptionHandler {
         problemDetail.setType(URI.create("https://skillbridge.edu/errors/forbidden"));
         problemDetail.setTitle("Access Denied");
         problemDetail.setProperty("code", "FORBIDDEN");
-        problemDetail.setProperty("timestamp", OffsetDateTime.now().toString());
-        problemDetail.setProperty("requestId", UUID.randomUUID().toString());
+        problemDetail.setProperty("timestamp", timestamp);
+        problemDetail.setProperty("requestId", requestId);
+        problemDetail.setProperty("error", new ErrorDetail("FORBIDDEN", ex.getMessage(), null, requestId, timestamp));
         return problemDetail;
     }
 
     // Handles schedule time overlap conflicts (status 409 Conflict)
     @ExceptionHandler(ScheduleConflictException.class)
     public ProblemDetail handleScheduleConflictException(ScheduleConflictException ex) {
+        String requestId = UUID.randomUUID().toString();
+        String timestamp = OffsetDateTime.now().toString();
+
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.CONFLICT,
                 ex.getMessage()
@@ -89,20 +122,23 @@ public class GlobalExceptionHandler {
         problemDetail.setType(URI.create("https://skillbridge.edu/errors/schedule-conflict"));
         problemDetail.setTitle("Schedule Conflict");
         problemDetail.setProperty("code", "SCHEDULE_CONFLICT");
-        problemDetail.setProperty("timestamp", OffsetDateTime.now().toString());
-        problemDetail.setProperty("requestId", UUID.randomUUID().toString());
+        problemDetail.setProperty("timestamp", timestamp);
+        problemDetail.setProperty("requestId", requestId);
         if (ex.getConflictingSessionId() != null) {
             problemDetail.setProperty("conflictingSessionId", ex.getConflictingSessionId().toString());
             problemDetail.setProperty("scheduledStart", ex.getScheduledStart() != null ? ex.getScheduledStart().toString() : null);
             problemDetail.setProperty("scheduledEnd", ex.getScheduledEnd() != null ? ex.getScheduledEnd().toString() : null);
         }
+        problemDetail.setProperty("error", new ErrorDetail("SCHEDULE_CONFLICT", ex.getMessage(), null, requestId, timestamp));
         return problemDetail;
     }
 
     // Handles invalid domain operations and contract argument constraints
-    // Linkage: Thrown by command services when business invariant checks fail
     @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
     public ProblemDetail handleIllegalArgumentException(RuntimeException ex) {
+        String requestId = UUID.randomUUID().toString();
+        String timestamp = OffsetDateTime.now().toString();
+
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST,
                 ex.getMessage()
@@ -110,18 +146,19 @@ public class GlobalExceptionHandler {
         problemDetail.setType(URI.create("https://skillbridge.edu/errors/bad-request"));
         problemDetail.setTitle("Bad Request");
         problemDetail.setProperty("code", "INVALID_ARGUMENT");
-        problemDetail.setProperty("timestamp", OffsetDateTime.now().toString());
-        problemDetail.setProperty("requestId", UUID.randomUUID().toString());
+        problemDetail.setProperty("timestamp", timestamp);
+        problemDetail.setProperty("requestId", requestId);
+        problemDetail.setProperty("error", new ErrorDetail("INVALID_ARGUMENT", ex.getMessage(), null, requestId, timestamp));
         return problemDetail;
     }
 
     // Fallback handler for unhandled server exceptions
-    // Linkage: Prevents leaking internal stack traces to clients while returning standardized error format
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleGenericException(Exception ex) {
-        // Log the full trace server-side (with the requestId) while keeping the client response generic
         String requestId = UUID.randomUUID().toString();
+        String timestamp = OffsetDateTime.now().toString();
         log.error("Unhandled internal error [requestId={}]", requestId, ex);
+
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "An unexpected internal error occurred."
@@ -129,8 +166,9 @@ public class GlobalExceptionHandler {
         problemDetail.setType(URI.create("https://skillbridge.edu/errors/internal-error"));
         problemDetail.setTitle("Internal Server Error");
         problemDetail.setProperty("code", "INTERNAL_ERROR");
-        problemDetail.setProperty("timestamp", OffsetDateTime.now().toString());
+        problemDetail.setProperty("timestamp", timestamp);
         problemDetail.setProperty("requestId", requestId);
+        problemDetail.setProperty("error", new ErrorDetail("INTERNAL_ERROR", "An unexpected internal error occurred.", null, requestId, timestamp));
         return problemDetail;
     }
 }

@@ -13,7 +13,9 @@ import java.util.List;
 @AllArgsConstructor
 public class ReferralSummaryResponse {
     private String referralCode;
+    private String referralUrl;
     private Long totalReferred;
+    private Long totalReferrals;
     private Integer totalPointsEarned;
     private List<ReferralRewardResponse> rewards;
 }

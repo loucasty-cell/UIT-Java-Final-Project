@@ -49,5 +49,7 @@ skillbridge:
       access-token-minutes: ${ACCESS_TOKEN_MINUTES:720}
       refresh-token-days: ${REFRESH_TOKEN_DAYS:7}
   registration-bonus-points: ${REGISTRATION_BONUS_POINTS:30}
+  helpful-reward: ${HELPFUL_REWARD:5}
+  escrow-auto-release-hours: ${ESCROW_AUTO_RELEASE_HOURS:18}
   cors:
     allowed-origins: ${FRONTEND_ORIGINS:http://localhost:5173,http://localhost:3000,http://localhost:8080}

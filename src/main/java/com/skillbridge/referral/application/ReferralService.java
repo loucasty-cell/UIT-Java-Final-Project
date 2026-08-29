@@ -82,7 +82,9 @@ public class ReferralService {
 
         return ReferralSummaryResponse.builder()
                 .referralCode(code)
+                .referralUrl("/register?ref=" + code)
                 .totalReferred((long) rewards.size())
+                .totalReferrals((long) rewards.size())
                 .totalPointsEarned(totalPoints)
                 .rewards(rewardDtos)
                 .build();

@@ -156,6 +156,15 @@ public class WalletService {
         Escrow escrow = openEscrow(referenceType, referenceId);
         int amount = escrow.getAmount();
 
+        // Lock wallets in deterministic order to avoid deadlock
+        if (learnerId.compareTo(mentorId) < 0) {
+            lockWallet(learnerId);
+            lockWallet(mentorId);
+        } else {
+            lockWallet(mentorId);
+            lockWallet(learnerId);
+        }
+
         // Step 2: Take back the held points from the learner wallet
         Wallet learnerWallet = lockWallet(learnerId);
         learnerWallet.setHeldPoints(learnerWallet.getHeldPoints() - amount);

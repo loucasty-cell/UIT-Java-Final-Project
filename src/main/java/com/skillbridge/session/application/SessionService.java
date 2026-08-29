@@ -11,6 +11,7 @@ import com.skillbridge.notification.application.NotificationService;
 import com.skillbridge.notification.domain.model.NotificationType;
 import com.skillbridge.session.api.dto.request.CreateDisputeRequest;
 import com.skillbridge.session.api.dto.request.UpdateSessionRequest;
+import com.skillbridge.session.api.dto.response.SessionConfirmationResponse;
 import com.skillbridge.session.api.dto.response.SessionResponse;
 import com.skillbridge.session.api.mapper.SessionMapper;
 import com.skillbridge.session.domain.entity.SessionConfirmation;
@@ -121,6 +122,59 @@ public class SessionService {
         }
 
         return sessionMapper.toResponse(loadSession(sessionId));
+    }
+
+    public SessionConfirmationResponse confirmCompletion(UUID sessionId) {
+        if (sessionId == null) {
+            throw new IllegalArgumentException("Session ID must not be null");
+        }
+        SwapSession session = loadSession(sessionId);
+        requireParticipant(session, "Only session participants can complete this session");
+
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        if (!confirmationRepository.existsBySessionIdAndConfirmedBy(sessionId, currentUserId)) {
+            SessionConfirmation confirmation = new SessionConfirmation();
+            confirmation.setId(UUID.randomUUID());
+            confirmation.setSessionId(sessionId);
+            confirmation.setConfirmedBy(currentUserId);
+            confirmation.setConfirmedAt(OffsetDateTime.now());
+            confirmationRepository.save(confirmation);
+        }
+
+        UUID otherParticipantId = session.getRequesterId().equals(currentUserId)
+                ? session.getResponderId()
+                : session.getRequesterId();
+
+        boolean otherConfirmed = confirmationRepository.existsBySessionIdAndConfirmedBy(sessionId, otherParticipantId);
+
+        int pointsReleased = 0;
+        if (otherConfirmed) {
+            // Both confirmed -> complete immediately
+            swapService.completeSwapSession(sessionId);
+            session = loadSession(sessionId);
+            pointsReleased = (session.getPointCostSnapshot() != null) ? session.getPointCostSnapshot() : 0;
+        } else {
+            // First confirmation -> set auto release deadline and notify other party
+            int releaseHours = platformSettingRepository.findTopByOrderByUpdatedAtDesc()
+                    .map(PlatformSetting::getEscrowReleaseHours)
+                    .orElse(DEFAULT_ESCROW_RELEASE_HOURS);
+
+            session.setStatus(SwapSessionStatus.AWAITING_CONFIRMATION);
+            session.setAutoReleaseAt(OffsetDateTime.now().plusHours(releaseHours));
+            session.setUpdatedAt(OffsetDateTime.now());
+            session = sessionRepository.save(session);
+
+            notificationService.notifySessionStatusChange(otherParticipantId, NotificationType.SESSION_UPDATED, sessionId);
+        }
+
+        return SessionConfirmationResponse.builder()
+                .id(session.getId())
+                .status(session.getStatus())
+                .pointsReleased(pointsReleased)
+                .autoReleaseAt(session.getAutoReleaseAt())
+                .confirmedByMe(true)
+                .confirmedByOther(otherConfirmed)
+                .build();
     }
 
     public SessionResponse updateSession(UUID sessionId, UpdateSessionRequest request) {

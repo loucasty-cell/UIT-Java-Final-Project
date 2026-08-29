@@ -117,6 +117,14 @@ public class SwapSession {
     @Column(name = "version", nullable = false)
     private Long version;
 
+    public Integer getPointCostSnapshot() {
+        return pointCost;
+    }
+
+    public void setPointCostSnapshot(Integer pointCostSnapshot) {
+        this.pointCost = pointCostSnapshot;
+    }
+
     @PrePersist
     void onCreate() {
         OffsetDateTime now = OffsetDateTime.now();

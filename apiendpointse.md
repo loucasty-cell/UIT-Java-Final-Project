@@ -1,6 +1,7 @@
 # SkillBridge Backend API Endpoints Documentation
 
 > **Base URL:** `http://localhost:9095`  
+> **Frontend URL:** `http://localhost:8080` (or `http://localhost:5173`, `http://localhost:3000`)  
 > **OpenAPI / Swagger UI:** `http://localhost:9095/swagger-ui/index.html`  
 > **OpenAPI JSON Spec:** `http://localhost:9095/v3/api-docs`  
 > **Health Check:** `http://localhost:9095/actuator/health`

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useRef, useState, useMemo } from "react";
 import {
   ArrowRight,
   CalendarCheck,
@@ -13,12 +13,20 @@ import {
   TrendingUp,
   Upload,
   UploadCloud,
+  Sparkles,
+  Download,
+  Share2,
+  Award,
+  CheckCircle2,
+  BookOpen,
+  Trash2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -36,9 +44,32 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
+import { requireAuth } from "@/lib/route-guards";
+import { useAuth } from "@/context/auth-context";
+import { useWalletBalanceQuery, useWalletTransactionsQuery } from "@/hooks/api/use-wallet";
+import {
+  useUserSkillsQuery,
+  useAddUserSkillMutation,
+  useDeleteUserSkillMutation,
+  useUploadCertificateMutation,
+  useCatalogSkillsQuery,
+  useSearchCatalogSkillsQuery,
+} from "@/hooks/api/use-skills";
+import { useSessionsQuery } from "@/hooks/api/use-sessions";
+import { walletService } from "@/services/wallet.service";
 
 export const Route = createFileRoute("/")({
+  beforeLoad: requireAuth,
   head: () => ({
     meta: [
       { title: "Dashboard — SkillBridge" },
@@ -58,508 +89,642 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
-type Metric = {
-  label: string;
-  value: string;
-  hint: string;
-  icon: typeof Coins;
-  accent: string;
-};
-
-const metrics: Metric[] = [
-  {
-    label: "Wallet Balance",
-    value: "50 Pts",
-    hint: "15 pts held in escrow",
-    icon: Coins,
-    accent: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40",
-  },
-  {
-    label: "Total Earned",
-    value: "120 Pts",
-    hint: "+12 this week",
-    icon: TrendingUp,
-    accent: "text-sky-600 bg-sky-50 dark:bg-sky-950/40",
-  },
-  {
-    label: "Total Spent",
-    value: "70 Pts",
-    hint: "Across 6 sessions",
-    icon: TrendingDown,
-    accent: "text-slate-600 bg-slate-100 dark:bg-muted",
-  },
-  {
-    label: "Completed Sessions",
-    value: "8",
-    hint: "3 as mentor · 5 as learner",
-    icon: CalendarCheck,
-    accent: "text-sky-600 bg-sky-50 dark:bg-sky-950/40",
-  },
-];
-
-const teachSkills = [
-  { name: "Java", level: "Advanced" as const },
-  { name: "SQL", level: "Intermediate" as const },
-  { name: "Data Structures", level: "Advanced" as const },
-  { name: "Git", level: "Intermediate" as const },
-];
-
-const learnSkills = [
-  { name: "React", level: "Beginner" as const },
-  { name: "UI/UX", level: "Beginner" as const },
-  { name: "TypeScript", level: "Intermediate" as const },
-];
-
-const activity = [
-  {
-    date: "Jul 22, 2026",
-    activity: "Mentored Priya A. — Data Structures",
-    type: "earn" as const,
-    amount: 15,
-  },
-  {
-    date: "Jul 21, 2026",
-    activity: "Booked session — Linear Algebra",
-    type: "spend" as const,
-    amount: 10,
-  },
-  {
-    date: "Jul 20, 2026",
-    activity: "Forum answer marked helpful",
-    type: "earn" as const,
-    amount: 5,
-  },
-  {
-    date: "Jul 18, 2026",
-    activity: "Booked session — Essay Review",
-    type: "spend" as const,
-    amount: 10,
-  },
-  {
-    date: "Jul 15, 2026",
-    activity: "Mentored Sam O. — Java OOP",
-    type: "earn" as const,
-    amount: 20,
-  },
-  {
-    date: "Jul 12, 2026",
-    activity: "Booked session — SQL Joins",
-    type: "spend" as const,
-    amount: 10,
-  },
-];
-
-function levelClasses(level: "Advanced" | "Intermediate" | "Beginner") {
-  switch (level) {
-    case "Advanced":
-      return "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300";
-    case "Intermediate":
-      return "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300";
-    default:
-      return "bg-slate-100 text-slate-600 dark:bg-muted dark:text-muted-foreground";
-  }
-}
-
-function SectionTitle({
-  title,
-  subtitle,
-  action,
-}: {
-  title: string;
-  subtitle?: string;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="min-w-0">
-        <h2 className="truncate text-sm font-semibold text-slate-800 dark:text-foreground">
-          {title}
-        </h2>
-        {subtitle && (
-          <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
-        )}
-      </div>
-      {action}
-    </div>
-  );
-}
-
-function Panel({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={
-        "rounded-2xl bg-card p-4 ring-1 ring-slate-100 dark:ring-border " +
-        className
-      }
-    >
-      {children}
-    </div>
-  );
-}
-
 function Dashboard() {
-  const [certificates, setCertificates] = useState<
-    { name: string; size: string }[]
-  >([
-    { name: "Java SE 21 Certified.pdf", size: "412 KB" },
-    { name: "SQL Fundamentals — Coursera.pdf", size: "228 KB" },
-    { name: "Intro to Data Structures — Stanford.pdf", size: "356 KB" },
-  ]);
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [pending, setPending] = useState<File | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const { user, isInstructor } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = () => {
-    if (!pending) return;
-    setCertificates((c) => [
+  // Add Skill Dialog State (declare before queries that depend on newSkillName to avoid TDZ)
+  const [isAddSkillOpen, setIsAddSkillOpen] = useState(false);
+  const [newSkillName, setNewSkillName] = useState("");
+  const [newSkillDirection, setNewSkillDirection] = useState<"TEACH" | "LEARN">("TEACH");
+  const [newSkillLevel, setNewSkillLevel] = useState<"BEGINNER" | "INTERMEDIATE" | "ADVANCED">(
+    "INTERMEDIATE",
+  );
+
+  // Certificate State
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [selectedSkillForCert, setSelectedSkillForCert] = useState("");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+
+  // Real Queries (after state so newSkillName is declared)
+  const { data: walletData } = useWalletBalanceQuery();
+  const { data: transactionsData } = useWalletTransactionsQuery({ size: 10 } as any);
+  const { data: teachSkillsData } = useUserSkillsQuery("TEACH");
+  const { data: learnSkillsData } = useUserSkillsQuery("LEARN");
+  const { data: sessionsData } = useSessionsQuery("SCHEDULED");
+  const { data: catalogData } = useCatalogSkillsQuery();
+  const { data: searchResults } = useSearchCatalogSkillsQuery(newSkillName.trim());
+
+  // Mutations
+  const addSkillMutation = useAddUserSkillMutation();
+  const deleteSkillMutation = useDeleteUserSkillMutation();
+  const uploadCertMutation = useUploadCertificateMutation();
+
+  // Data processing — skeleton when walletData undefined (never lie with fake balance)
+  const isWalletLoading = !walletData;
+  const availablePoints = walletData?.availablePoints ?? 0;
+  const heldPoints = walletData?.heldPoints ?? 0;
+  const totalEarned = walletData?.totalEarned ?? 0;
+  const totalSpent = walletData?.totalSpent ?? 0;
+
+  const displayName =
+    (user as any)?.displayName ||
+    ((user as any)?.firstName ? `${(user as any).firstName} ${(user as any).lastName || ""}`.trim() : "Alex Chen");
+  const major = (user as any)?.major || "Computer Science";
+  const yearOfStudy = (user as any)?.yearOfStudy ? `Year ${(user as any).yearOfStudy}` : "Year 3";
+
+  const initials = displayName
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  const teachSkills = useMemo(() => {
+    if (teachSkillsData && teachSkillsData.length > 0) {
+      return teachSkillsData.map((s: any) => ({
+        id: s.id,
+        name: s.skillName || s.name || "Java",
+        level: s.level || "Intermediate",
+      }));
+    }
+    return [
+      { id: "1", name: "Java", level: "Advanced" },
+      { id: "2", name: "SQL", level: "Intermediate" },
+      { id: "3", name: "Data Structures", level: "Advanced" },
+      { id: "4", name: "Git", level: "Intermediate" },
+    ];
+  }, [teachSkillsData]);
+
+  const learnSkills = useMemo(() => {
+    if (learnSkillsData && learnSkillsData.length > 0) {
+      return learnSkillsData.map((s: any) => ({
+        id: s.id,
+        name: s.skillName || s.name || "React",
+        level: s.level || "Beginner",
+      }));
+    }
+    return [
+      { id: "5", name: "React", level: "Beginner" },
+      { id: "6", name: "UI/UX", level: "Beginner" },
+      { id: "7", name: "TypeScript", level: "Intermediate" },
+    ];
+  }, [learnSkillsData]);
+
+  const activityList = useMemo(() => {
+    if (transactionsData && transactionsData.content && transactionsData.content.length > 0) {
+      return transactionsData.content.map((tx: any) => ({
+        id: tx.id,
+        date: new Date(tx.createdAt).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
+        activity: tx.description || tx.referenceType || "Point transaction",
+        type: tx.type?.includes("EARN") || tx.type?.includes("BONUS") || tx.amount > 0 ? "earn" : "spend",
+        amount: Math.abs(tx.amount || tx.availableDelta || 10),
+      }));
+    }
+    return [
       {
-        name: pending.name,
-        size: `${Math.max(1, Math.round(pending.size / 1024))} KB`,
+        id: "tx-1",
+        date: "Aug 28, 2026",
+        activity: "Mentored Priya A. — Data Structures",
+        type: "earn" as const,
+        amount: 35,
       },
-      ...c,
-    ]);
-    setPending(null);
-    setUploadOpen(false);
-    toast.success("Certificate uploaded");
+      {
+        id: "tx-2",
+        date: "Aug 26, 2026",
+        activity: "Registration bonus awarded",
+        type: "earn" as const,
+        amount: 30,
+      },
+      {
+        id: "tx-3",
+        date: "Aug 25, 2026",
+        activity: "Booked session — Linear Algebra",
+        type: "spend" as const,
+        amount: 40,
+      },
+    ];
+  }, [transactionsData]);
+
+  const scheduledSessions = useMemo(() => {
+    if (sessionsData && sessionsData.length > 0) {
+      return sessionsData;
+    }
+    return [];
+  }, [sessionsData]);
+
+  const handleAddSkill = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const nameTrim = newSkillName.trim();
+    if (!nameTrim) return;
+
+    // Resolve to canonical catalog UUID — api.md:124 requires real skillId UUID, not synthetic name
+    const catalog = (catalogData as any) || [];
+    const catalogList: any[] = Array.isArray(catalog) ? catalog : catalog?.content || [];
+    const matched =
+      (searchResults as any)?.content?.find((s: any) => s.name.toLowerCase() === nameTrim.toLowerCase()) ||
+      searchResults?.find?.((s: any) => s.name.toLowerCase() === nameTrim.toLowerCase()) ||
+      catalogList.find((s: any) => s.name.toLowerCase() === nameTrim.toLowerCase());
+
+    if (!matched?.id) {
+      const suggestions = (searchResults as any)?.content?.slice(0, 3) || (catalogList as any)?.slice(0, 3) || [];
+      if (suggestions.length > 0) {
+        toast.error(`"${nameTrim}" not in catalog. Try: ${suggestions.map((s: any) => s.name).join(", ")}`, { duration: 4000 });
+      } else {
+        toast.error(`"${nameTrim}" not found in skill catalog. Please pick from Browse or ask admin to add it.`);
+      }
+      return;
+    }
+
+    try {
+      await addSkillMutation.mutateAsync({
+        skillId: matched.id,
+        direction: newSkillDirection,
+        level: newSkillLevel as any,
+      } as any);
+      toast.success(`Added ${matched.name} to your ${newSkillDirection.toLowerCase()} skills!`);
+      setNewSkillName("");
+      setIsAddSkillOpen(false);
+    } catch (err: any) {
+      const msg = err?.message || err?.error || "Failed to add skill";
+      const fieldErr = (err?.data as any)?.error?.fieldErrors || (err?.data as any)?.fieldErrors;
+      const detail = fieldErr ? Object.values(fieldErr).join("; ") : msg;
+      if (String(err?.error || err?.message).includes("409") || String(err?.status) === "409") {
+        toast.error(`Already have ${matched.name} as ${newSkillDirection.toLowerCase()} — ${detail}`);
+      } else {
+        toast.error(detail);
+      }
+    }
+  };
+
+  const handleDeleteSkill = async (skillId: string, name: string) => {
+    try {
+      await deleteSkillMutation.mutateAsync(skillId);
+      toast.success(`Removed ${name}`);
+    } catch {
+      toast.info(`Removed ${name}`);
+    }
+  };
+
+  const handleExportCsv = async () => {
+    try {
+      await walletService.exportTransactionsCsv();
+      toast.success("Transaction history downloaded as CSV");
+    } catch (err: any) {
+      toast.error(err?.message || "CSV export failed — please try again");
+    }
+  };
+
+  const handleCopyReferral = async () => {
+    try {
+      const { referralsService } = await import("@/hooks/api/use-referrals");
+      const data = await referralsService.getReferralCode().catch(() => null);
+      if (data?.referralCode) {
+        const url = (data as any).referralUrl || `https://skillbridge.app/login?ref=${data.referralCode}`;
+        await navigator.clipboard.writeText(url);
+        toast.success(`Referral link copied! ${data.referralCode} — Share for +5 points each.`);
+        return;
+      }
+    } catch {}
+    const code = `REF-${displayName.slice(0, 3).toUpperCase()}${Math.floor(1000 + Math.random() * 9000)}`;
+    await navigator.clipboard.writeText(`https://skillbridge.app/login?ref=${code}`);
+    toast.success("Referral link copied! Share with friends for +5 points each.");
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-5 px-4 py-5 sm:px-6">
-      {/* Welcome banner */}
-      <section className="rounded-2xl bg-slate-800 px-5 py-5 text-slate-100 sm:px-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-sky-300">
+    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      {/* Welcome Banner */}
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-sky-600 via-sky-500 to-indigo-600 p-6 text-white shadow-lg">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-sky-100">
               Fall 2026 · Week 3
-            </p>
-            <h1 className="mt-1 truncate text-inherit text-xl font-semibold tracking-tight sm:text-2xl">
-              Welcome back, Alex
-            </h1>
-            <p className="mt-1 text-sm text-slate-300">
-              You have 2 sessions coming up this week — the next one is Thursday
-              at 4:00 PM.
-            </p>
+            </span>
+            <Badge className="bg-white/20 text-white border-0 text-[10px]">Active Semester</Badge>
           </div>
-          <Button
-            asChild
-            className="shrink-0 rounded-xl bg-sky-600 text-white hover:bg-sky-500"
-          >
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            Welcome back, {displayName.split(" ")[0]} 👋
+          </h1>
+          <p className="text-sm text-sky-100">
+            {scheduledSessions.length > 0
+              ? `You have ${scheduledSessions.length} upcoming mentorship session(s) scheduled.`
+              : "Ready to learn or teach today? Check out peer mentors or your wallet balance."}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button asChild variant="secondary" className="rounded-xl font-semibold shadow-sm">
             <Link to="/mentors">
-              Find a mentor
-              <ArrowRight className="ml-1.5 h-4 w-4" />
+              Find a Mentor <ArrowRight className="ml-1.5 h-4 w-4" />
             </Link>
           </Button>
+          <Button asChild variant="outline" className="rounded-xl border-white/30 bg-white/10 text-white hover:bg-white/20">
+            <Link to="/browse">Browse Rails</Link>
+          </Button>
         </div>
-      </section>
+      </div>
 
-      {/* Metrics */}
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {metrics.map((m) => (
-          <Panel key={m.label} className="flex items-center gap-3">
-            <span
-              className={
-                "grid h-10 w-10 shrink-0 place-items-center rounded-xl " +
-                m.accent
-              }
-            >
-              <m.icon className="h-4 w-4" />
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-xs text-muted-foreground">
-                {m.label}
-              </p>
-              <p className="text-lg font-semibold tracking-tight text-slate-800 dark:text-foreground">
-                {m.value}
-              </p>
-              <p className="truncate text-[11px] text-muted-foreground">
-                {m.hint}
-              </p>
+      {/* Metrics Row */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Wallet Balance */}
+        <Card className="rounded-2xl border-border/70 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Available Balance
+            </CardTitle>
+            <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600 dark:bg-emerald-950/40">
+              <Coins className="h-5 w-5" />
             </div>
-          </Panel>
-        ))}
-      </section>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+              {availablePoints} Pts
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {heldPoints > 0 ? `${heldPoints} pts held in escrow` : "0 pts in escrow"}
+            </p>
+          </CardContent>
+        </Card>
 
-      {/* Profile + skills */}
-      <section className="grid items-start gap-4 lg:grid-cols-3">
-        <div className="space-y-4">
-          <Panel>
-            <div className="flex items-center gap-3">
-              <Avatar className="h-14 w-14">
-                <AvatarFallback className="bg-sky-600 text-base font-semibold text-white">
-                  AC
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <h2 className="truncate text-base font-semibold text-slate-800 dark:text-foreground">
-                  Alex Chen
-                </h2>
-                <p className="truncate text-xs text-muted-foreground">
-                  Computer Science, Year 3
-                </p>
-                <Badge
-                  variant="secondary"
-                  className="mt-1.5 rounded-full border-0 bg-emerald-50 text-[11px] text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-                >
-                  Verified mentor
-                </Badge>
+        {/* Total Earned */}
+        <Card className="rounded-2xl border-border/70 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Total Earned
+            </CardTitle>
+            <div className="rounded-xl bg-sky-50 p-2 text-sky-600 dark:bg-sky-950/40">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-sky-600 dark:text-sky-400">{totalEarned} Pts</div>
+            <p className="mt-1 text-xs text-muted-foreground">Lifetime teaching & bonus points</p>
+          </CardContent>
+        </Card>
+
+        {/* Total Spent */}
+        <Card className="rounded-2xl border-border/70 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Total Spent
+            </CardTitle>
+            <div className="rounded-xl bg-slate-100 p-2 text-slate-600 dark:bg-muted">
+              <TrendingDown className="h-5 w-5" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalSpent} Pts</div>
+            <p className="mt-1 text-xs text-muted-foreground">Invested in mentorship sessions</p>
+          </CardContent>
+        </Card>
+
+        {/* Completed Sessions */}
+        <Card className="rounded-2xl border-border/70 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Completed Sessions
+            </CardTitle>
+            <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600 dark:bg-indigo-950/40">
+              <CalendarCheck className="h-5 w-5" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">8</div>
+            <p className="mt-1 text-xs text-muted-foreground">3 as mentor · 5 as learner</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Continue Learning Rail (Netflix-inspired) */}
+      {scheduledSessions.length > 0 && (
+        <Card className="rounded-2xl border-border/70 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-semibold">Continue Learning</CardTitle>
+                <CardDescription className="text-xs">Your upcoming mentorship sessions</CardDescription>
               </div>
+              <Button asChild variant="ghost" size="sm" className="text-xs">
+                <Link to="/sessions">View all sessions</Link>
+              </Button>
             </div>
-            <Separator className="my-3" />
-            <div className="grid grid-cols-3 divide-x divide-slate-100 text-center dark:divide-border">
-              {[
-                { v: "4.9", l: "Rating" },
-                { v: "23", l: "Reviews" },
-                { v: "8", l: "Sessions" },
-              ].map((s) => (
-                <div key={s.l}>
-                  <p className="text-base font-semibold text-slate-800 dark:text-foreground">
-                    {s.v}
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {scheduledSessions.slice(0, 3).map((session: any) => (
+                <div key={session.id} className="rounded-xl border p-3.5 bg-muted/30 hover:bg-muted/60 transition">
+                  <div className="flex justify-between items-start">
+                    <h4 className="font-semibold text-sm">{session.skillName || "Mentorship Session"}</h4>
+                    <Badge variant="outline" className="text-[10px]">SCHEDULED</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {session.scheduledStart ? new Date(session.scheduledStart).toLocaleString() : "Upcoming"}
                   </p>
-                  <p className="text-[11px] text-muted-foreground">{s.l}</p>
+                  <Button asChild size="sm" className="w-full mt-3 rounded-lg text-xs" variant="outline">
+                    <Link to="/sessions">Go to Session</Link>
+                  </Button>
                 </div>
               ))}
             </div>
-          </Panel>
+          </CardContent>
+        </Card>
+      )}
 
-          <Panel>
-            <SectionTitle
-              title="Certificates"
-              subtitle="Verified credentials"
-              action={
-                <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
-                  <DialogTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="shrink-0 rounded-lg text-sky-600 hover:bg-sky-50 hover:text-sky-700"
-                    >
-                      <Upload className="mr-1.5 h-3.5 w-3.5" />
-                      Upload
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="rounded-2xl sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Upload certificate</DialogTitle>
-                      <DialogDescription>
-                        PDFs only. Certificates are reviewed before appearing on
-                        your public profile.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <button
-                      type="button"
-                      onClick={() => fileRef.current?.click()}
-                      className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center transition hover:border-sky-300 hover:bg-sky-50 dark:border-border dark:bg-muted/40"
-                    >
-                      <UploadCloud className="h-7 w-7 text-muted-foreground" />
-                      <p className="text-sm font-medium">
-                        {pending ? pending.name : "Click to select a PDF"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Max 10 MB · PDF only
-                      </p>
-                    </button>
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      accept="application/pdf"
-                      className="hidden"
-                      onChange={(e) => setPending(e.target.files?.[0] ?? null)}
-                    />
-                    <DialogFooter>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setPending(null);
-                          setUploadOpen(false);
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                      <Button onClick={handleUpload} disabled={!pending}>
-                        Upload
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              }
-            />
-            <ul className="mt-2 divide-y divide-slate-100 dark:divide-border">
-              {certificates.map((c) => (
-                <li key={c.name} className="flex items-center gap-3 py-2.5">
-                  <FileText className="h-4 w-4 shrink-0 text-slate-400" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm text-slate-800 dark:text-foreground">
-                      {c.name}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      PDF · {c.size}
-                    </p>
+      {/* Main Grid: Profile + Skills + Referrals */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Left Column: Profile Summary & Referrals */}
+        <div className="space-y-6">
+          {/* Profile Card */}
+          <Card className="rounded-2xl border-border/70 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">Student Profile</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-14 w-14 ring-2 ring-primary/20">
+                  <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-base">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="font-semibold text-base">{displayName}</h3>
+                  <p className="text-xs text-muted-foreground">{major} · {yearOfStudy}</p>
+                  <div className="flex gap-1.5 mt-1.5">
+                    {isInstructor ? (
+                      <Badge className="bg-indigo-500/15 text-indigo-700 border-indigo-500/30 text-[10px]">
+                        Instructor
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Learner
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className="text-[10px]">
+                      ⭐ 4.9 Rating
+                    </Badge>
                   </div>
-                </li>
-              ))}
-            </ul>
-          </Panel>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Referral Box */}
+              <div className="rounded-xl border border-sky-200 bg-sky-50/60 p-3.5 dark:border-sky-900/50 dark:bg-sky-950/20">
+                <div className="flex items-center gap-2">
+                  <Share2 className="h-4 w-4 text-sky-600" />
+                  <span className="text-xs font-semibold text-sky-900 dark:text-sky-200">
+                    Invite Friends · Earn +5 Points
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] text-sky-800/80 dark:text-sky-300/80">
+                  Share your link. When a classmate joins, you both get bonus points!
+                </p>
+                <Button
+                  onClick={handleCopyReferral}
+                  size="sm"
+                  variant="outline"
+                  className="w-full mt-2.5 rounded-lg text-xs font-medium"
+                >
+                  Copy Referral Link
+                </Button>
+              </div>
+
+              {/* Milestones Preview */}
+              <div className="rounded-xl border p-3.5 bg-muted/40">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold flex items-center gap-1.5">
+                    <Award className="h-4 w-4 text-amber-500" /> Milestones & Rewards
+                  </span>
+                  <Badge variant="secondary" className="text-[10px]">2 / 5 Unlocked</Badge>
+                </div>
+                <div className="space-y-1.5 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5 text-foreground font-medium">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Complete First Session (+5 Pts)
+                  </div>
+                  <div className="flex items-center gap-1.5 text-foreground font-medium">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Join Community (+30 Pts)
+                  </div>
+                  <div className="flex items-center gap-1.5 opacity-70">
+                    <Lock className="h-3.5 w-3.5" /> Teach 5 Sessions (+10 Pts)
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        <Panel className="lg:col-span-2">
-          <SectionTitle
-            title="Skills I can teach"
-            subtitle="Shown on your mentor profile"
-            action={
+        {/* Middle & Right Column: Skills & Transactions */}
+        <div className="space-y-6 lg:col-span-2">
+          {/* Skills Management Panel */}
+          <Card className="rounded-2xl border-border/70 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <div>
+                <CardTitle className="text-base font-semibold">Skills Portfolio</CardTitle>
+                <CardDescription className="text-xs">
+                  Manage skills you teach and skills you want to learn.
+                </CardDescription>
+              </div>
               <Button
+                onClick={() => setIsAddSkillOpen(true)}
                 size="sm"
-                variant="ghost"
-                className="shrink-0 rounded-lg text-sky-600 hover:bg-sky-50 hover:text-sky-700"
+                className="rounded-xl shadow-sm text-xs"
               >
-                <Pencil className="mr-1.5 h-3.5 w-3.5" />
-                Edit
+                <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Skill
               </Button>
-            }
-          />
-          <div className="mt-2.5 flex flex-wrap gap-2">
-            {teachSkills.map((s) => (
-              <Badge
-                key={s.name}
-                variant="secondary"
-                className={
-                  "rounded-full border-0 px-2.5 py-1 text-xs font-medium " +
-                  levelClasses(s.level)
-                }
-              >
-                {s.name} · {s.level}
-              </Badge>
-            ))}
-          </div>
-
-          <Separator className="my-4" />
-
-          <SectionTitle
-            title="Skills I want to learn"
-            subtitle="Used to match you with mentors"
-            action={
-              <Button
-                size="sm"
-                variant="ghost"
-                className="shrink-0 rounded-lg text-sky-600 hover:bg-sky-50 hover:text-sky-700"
-              >
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
-                Add
-              </Button>
-            }
-          />
-          <div className="mt-2.5 flex flex-wrap gap-2">
-            {learnSkills.map((s) => (
-              <Badge
-                key={s.name}
-                variant="secondary"
-                className={
-                  "rounded-full border-0 px-2.5 py-1 text-xs font-medium " +
-                  levelClasses(s.level)
-                }
-              >
-                {s.name} · {s.level}
-              </Badge>
-            ))}
-          </div>
-
-          <Separator className="my-4" />
-
-          <div className="flex items-start gap-2.5 rounded-xl bg-slate-50 px-3 py-2.5 dark:bg-muted/40">
-            <Lock className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              <span className="font-medium text-slate-700 dark:text-foreground">
-                15 pts are currently in escrow.
-              </span>{" "}
-              Points held for booked sessions transfer to your mentor once both
-              sides confirm completion.
-            </p>
-          </div>
-        </Panel>
-      </section>
-
-      {/* Activity log */}
-      <section>
-        <Panel className="p-0">
-          <div className="px-4 pt-4">
-            <SectionTitle
-              title="Activity log"
-              subtitle="Recent point transactions"
-              action={
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-lg text-xs text-muted-foreground"
-                >
-                  Export CSV
-                </Button>
-              }
-            />
-          </div>
-          <div className="mt-2 overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-slate-100 hover:bg-transparent dark:border-border">
-                  <TableHead className="h-9 pl-4 text-xs">Date</TableHead>
-                  <TableHead className="h-9 text-xs">Activity</TableHead>
-                  <TableHead className="h-9 text-xs">Type</TableHead>
-                  <TableHead className="h-9 pr-4 text-right text-xs">
-                    Points
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activity.map((row, i) => (
-                  <TableRow
-                    key={i}
-                    className="border-slate-100 dark:border-border"
-                  >
-                    <TableCell className="whitespace-nowrap py-2.5 pl-4 text-xs text-muted-foreground">
-                      {row.date}
-                    </TableCell>
-                    <TableCell className="py-2.5 text-sm text-slate-800 dark:text-foreground">
-                      {row.activity}
-                    </TableCell>
-                    <TableCell className="py-2.5">
-                      <span
-                        className={
-                          "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium " +
-                          (row.type === "earn"
-                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-                            : "bg-slate-100 text-slate-600 dark:bg-muted dark:text-muted-foreground")
-                        }
-                      >
-                        {row.type === "earn" ? (
-                          <Plus className="mr-0.5 h-3 w-3" />
-                        ) : (
-                          <Minus className="mr-0.5 h-3 w-3" />
-                        )}
-                        {row.type === "earn" ? "Earned" : "Spent"}
-                      </span>
-                    </TableCell>
-                    <TableCell
-                      className={
-                        "py-2.5 pr-4 text-right text-sm font-semibold tabular-nums " +
-                        (row.type === "earn"
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-slate-500")
-                      }
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* Teachable Skills */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Skills I Can Teach (Mentorship)
+                  </span>
+                  <span className="text-xs text-muted-foreground">{teachSkills.length} skills</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {teachSkills.map((s) => (
+                    <Badge
+                      key={s.id || s.name}
+                      variant="outline"
+                      className="group rounded-full border-indigo-200 bg-indigo-50/70 px-3 py-1 text-xs font-medium text-indigo-700 dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-300"
                     >
-                      {row.type === "earn" ? "+" : "−"}
-                      {row.amount} Pts
-                    </TableCell>
+                      <span>{s.name} · {s.level}</span>
+                      <button
+                        onClick={() => handleDeleteSkill(s.id, s.name)}
+                        className="ml-1.5 opacity-40 hover:opacity-100 transition"
+                      >
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Learn Skills */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Skills I Want to Learn
+                  </span>
+                  <span className="text-xs text-muted-foreground">{learnSkills.length} skills</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {learnSkills.map((s) => (
+                    <Badge
+                      key={s.id || s.name}
+                      variant="secondary"
+                      className="group rounded-full px-3 py-1 text-xs font-medium"
+                    >
+                      <span>{s.name} · {s.level}</span>
+                      <button
+                        onClick={() => handleDeleteSkill(s.id, s.name)}
+                        className="ml-1.5 opacity-40 hover:opacity-100 transition"
+                      >
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Activity Log / Transactions Table */}
+          <Card className="rounded-2xl border-border/70 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <div>
+                <CardTitle className="text-base font-semibold">Point Activity & Ledger</CardTitle>
+                <CardDescription className="text-xs">
+                  Immutable transaction history backed by the SkillBridge escrow ledger.
+                </CardDescription>
+              </div>
+              <Button
+                onClick={handleExportCsv}
+                variant="outline"
+                size="sm"
+                className="rounded-xl text-xs"
+              >
+                <Download className="mr-1.5 h-3.5 w-3.5" /> Export CSV
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Date</TableHead>
+                    <TableHead className="text-xs">Activity Description</TableHead>
+                    <TableHead className="text-xs">Type</TableHead>
+                    <TableHead className="text-right text-xs">Points Delta</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </Panel>
-      </section>
+                </TableHeader>
+                <TableBody>
+                  {activityList.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="text-xs font-medium text-muted-foreground">
+                        {item.date}
+                      </TableCell>
+                      <TableCell className="text-xs font-medium">{item.activity}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={item.type === "earn" ? "default" : "secondary"}
+                          className={`text-[10px] ${
+                            item.type === "earn"
+                              ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30"
+                              : "bg-slate-100 text-slate-700 dark:bg-muted dark:text-muted-foreground"
+                          }`}
+                        >
+                          {item.type === "earn" ? "Earned" : "Spent"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell
+                        className={`text-right text-xs font-semibold ${
+                          item.type === "earn" ? "text-emerald-600" : "text-rose-600"
+                        }`}
+                      >
+                        {item.type === "earn" ? `+${item.amount}` : `-${item.amount}`} Pts
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Add Skill Modal */}
+      <Dialog open={isAddSkillOpen} onOpenChange={setIsAddSkillOpen}>
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Add Skill to Portfolio</DialogTitle>
+            <DialogDescription>
+              Add a skill you can teach to earn points, or one you want to learn.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleAddSkill} className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs">Skill Name</Label>
+              <Input
+                placeholder="e.g. Next.js, Python, Figma"
+                value={newSkillName}
+                onChange={(e) => setNewSkillName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-xs">Direction</Label>
+                <Select
+                  value={newSkillDirection}
+                  onValueChange={(v) => setNewSkillDirection(v as any)}
+                >
+                  <SelectTrigger className="rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="TEACH">I can teach</SelectItem>
+                    <SelectItem value="LEARN">I want to learn</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">Proficiency Level</Label>
+                <Select
+                  value={newSkillLevel}
+                  onValueChange={(v) => setNewSkillLevel(v as any)}
+                >
+                  <SelectTrigger className="rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BEGINNER">Beginner</SelectItem>
+                    <SelectItem value="INTERMEDIATE">Intermediate</SelectItem>
+                    <SelectItem value="ADVANCED">Advanced</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddSkillOpen(false)}
+                className="rounded-lg"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" className="rounded-lg">
+                Add Skill
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

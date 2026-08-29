@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -15,6 +16,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { TopNav } from "@/components/top-nav";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/context/auth-context";
 
 function NotFoundComponent() {
   return (
@@ -97,9 +99,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Dashboard — SkillBridge" },
-      { name: "twitter:description", content: "Your SkillBridge dashboard: wallet balance, skills, certificates, and point activity." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1a7f0752-4e3c-4353-bf14-d0cf9daa6d0b/id-preview-683fde90--16b85d25-9e36-4f57-9617-28d56f6294ae.lovable.app-1784706805847.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1a7f0752-4e3c-4353-bf14-d0cf9daa6d0b/id-preview-683fde90--16b85d25-9e36-4f57-9617-28d56f6294ae.lovable.app-1784706805847.png" },
+      {
+        name: "twitter:description",
+        content:
+          "Your SkillBridge dashboard: wallet balance, skills, certificates, and point activity.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1a7f0752-4e3c-4353-bf14-d0cf9daa6d0b/id-preview-683fde90--16b85d25-9e36-4f57-9617-28d56f6294ae.lovable.app-1784706805847.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1a7f0752-4e3c-4353-bf14-d0cf9daa6d0b/id-preview-683fde90--16b85d25-9e36-4f57-9617-28d56f6294ae.lovable.app-1784706805847.png",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -131,16 +145,41 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SidebarProvider>
-        <AppSidebar isAdmin />
-        <SidebarInset className="bg-background">
-          <TopNav />
-          <main className="flex-1">
-            <Outlet />
-          </main>
-        </SidebarInset>
+      <AuthProvider>
+        <RootLayout />
         <Toaster />
-      </SidebarProvider>
+      </AuthProvider>
     </QueryClientProvider>
+  );
+}
+
+/**
+ * Layout wrapper that hides sidebar/topnav on auth pages (/login).
+ * Shows a loading skeleton while AuthProvider initializes.
+ */
+function RootLayout() {
+  const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const isAuthPage = pathname === "/login" || pathname === "/register";
+
+  // On auth pages, render without sidebar/topnav
+  if (isAuthPage) {
+    return (
+      <main className="min-h-screen">
+        <Outlet />
+      </main>
+    );
+  }
+
+  // On app pages, render full layout with sidebar
+  return (
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset className="bg-background">
+        <TopNav />
+        <main className="flex-1">
+          <Outlet />
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

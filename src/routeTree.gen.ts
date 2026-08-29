@@ -11,9 +11,15 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as ForumRouteImport } from './routes/forum'
+import { Route as InstructorRouteImport } from './routes/instructor'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as MentorApplicationRouteImport } from './routes/mentor-application'
 import { Route as MentorsRouteImport } from './routes/mentors'
 import { Route as SessionsRouteImport } from './routes/sessions'
+import { Route as WatchlistRouteImport } from './routes/watchlist'
+import { Route as SkillSkillIdRouteImport } from './routes/skill.$skillId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -25,9 +31,29 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BrowseRoute = BrowseRouteImport.update({
+  id: '/browse',
+  path: '/browse',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ForumRoute = ForumRouteImport.update({
   id: '/forum',
   path: '/forum',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InstructorRoute = InstructorRouteImport.update({
+  id: '/instructor',
+  path: '/instructor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MentorApplicationRoute = MentorApplicationRouteImport.update({
+  id: '/mentor-application',
+  path: '/mentor-application',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MentorsRoute = MentorsRouteImport.update({
@@ -40,43 +66,111 @@ const SessionsRoute = SessionsRouteImport.update({
   path: '/sessions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WatchlistRoute = WatchlistRouteImport.update({
+  id: '/watchlist',
+  path: '/watchlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SkillSkillIdRoute = SkillSkillIdRouteImport.update({
+  id: '/skill/$skillId',
+  path: '/skill/$skillId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/browse': typeof BrowseRoute
   '/forum': typeof ForumRoute
+  '/instructor': typeof InstructorRoute
+  '/login': typeof LoginRoute
+  '/mentor-application': typeof MentorApplicationRoute
   '/mentors': typeof MentorsRoute
   '/sessions': typeof SessionsRoute
+  '/watchlist': typeof WatchlistRoute
+  '/skill/$skillId': typeof SkillSkillIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/browse': typeof BrowseRoute
   '/forum': typeof ForumRoute
+  '/instructor': typeof InstructorRoute
+  '/login': typeof LoginRoute
+  '/mentor-application': typeof MentorApplicationRoute
   '/mentors': typeof MentorsRoute
   '/sessions': typeof SessionsRoute
+  '/watchlist': typeof WatchlistRoute
+  '/skill/$skillId': typeof SkillSkillIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/browse': typeof BrowseRoute
   '/forum': typeof ForumRoute
+  '/instructor': typeof InstructorRoute
+  '/login': typeof LoginRoute
+  '/mentor-application': typeof MentorApplicationRoute
   '/mentors': typeof MentorsRoute
   '/sessions': typeof SessionsRoute
+  '/watchlist': typeof WatchlistRoute
+  '/skill/$skillId': typeof SkillSkillIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/forum' | '/mentors' | '/sessions'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/browse'
+    | '/forum'
+    | '/instructor'
+    | '/login'
+    | '/mentor-application'
+    | '/mentors'
+    | '/sessions'
+    | '/watchlist'
+    | '/skill/$skillId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/forum' | '/mentors' | '/sessions'
-  id: '__root__' | '/' | '/admin' | '/forum' | '/mentors' | '/sessions'
+  to:
+    | '/'
+    | '/admin'
+    | '/browse'
+    | '/forum'
+    | '/instructor'
+    | '/login'
+    | '/mentor-application'
+    | '/mentors'
+    | '/sessions'
+    | '/watchlist'
+    | '/skill/$skillId'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/browse'
+    | '/forum'
+    | '/instructor'
+    | '/login'
+    | '/mentor-application'
+    | '/mentors'
+    | '/sessions'
+    | '/watchlist'
+    | '/skill/$skillId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  BrowseRoute: typeof BrowseRoute
   ForumRoute: typeof ForumRoute
+  InstructorRoute: typeof InstructorRoute
+  LoginRoute: typeof LoginRoute
+  MentorApplicationRoute: typeof MentorApplicationRoute
   MentorsRoute: typeof MentorsRoute
   SessionsRoute: typeof SessionsRoute
+  WatchlistRoute: typeof WatchlistRoute
+  SkillSkillIdRoute: typeof SkillSkillIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -95,11 +189,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/browse': {
+      id: '/browse'
+      path: '/browse'
+      fullPath: '/browse'
+      preLoaderRoute: typeof BrowseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/forum': {
       id: '/forum'
       path: '/forum'
       fullPath: '/forum'
       preLoaderRoute: typeof ForumRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/instructor': {
+      id: '/instructor'
+      path: '/instructor'
+      fullPath: '/instructor'
+      preLoaderRoute: typeof InstructorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mentor-application': {
+      id: '/mentor-application'
+      path: '/mentor-application'
+      fullPath: '/mentor-application'
+      preLoaderRoute: typeof MentorApplicationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mentors': {
@@ -116,15 +238,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SessionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/watchlist': {
+      id: '/watchlist'
+      path: '/watchlist'
+      fullPath: '/watchlist'
+      preLoaderRoute: typeof WatchlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/skill/$skillId': {
+      id: '/skill/$skillId'
+      path: '/skill/$skillId'
+      fullPath: '/skill/$skillId'
+      preLoaderRoute: typeof SkillSkillIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  BrowseRoute: BrowseRoute,
   ForumRoute: ForumRoute,
+  InstructorRoute: InstructorRoute,
+  LoginRoute: LoginRoute,
+  MentorApplicationRoute: MentorApplicationRoute,
   MentorsRoute: MentorsRoute,
   SessionsRoute: SessionsRoute,
+  WatchlistRoute: WatchlistRoute,
+  SkillSkillIdRoute: SkillSkillIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

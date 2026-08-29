@@ -18,23 +18,27 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping({"/api/notifications", "/api/v1/notifications"})
+@RequestMapping({ "/api/notifications", "/api/v1/notifications" })
 @RequiredArgsConstructor
 public class NotificationController {
 
     private final NotificationService notificationService;
 
-    @GetMapping({"", "/me"})
+    @GetMapping({ "", "/me" })
     public ResponseEntity<List<NotificationResponse>> getCurrentUserNotifications() {
         return ResponseEntity.ok(notificationService.getUserNotifications());
     }
 
-    @RequestMapping(value = "/{notificationId}/read", method = {org.springframework.web.bind.annotation.RequestMethod.POST, org.springframework.web.bind.annotation.RequestMethod.PATCH})
+    @RequestMapping(value = "/{notificationId}/read", method = {
+            org.springframework.web.bind.annotation.RequestMethod.POST,
+            org.springframework.web.bind.annotation.RequestMethod.PATCH })
     public ResponseEntity<NotificationResponse> markAsRead(@PathVariable UUID notificationId) {
         return ResponseEntity.ok(notificationService.markAsRead(notificationId));
     }
 
-    @RequestMapping(value = {"/mark-all-read", "/read-all"}, method = {org.springframework.web.bind.annotation.RequestMethod.POST, org.springframework.web.bind.annotation.RequestMethod.PATCH})
+    @RequestMapping(value = { "/mark-all-read", "/read-all" }, method = {
+            org.springframework.web.bind.annotation.RequestMethod.POST,
+            org.springframework.web.bind.annotation.RequestMethod.PATCH })
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void markAllAsRead() {
         notificationService.markAllAsRead();

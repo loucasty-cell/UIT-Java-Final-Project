@@ -106,11 +106,21 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Use setAllowedOriginPatterns instead of setAllowedOrigins to support wildcards (e.g., http://localhost:*)
-        // This allows frontend to run on any localhost port during development
-        configuration.setAllowedOriginPatterns(List.of(allowedOrigins.split(",")));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        List<String> origins = new ArrayList<>();
+        if (allowedOrigins != null && !allowedOrigins.isBlank()) {
+            for (String origin : allowedOrigins.split(",")) {
+                if (!origin.isBlank()) {
+                    origins.add(origin.trim());
+                }
+            }
+        }
+        if (origins.isEmpty()) {
+            origins.addAll(List.of("http://localhost:*", "http://127.0.0.1:*", "http://localhost:8081", "http://localhost:8080", "http://localhost:5173", "http://localhost:3000"));
+        }
+        configuration.setAllowedOriginPatterns(origins);
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
         configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(List.of("Authorization", "Content-Disposition", "X-Request-Id"));
         configuration.setAllowCredentials(false);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

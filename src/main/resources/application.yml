@@ -52,6 +52,6 @@ skillbridge:
     helpful-reward: ${HELPFUL_REWARD:5}
     escrow-auto-release-hours: ${ESCROW_AUTO_RELEASE_HOURS:18}
     cors:
-        # Wildcard pattern allows frontend on any localhost port during development
+        # Wildcard pattern allows frontend on any localhost port during development (8081, 8080, 5173, 3000, etc.)
         # For production, set FRONTEND_ORIGINS env var to specific domains (e.g., https://app.skillbridge.com)
-        allowed-origins: ${FRONTEND_ORIGINS:http://localhost:*,http://localhost:5173,http://localhost:3000,http://localhost:8080}
+        allowed-origins: ${FRONTEND_ORIGINS:http://localhost:8081,http://localhost:8080,http://localhost:5173,http://localhost:3000,http://localhost:*,http://127.0.0.1:8081,http://127.0.0.1:8080,http://127.0.0.1:*}

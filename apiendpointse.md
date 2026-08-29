@@ -1,7 +1,7 @@
 # SkillBridge Backend API Endpoints Documentation
 
 > **Base URL:** `http://localhost:9095`  
-> **Frontend URL:** `http://localhost:8080` (or `http://localhost:5173`, `http://localhost:3000`)  
+> **Frontend URL:** `http://localhost:8081` (or `http://localhost:8080`, `http://localhost:5173`, `http://localhost:3000`)  
 > **OpenAPI / Swagger UI:** `http://localhost:9095/swagger-ui/index.html`  
 > **OpenAPI JSON Spec:** `http://localhost:9095/v3/api-docs`  
 > **Health Check:** `http://localhost:9095/actuator/health`
@@ -731,9 +731,9 @@ _(Requires user to have `ROLE_ADMIN`)_
 ```
 
 - **Modes Supported:**
-  - `POINTS`: Deducts points from learner and puts them into escrow (held).
-  - `SKILL_SWAP`: Requires `offeredUserSkillId` (no points held).
-  - `VOLUNTEER`: Free session for learner. Upon mentor double-confirmation completion, system awards mentor **+5 points** volunteer bonus.
+    - `POINTS`: Deducts points from learner and puts them into escrow (held).
+    - `SKILL_SWAP`: Requires `offeredUserSkillId` (no points held).
+    - `VOLUNTEER`: Free session for learner. Upon mentor double-confirmation completion, system awards mentor **+5 points** volunteer bonus.
 - **Validation:** Enforces 15-minute buffer before & after scheduled session for both learner and mentor.
 - **Error Response on Conflict (409 Conflict):**
 
@@ -753,8 +753,8 @@ _(Requires user to have `ROLE_ADMIN`)_
 - **`GET /api/v1/learning-requests?direction=OUTGOING`**
 - **Auth:** Bearer Token
 - **Query Params:**
-  - `direction`: `INCOMING` (requests received as mentor) or `OUTGOING` (requests sent as learner)
-  - `status`: Optional filter (`PENDING`, `ACCEPTED`, `REJECTED`, `CANCELLED`, `EXPIRED`)
+    - `direction`: `INCOMING` (requests received as mentor) or `OUTGOING` (requests sent as learner)
+    - `status`: Optional filter (`PENDING`, `ACCEPTED`, `REJECTED`, `CANCELLED`, `EXPIRED`)
 
 ### 13.3 Accept Learning Request
 
@@ -942,13 +942,12 @@ _(Requires user to have `ROLE_ADMIN`)_
 
 ## 18. Points Economy & Reward Distribution Reference
 
-| Trigger Event | Points Delta | Mode / Type | Idempotent |
-| :--- | :--- | :--- | :--- |
-| **New Account Registration** | `+30 pts` (or platform default) | `REGISTRATION_BONUS` | Yes |
-| **Refer a Friend** | `+5 pts` (to Referrer) | `REFERRAL_BONUS` | Yes |
-| **Volunteer Mentoring Session** | `+5 pts` (to Mentor upon completion) | `VOLUNTEER_REWARD` | Yes |
-| **Review Submission** | `+3 pts` (to Reviewer upon review) | `REVIEW_REWARD` | Yes |
-| **Milestone Achievement** | `+5 to +10 pts` (upon reaching milestone threshold) | `MILESTONE_BONUS` | Yes |
-| **Forum Contribution** | `+5 to +10 pts` | `FORUM_CONTRIBUTION` | Yes |
-| **Paid Session Escrow** | `-pointCost` (Learner) $\to$ `+pointCost` (Mentor) | `POINTS_RELEASE` / `POINTS_HOLD` | Yes |
-
+| Trigger Event                   | Points Delta                                        | Mode / Type                      | Idempotent |
+| :------------------------------ | :-------------------------------------------------- | :------------------------------- | :--------- |
+| **New Account Registration**    | `+30 pts` (or platform default)                     | `REGISTRATION_BONUS`             | Yes        |
+| **Refer a Friend**              | `+5 pts` (to Referrer)                              | `REFERRAL_BONUS`                 | Yes        |
+| **Volunteer Mentoring Session** | `+5 pts` (to Mentor upon completion)                | `VOLUNTEER_REWARD`               | Yes        |
+| **Review Submission**           | `+3 pts` (to Reviewer upon review)                  | `REVIEW_REWARD`                  | Yes        |
+| **Milestone Achievement**       | `+5 to +10 pts` (upon reaching milestone threshold) | `MILESTONE_BONUS`                | Yes        |
+| **Forum Contribution**          | `+5 to +10 pts`                                     | `FORUM_CONTRIBUTION`             | Yes        |
+| **Paid Session Escrow**         | `-pointCost` (Learner) $\to$ `+pointCost` (Mentor)  | `POINTS_RELEASE` / `POINTS_HOLD` | Yes        |

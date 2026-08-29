@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -27,5 +28,16 @@ public interface SwapSessionRepository extends JpaRepository<SwapSession, UUID> 
     List<SwapSession> findActiveByUserId(
             @Param("userId") UUID userId,
             @Param("statuses") List<SwapSessionStatus> statuses
+    );
+
+    @Query("""
+            select session from SwapSession session
+            where session.status in :statuses
+              and session.autoReleaseAt is not null
+              and session.autoReleaseAt <= :now
+            """)
+    List<SwapSession> findSessionsEligibleForAutoRelease(
+            @Param("statuses") List<SwapSessionStatus> statuses,
+            @Param("now") OffsetDateTime now
     );
 }

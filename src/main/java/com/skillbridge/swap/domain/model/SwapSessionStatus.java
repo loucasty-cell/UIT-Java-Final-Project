@@ -4,5 +4,6 @@ public enum SwapSessionStatus {
     ACCEPTED,
     STARTED,
     COMPLETED,
-    CANCELLED
+    CANCELLED,
+    DISPUTED
 }

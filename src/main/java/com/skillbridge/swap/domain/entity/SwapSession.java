@@ -82,6 +82,9 @@ public class SwapSession {
     @Column(name = "completed_at")
     private OffsetDateTime completedAt;
 
+    @Column(name = "auto_release_at")
+    private OffsetDateTime autoReleaseAt;
+
     @Column(name = "scheduled_at")
     private OffsetDateTime scheduledAt;
 

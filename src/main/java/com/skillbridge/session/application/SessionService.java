@@ -1,10 +1,21 @@
 package com.skillbridge.session.application;
 
+import com.skillbridge.admin.api.dto.response.DisputeResponse;
+import com.skillbridge.admin.api.mapper.AdminMapper;
+import com.skillbridge.admin.domain.entity.Dispute;
+import com.skillbridge.admin.domain.entity.PlatformSetting;
+import com.skillbridge.admin.domain.model.DisputeStatus;
+import com.skillbridge.admin.infrastructure.persistence.DisputeRepository;
+import com.skillbridge.admin.infrastructure.persistence.PlatformSettingRepository;
 import com.skillbridge.notification.application.NotificationService;
 import com.skillbridge.notification.domain.model.NotificationType;
+import com.skillbridge.session.api.dto.request.CreateDisputeRequest;
 import com.skillbridge.session.api.dto.request.UpdateSessionRequest;
 import com.skillbridge.session.api.dto.response.SessionResponse;
 import com.skillbridge.session.api.mapper.SessionMapper;
+import com.skillbridge.session.domain.entity.SessionConfirmation;
+import com.skillbridge.session.infrastructure.persistence.SessionConfirmationRepository;
+import com.skillbridge.shared.domain.model.Mode;
 import com.skillbridge.shared.security.SecurityUtils;
 import com.skillbridge.swap.application.SwapService;
 import com.skillbridge.swap.domain.entity.SwapSession;
@@ -24,10 +35,16 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class SessionService {
 
+    private static final int DEFAULT_ESCROW_RELEASE_HOURS = 18;
+
     private final SwapSessionRepository sessionRepository;
     private final SwapService swapService;
     private final SessionMapper sessionMapper;
     private final NotificationService notificationService;
+    private final DisputeRepository disputeRepository;
+    private final AdminMapper adminMapper;
+    private final SessionConfirmationRepository confirmationRepository;
+    private final PlatformSettingRepository platformSettingRepository;
 
     @Transactional(readOnly = true)
     public List<SessionResponse> getActiveSwapSessions() {
@@ -61,7 +78,48 @@ public class SessionService {
         if (sessionId == null) {
             throw new IllegalArgumentException("Session ID must not be null");
         }
-        swapService.completeSwapSession(sessionId);
+        SwapSession session = loadSession(sessionId);
+        requireParticipant(session, "Only session participants can complete this session");
+
+        if (session.getStatus() == SwapSessionStatus.COMPLETED) {
+            return sessionMapper.toResponse(session);
+        }
+        if (session.getStatus() != SwapSessionStatus.ACCEPTED && session.getStatus() != SwapSessionStatus.STARTED) {
+            throw new IllegalStateException("Only accepted or started sessions can be completed");
+        }
+
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        if (!confirmationRepository.existsBySessionIdAndConfirmedBy(sessionId, currentUserId)) {
+            SessionConfirmation confirmation = new SessionConfirmation();
+            confirmation.setId(UUID.randomUUID());
+            confirmation.setSessionId(sessionId);
+            confirmation.setConfirmedBy(currentUserId);
+            confirmation.setConfirmedAt(OffsetDateTime.now());
+            confirmationRepository.save(confirmation);
+        }
+
+        UUID otherParticipantId = session.getRequesterId().equals(currentUserId)
+                ? session.getResponderId()
+                : session.getRequesterId();
+
+        boolean otherConfirmed = confirmationRepository.existsBySessionIdAndConfirmedBy(sessionId, otherParticipantId);
+
+        if (otherConfirmed) {
+            // Both confirmed -> complete immediately
+            swapService.completeSwapSession(sessionId);
+        } else {
+            // First confirmation -> set auto release deadline and notify other party
+            int releaseHours = platformSettingRepository.findTopByOrderByUpdatedAtDesc()
+                    .map(PlatformSetting::getEscrowReleaseHours)
+                    .orElse(DEFAULT_ESCROW_RELEASE_HOURS);
+
+            session.setAutoReleaseAt(OffsetDateTime.now().plusHours(releaseHours));
+            session.setUpdatedAt(OffsetDateTime.now());
+            sessionRepository.save(session);
+
+            notificationService.notifySessionStatusChange(otherParticipantId, NotificationType.SESSION_UPDATED, sessionId);
+        }
+
         return sessionMapper.toResponse(loadSession(sessionId));
     }
 
@@ -77,8 +135,8 @@ public class SessionService {
         }
         SwapSession session = loadSession(sessionId);
         requireParticipant(session, "Only session participants can update this session");
-        if (session.getStatus() == SwapSessionStatus.COMPLETED || session.getStatus() == SwapSessionStatus.CANCELLED) {
-            throw new IllegalStateException("Completed or cancelled sessions cannot be updated");
+        if (session.getStatus() == SwapSessionStatus.COMPLETED || session.getStatus() == SwapSessionStatus.CANCELLED || session.getStatus() == SwapSessionStatus.DISPUTED) {
+            throw new IllegalStateException("Completed, cancelled, or disputed sessions cannot be updated");
         }
 
         session.setScheduledAt(request.getScheduledAt());
@@ -89,6 +147,48 @@ public class SessionService {
         SwapSession saved = sessionRepository.save(session);
         notifyParticipants(saved, NotificationType.SESSION_UPDATED);
         return sessionMapper.toResponse(saved);
+    }
+
+    public DisputeResponse openDispute(UUID sessionId, CreateDisputeRequest request) {
+        if (sessionId == null) {
+            throw new IllegalArgumentException("Session ID must not be null");
+        }
+        if (request == null) {
+            throw new IllegalArgumentException("Dispute request must not be null");
+        }
+        SwapSession session = loadSession(sessionId);
+        requireParticipant(session, "Only session participants can open a dispute");
+
+        if (session.getStatus() == SwapSessionStatus.CANCELLED) {
+            throw new IllegalStateException("Cannot dispute a cancelled session");
+        }
+        if (session.getStatus() == SwapSessionStatus.DISPUTED) {
+            throw new IllegalStateException("A dispute is already active for this session");
+        }
+
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        OffsetDateTime now = OffsetDateTime.now();
+
+        Dispute dispute = new Dispute();
+        dispute.setId(UUID.randomUUID());
+        dispute.setSessionId(sessionId);
+        dispute.setSessionMode(session.getPointCost() != null && session.getPointCost() > 0 ? Mode.POINTS : Mode.SKILL_SWAP);
+        dispute.setOpenedBy(currentUserId);
+        dispute.setReason(request.getReason());
+        dispute.setDetails(request.getDetails());
+        dispute.setStatus(DisputeStatus.OPEN);
+        dispute.setCreatedAt(now);
+        dispute.setUpdatedAt(now);
+        Dispute savedDispute = disputeRepository.save(dispute);
+
+        session.setStatus(SwapSessionStatus.DISPUTED);
+        session.setUpdatedAt(now);
+        sessionRepository.save(session);
+
+        notificationService.notifySessionStatusChange(session.getRequesterId(), NotificationType.SESSION_UPDATED, sessionId);
+        notificationService.notifySessionStatusChange(session.getResponderId(), NotificationType.SESSION_UPDATED, sessionId);
+
+        return adminMapper.toResponse(savedDispute);
     }
 
     private SwapSession loadSession(UUID sessionId) {

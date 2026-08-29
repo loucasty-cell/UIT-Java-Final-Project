@@ -2,11 +2,13 @@ name: CI
 
 on:
   push:
+    branches: [ dev, main ]
   pull_request:
+    branches: [ dev, main ]
 
 jobs:
   build:
-    name: Compile backend
+    name: Build and Verify Backend
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -23,6 +25,10 @@ jobs:
         shell: bash
         run: chmod +x mvnw
 
-      - name: Build and Test with Maven Wrapper
+      - name: Run Test Suite
         shell: bash
         run: ./mvnw -B test
+
+      - name: Package Executable Artifact
+        shell: bash
+        run: ./mvnw -B package -DskipTests

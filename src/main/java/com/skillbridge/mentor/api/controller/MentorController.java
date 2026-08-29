@@ -6,8 +6,13 @@ import com.skillbridge.mentor.api.dto.response.MentorDetailResponse;
 import com.skillbridge.mentor.api.dto.response.MentorSummaryResponse;
 import com.skillbridge.mentor.application.query.AvailabilityQueryService;
 import com.skillbridge.mentor.application.query.MentorQueryService;
+import com.skillbridge.review.api.dto.response.ReviewResponse;
+import com.skillbridge.review.application.ReviewService;
+import com.skillbridge.shared.api.dto.response.PageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,8 +24,10 @@ import java.util.UUID;
 @RequestMapping("/api/v1/mentors")
 @RequiredArgsConstructor
 public class MentorController {
+
     private final MentorQueryService mentorQueryService;
     private final AvailabilityQueryService availabilityQueryService;
+    private final ReviewService reviewService;
 
     @GetMapping
     public ResponseEntity<Page<MentorSummaryResponse>> getMentors(MentorSearchQuery query) {
@@ -36,7 +43,16 @@ public class MentorController {
     public ResponseEntity<AvailabilityResponse> getAvailability(
             @PathVariable UUID mentorId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to
+    ) {
         return ResponseEntity.ok(availabilityQueryService.getAvailability(mentorId, from, to));
+    }
+
+    @GetMapping("/{mentorId}/reviews")
+    public ResponseEntity<PageResponse<ReviewResponse>> getMentorReviews(
+            @PathVariable UUID mentorId,
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        return ResponseEntity.ok(reviewService.getMentorReviews(mentorId, pageable));
     }
 }

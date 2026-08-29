@@ -38,6 +38,17 @@ public class NotificationService {
         return notificationMapper.toResponse(notificationRepository.save(notification));
     }
 
+    public void markAllAsRead() {
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        notificationRepository.markAllAsRead(currentUserId, OffsetDateTime.now());
+    }
+
+    @Transactional(readOnly = true)
+    public long getUnreadCount() {
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        return notificationRepository.countByUserIdAndReadAtIsNull(currentUserId);
+    }
+
     public void deleteNotification(UUID notificationId) {
         Notification notification = loadOwnedNotification(notificationId);
         notificationRepository.delete(notification);

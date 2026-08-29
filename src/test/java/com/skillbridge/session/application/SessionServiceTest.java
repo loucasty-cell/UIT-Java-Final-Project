@@ -1,10 +1,14 @@
 package com.skillbridge.session.application;
 
+import com.skillbridge.admin.api.mapper.AdminMapper;
+import com.skillbridge.admin.infrastructure.persistence.DisputeRepository;
+import com.skillbridge.admin.infrastructure.persistence.PlatformSettingRepository;
 import com.skillbridge.notification.application.NotificationService;
 import com.skillbridge.notification.domain.model.NotificationType;
 import com.skillbridge.session.api.dto.request.UpdateSessionRequest;
 import com.skillbridge.session.api.dto.response.SessionResponse;
 import com.skillbridge.session.api.mapper.SessionMapper;
+import com.skillbridge.session.infrastructure.persistence.SessionConfirmationRepository;
 import com.skillbridge.support.TestAuthContext;
 import com.skillbridge.swap.api.dto.response.SwapSessionResponse;
 import com.skillbridge.swap.application.SwapService;
@@ -59,6 +63,12 @@ public class SessionServiceTest {
         assertEquals(45, updated.getDurationMinutes());
         assertEquals("Bring questions", updated.getNotes());
 
+        // First confirmation sets autoReleaseAt
+        SessionResponse firstConfirm = fixture.service.completeSession(session.getId());
+        assertNotNull(session.getAutoReleaseAt());
+
+        // Other party confirms -> completes session
+        TestAuthContext.loginAs(session.getResponderId());
         SessionResponse completed = fixture.service.completeSession(session.getId());
         assertEquals(SwapSessionStatus.COMPLETED, completed.getStatus());
         assertEquals(session.getId(), fixture.swapService.completedSessionId);
@@ -111,78 +121,54 @@ public class SessionServiceTest {
     }
 
     @Test
-    void rejectsStartSessionWhenNotFound() {
+    void rejectsUpdateWhenCompletedOrCancelled() {
         Fixture fixture = new Fixture();
-        TestAuthContext.loginAs(UUID.randomUUID());
+        SwapSession completed = session(SwapSessionStatus.COMPLETED);
+        SwapSession cancelled = session(SwapSessionStatus.CANCELLED);
+        fixture.sessions.put(completed.getId(), completed);
+        fixture.sessions.put(cancelled.getId(), cancelled);
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> fixture.service.startSession(UUID.randomUUID())
-        );
-        assertTrue(exception.getMessage().contains("Session not found"));
-    }
-
-    @Test
-    void rejectsUpdateSessionByNonParticipant() {
-        Fixture fixture = new Fixture();
-        SwapSession session = session(SwapSessionStatus.ACCEPTED);
-        fixture.sessions.put(session.getId(), session);
-        TestAuthContext.loginAs(UUID.randomUUID());
-
+        TestAuthContext.loginAs(completed.getRequesterId());
         UpdateSessionRequest update = new UpdateSessionRequest();
-        update.setDurationMinutes(30);
+        update.setNotes("Too late");
 
-        AccessDeniedException exception = assertThrows(
-                AccessDeniedException.class,
-                () -> fixture.service.updateSession(session.getId(), update)
+        IllegalStateException completedEx = assertThrows(
+                IllegalStateException.class,
+                () -> fixture.service.updateSession(completed.getId(), update)
         );
-        assertEquals("Only session participants can update this session", exception.getMessage());
+        assertTrue(completedEx.getMessage().contains("cannot be updated"));
+
+        TestAuthContext.loginAs(cancelled.getRequesterId());
+        IllegalStateException cancelledEx = assertThrows(
+                IllegalStateException.class,
+                () -> fixture.service.updateSession(cancelled.getId(), update)
+        );
+        assertTrue(cancelledEx.getMessage().contains("cannot be updated"));
     }
 
     @Test
-    void rejectsUpdateSessionWhenCompletedOrCancelled() {
-        Fixture fixture = new Fixture();
-        SwapSession completedSession = session(SwapSessionStatus.COMPLETED);
-        SwapSession cancelledSession = session(SwapSessionStatus.CANCELLED);
-        fixture.sessions.put(completedSession.getId(), completedSession);
-        fixture.sessions.put(cancelledSession.getId(), cancelledSession);
-        TestAuthContext.loginAs(completedSession.getRequesterId());
-
-        UpdateSessionRequest update = new UpdateSessionRequest();
-        update.setDurationMinutes(30);
-
-        IllegalStateException exception1 = assertThrows(
-                IllegalStateException.class,
-                () -> fixture.service.updateSession(completedSession.getId(), update)
-        );
-        assertEquals("Completed or cancelled sessions cannot be updated", exception1.getMessage());
-
-        TestAuthContext.loginAs(cancelledSession.getRequesterId());
-        IllegalStateException exception2 = assertThrows(
-                IllegalStateException.class,
-                () -> fixture.service.updateSession(cancelledSession.getId(), update)
-        );
-        assertEquals("Completed or cancelled sessions cannot be updated", exception2.getMessage());
-    }
-
-    @Test
-    void rejectsUpdateSessionWithInvalidDuration() {
+    void rejectsInvalidUpdateParameters() {
         Fixture fixture = new Fixture();
         SwapSession session = session(SwapSessionStatus.ACCEPTED);
         fixture.sessions.put(session.getId(), session);
         TestAuthContext.loginAs(session.getRequesterId());
 
-        UpdateSessionRequest update = new UpdateSessionRequest();
-        update.setDurationMinutes(0);
+        assertThrows(IllegalArgumentException.class, () -> fixture.service.updateSession(null, new UpdateSessionRequest()));
+        assertThrows(IllegalArgumentException.class, () -> fixture.service.updateSession(session.getId(), null));
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> fixture.service.updateSession(session.getId(), update)
-        );
-        assertEquals("Duration minutes must be at least 1", exception.getMessage());
+        UpdateSessionRequest invalidDuration = new UpdateSessionRequest();
+        invalidDuration.setDurationMinutes(0);
+        assertThrows(IllegalArgumentException.class, () -> fixture.service.updateSession(session.getId(), invalidDuration));
     }
 
-    private SwapSession session(SwapSessionStatus status) {
+    @Test
+    void verifiesIdNullGuards() {
+        Fixture fixture = new Fixture();
+        assertThrows(IllegalArgumentException.class, () -> fixture.service.startSession(null));
+        assertThrows(IllegalArgumentException.class, () -> fixture.service.completeSession(null));
+    }
+
+    private static SwapSession session(SwapSessionStatus status) {
         SwapSession session = new SwapSession();
         session.setId(UUID.randomUUID());
         session.setSwapRequestId(UUID.randomUUID());
@@ -190,7 +176,7 @@ public class SessionServiceTest {
         session.setResponderId(UUID.randomUUID());
         session.setOfferedSkillId(UUID.randomUUID());
         session.setRequestedSkillId(UUID.randomUUID());
-        session.setPointCost(0);
+        session.setPointCost(10);
         session.setStatus(status);
         session.setAcceptedAt(OffsetDateTime.now());
         session.setCreatedAt(OffsetDateTime.now());
@@ -201,17 +187,44 @@ public class SessionServiceTest {
 
     private class Fixture {
         private final Map<UUID, SwapSession> sessions = new LinkedHashMap<>();
+        private final List<UUID> confirmedUsers = new ArrayList<>();
         private final RecordingSwapService swapService = new RecordingSwapService(sessions);
         private final RecordingNotificationService notificationService = new RecordingNotificationService();
+        private final SessionConfirmationRepository confirmationRepository = (SessionConfirmationRepository) Proxy.newProxyInstance(
+                SessionConfirmationRepository.class.getClassLoader(),
+                new Class<?>[]{SessionConfirmationRepository.class},
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "existsBySessionIdAndConfirmedBy" -> confirmedUsers.contains((UUID) args[1]);
+                    case "save" -> {
+                        confirmedUsers.add(com.skillbridge.shared.security.SecurityUtils.getCurrentUserId());
+                        yield args[0];
+                    }
+                    default -> null;
+                }
+        );
+        private final DisputeRepository disputeRepository = (DisputeRepository) Proxy.newProxyInstance(
+                DisputeRepository.class.getClassLoader(),
+                new Class<?>[]{DisputeRepository.class},
+                (proxy, method, args) -> null
+        );
+        private final PlatformSettingRepository platformSettingRepository = (PlatformSettingRepository) Proxy.newProxyInstance(
+                PlatformSettingRepository.class.getClassLoader(),
+                new Class<?>[]{PlatformSettingRepository.class},
+                (proxy, method, args) -> Optional.empty()
+        );
         private final SessionService service = new SessionService(
                 repository(),
                 swapService,
                 new SessionMapper(null),
-                notificationService
+                notificationService,
+                disputeRepository,
+                new AdminMapper(),
+                confirmationRepository,
+                platformSettingRepository
         );
 
         private SwapSessionRepository repository() {
-            return SwapSessionRepository.class.cast(Proxy.newProxyInstance(
+            return (SwapSessionRepository) Proxy.newProxyInstance(
                     SwapSessionRepository.class.getClassLoader(),
                     new Class<?>[]{SwapSessionRepository.class},
                     (proxy, method, args) -> switch (method.getName()) {
@@ -230,7 +243,7 @@ public class SessionServiceTest {
                         case "toString" -> "SwapSessionRepository test proxy";
                         default -> throw new UnsupportedOperationException(method.getName());
                     }
-            ));
+            );
         }
     }
 

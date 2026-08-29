@@ -6,12 +6,15 @@ import com.skillbridge.review.api.dto.response.ReviewResponse;
 import com.skillbridge.review.api.mapper.ReviewMapper;
 import com.skillbridge.review.domain.entity.Review;
 import com.skillbridge.review.infrastructure.persistence.ReviewRepository;
+import com.skillbridge.shared.api.dto.response.PageResponse;
 import com.skillbridge.shared.security.SecurityUtils;
 import com.skillbridge.skill.infrastructure.SkillRepository;
 import com.skillbridge.swap.domain.entity.SwapSession;
 import com.skillbridge.swap.domain.model.SwapSessionStatus;
 import com.skillbridge.swap.infrastructure.persistence.SwapSessionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -97,6 +100,26 @@ public class ReviewService {
                 skillStats.averageRating(),
                 skillStats.reviewCount()
         );
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<ReviewResponse> getMentorReviews(UUID mentorId, Pageable pageable) {
+        if (mentorId == null) {
+            throw new IllegalArgumentException("Mentor ID must not be null");
+        }
+        Page<Review> page = reviewRepository.findByRevieweeIdOrderByCreatedAtDesc(mentorId, pageable);
+        RatingStats userStats = stats(reviewRepository.findByRevieweeId(mentorId));
+
+        return PageResponse.from(page, review -> {
+            RatingStats skillStats = stats(reviewRepository.findBySkillId(review.getSkillId()));
+            return reviewMapper.toResponse(
+                    review,
+                    userStats.averageRating(),
+                    userStats.reviewCount(),
+                    skillStats.averageRating(),
+                    skillStats.reviewCount()
+            );
+        });
     }
 
     private void validateParticipant(SwapSession session, UUID userId, String message) {

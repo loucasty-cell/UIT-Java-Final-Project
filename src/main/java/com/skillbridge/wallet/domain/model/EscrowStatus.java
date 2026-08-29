@@ -14,5 +14,8 @@ public enum EscrowStatus {
     REFUNDED,
 
     // Hold cancelled without any transfer
-    CANCELLED
+    CANCELLED,
+
+    // Escrow frozen due to an active dispute
+    DISPUTED
 }

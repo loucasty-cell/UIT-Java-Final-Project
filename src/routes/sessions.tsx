@@ -48,6 +48,7 @@ import {
 } from "@/hooks/api/use-learning-requests";
 import { useSubmitReviewMutation } from "@/hooks/api/use-reviews";
 import { EscrowProgress } from "@/components/sessions/escrow-progress";
+import { SessionCalendar } from "@/components/sessions/session-calendar";
 import type { SessionResponse, LearningRequestResponse } from "@/types/api";
 
 export const Route = createFileRoute("/sessions")({
@@ -79,42 +80,18 @@ export type NormalizedSession = {
   time: string;
   mode: string;
   points: number;
-  status: "SCHEDULED" | "PENDING" | "COMPLETED" | "DISPUTED";
+  status: "SCHEDULED" | "STARTED" | "COMPLETED" | "DISPUTED" | "CANCELLED" | "ACCEPTED";
   meetingUrl?: string;
   completedAt?: string;
   skillName?: string;
+  scheduledStart?: string; // PHASE 4: For calendar
+  duration?: number; // PHASE 4: For calendar
+  mentorName?: string; // PHASE 4: For calendar
   raw?: SessionResponse;
 };
 
-// Fallback sessions if backend hasn't generated sessions yet
-const fallbackActiveSessions: NormalizedSession[] = [
-  {
-    id: "s1",
-    counterpart: "Priya Anand",
-    initials: "PA",
-    role: "Mentor",
-    date: "Sep 02, 2026",
-    time: "10:00 AM",
-    mode: "Skill Points",
-    points: 50,
-    status: "SCHEDULED",
-    meetingUrl: "https://meet.google.com/abc-defg-hij",
-    skillName: "React Advanced",
-  },
-  {
-    id: "s2",
-    counterpart: "Marcus Delgado",
-    initials: "MD",
-    role: "Learner",
-    date: "Sep 04, 2026",
-    time: "2:00 PM",
-    mode: "Skill Exchange",
-    points: 0,
-    status: "SCHEDULED",
-    meetingUrl: "https://meet.google.com/xyz-1234-lmn",
-    skillName: "Calculus II",
-  },
-];
+// PHASE 0: Removed fallback sessions - use real API only
+// No mock data allowed on sessions page
 
 function statusBadge(status: NormalizedSession["status"]) {
   switch (status) {
@@ -124,10 +101,10 @@ function statusBadge(status: NormalizedSession["status"]) {
           SCHEDULED
         </Badge>
       );
-    case "PENDING":
+    case "STARTED":
       return (
         <Badge className="border-blue-500/30 bg-blue-500/15 text-blue-700 hover:bg-blue-500/15 dark:text-blue-400">
-          PENDING
+          STARTED
         </Badge>
       );
     case "COMPLETED":
@@ -188,11 +165,16 @@ function SessionsPage() {
           meetingUrl: s.meetingUrl || `https://meet.google.com/sb-${s.id.slice(0, 8)}`,
           completedAt: s.completedAt,
           skillName: s.skillName || "Skill Session",
+          scheduledStart: s.scheduledStart, // PHASE 4: For calendar
+          duration: s.durationMinutes || 30, // PHASE 4: For calendar
+          mentorName: s.mentorName, // PHASE 4: For calendar
           raw: s,
         };
       });
     }
-    return fallbackActiveSessions;
+    // PHASE 0: Return empty array - no mock fallback for sessions page
+    // Sessions page uses real API only
+    return [];
   }, [apiSessionsData, user]);
 
   const activeSessions = allSessions.filter(
@@ -239,7 +221,7 @@ function SessionsPage() {
       </Alert>
 
       <Tabs defaultValue="active">
-        <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:grid-cols-5">
           <TabsTrigger value="active" className="gap-1.5">
             <span>Active Sessions</span>
             {activeSessions.length > 0 && (
@@ -247,6 +229,9 @@ function SessionsPage() {
                 {activeSessions.length}
               </Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="calendar" className="gap-1.5">
+            <span>Calendar</span>
           </TabsTrigger>
           <TabsTrigger value="pending" className="gap-1.5">
             <span>Pending Requests</span>
@@ -288,6 +273,11 @@ function SessionsPage() {
               />
             ))
           )}
+        </TabsContent>
+
+        {/* Calendar Tab */}
+        <TabsContent value="calendar" className="mt-6">
+          <SessionCalendar sessions={allSessions} />
         </TabsContent>
 
         {/* Pending Requests Tab */}

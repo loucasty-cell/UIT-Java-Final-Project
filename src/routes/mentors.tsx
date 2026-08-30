@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { getSessionCost, getSessionDurationOptions } from "@/lib/pricing";
+import type { SessionDuration, LearningRequestMode } from "@/types/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,7 +53,6 @@ import { useSessionsQuery } from "@/hooks/api/use-sessions";
 import { useWalletBalanceQuery } from "@/hooks/api/use-wallet";
 import { useCreateLearningRequestMutation } from "@/hooks/api/use-learning-requests";
 import { checkConflict, combineDateAndTime, isFutureTime } from "@/lib/schedule-conflict";
-import type { LearningRequestMode } from "@/types/api";
 
 export const Route = createFileRoute("/mentors")({
   beforeLoad: requireAuth,
@@ -478,6 +479,7 @@ function RequestSessionDialog({
   const [date, setDate] = useState<Date | undefined>();
   const [time, setTime] = useState<string | undefined>();
   const [tab, setTab] = useState<Mode>("points");
+  const [duration, setDuration] = useState<SessionDuration>(30); // PHASE 3: Add duration state
   const [selectedSkillToLearn, setSelectedSkillToLearn] = useState<string>(
     mentor?.teach[0]?.name || "",
   );
@@ -513,9 +515,10 @@ function RequestSessionDialog({
   }, [userTeachSkills]);
 
   const availableBalance = walletData?.availablePoints ?? 0;
-  const cost = mentor?.cost ?? 35;
+  // PHASE 3: Use duration-based pricing instead of mentor.cost
+  const cost = tab === "points" ? getSessionCost(duration) : 0;
   const hasEnoughPoints = availableBalance >= cost;
-  const isFallbackMentor = !mentorIdForDetail; // synthetic demo mentor — not a real catalog UUID per api.md:16
+  const isFallbackMentor = !mentorIdForDetail;
   const isUuid = (s?: string) => !!s && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 
   const canSubmit =
@@ -551,7 +554,7 @@ function RequestSessionDialog({
       status: s.status,
     }));
 
-    const conflict = checkConflict(proposedStart, 60, existingSessions, 15);
+    const conflict = checkConflict(proposedStart, duration, existingSessions, 15);
     if (conflict.hasConflict) {
       toast.error("Schedule Conflict Detected", {
         description: conflict.message,
@@ -606,7 +609,7 @@ function RequestSessionDialog({
         mode: modeMapping[tab],
         offeredUserSkillId: tab === "exchange" ? exchangeSkillId : undefined,
         scheduledStart: proposedStart.toISOString(),
-        durationMinutes: 60,
+        durationMinutes: duration, // PHASE 3: Use selected duration
         message: note.trim() || undefined,
       });
 
@@ -678,7 +681,7 @@ function RequestSessionDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Time Slot (60 min)</Label>
+            <Label className="text-xs font-medium">Time Slot</Label>
             <Select value={time} onValueChange={setTime}>
               <SelectTrigger className="rounded-lg">
                 <SelectValue placeholder="Select time" />
@@ -696,6 +699,24 @@ function RequestSessionDialog({
             </Select>
           </div>
         </div>
+
+         {/* PHASE 3: Duration selector */}
+         <div className="space-y-1.5">
+           <Label className="text-xs font-medium">Session Duration</Label>
+           <Select value={String(duration)} onValueChange={(v) => setDuration(Number(v) as SessionDuration)}>
+             <SelectTrigger className="rounded-lg">
+               <SelectValue />
+             </SelectTrigger>
+             <SelectContent>
+               {getSessionDurationOptions().map((opt) => (
+                 <SelectItem key={opt.value} value={String(opt.value)}>
+                   {opt.label} - {opt.cost} Points
+                 </SelectItem>
+               ))}
+             </SelectContent>
+           </Select>
+         </div>
+
 
         {/* Mode tabs */}
         <div className="space-y-1.5">

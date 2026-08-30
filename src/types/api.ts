@@ -181,8 +181,11 @@ export interface MentorSearchResponse {
 }
 
 export interface MentorDetailResponse {
+  id: string;
+  userId: string;
   mentorId: string;
   name: string;
+  displayName?: string;
   avatarUrl?: string;
   bio?: string;
   major?: string;
@@ -196,10 +199,11 @@ export interface MentorDetailResponse {
 
 export interface MentorOfferingResponse {
   id: string;
+  mentorId: string;
   skillId: string;
   skillName?: string;
-  hourlyRatePoints: number;
   description: string;
+  hourlyRatePoints: number;
   available: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -266,6 +270,7 @@ export type SessionStatus =
 
 export interface SessionResponse {
   id: string;
+  title?: string;
   requesterId?: string;
   responderId?: string;
   mentorId?: string;
@@ -535,6 +540,15 @@ export interface AdminAuditEventResponse {
 // 12. Learning Requests, Mentorship & Extensions
 // ==========================================
 
+// PHASE 2: Duration-based pricing types
+export type SessionDuration = 15 | 30 | 45;
+
+export interface SessionDurationOption {
+  value: SessionDuration;
+  label: string;
+  cost: number;
+}
+
 export type LearningRequestMode = "POINTS" | "SKILL_SWAP" | "VOLUNTEER";
 export type LearningRequestStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "CANCELLED" | "EXPIRED";
 export type LearningRequestDirection = "INCOMING" | "OUTGOING";
@@ -648,6 +662,90 @@ export type WatchlistItemType = "SKILL" | "MENTOR";
 
 export interface WatchlistItem {
   id: string;
+  type: WatchlistItemType;
+  targetId: string;
+  title: string;
+  subtitle?: string;
+  badge?: string;
+  imageUrl?: string;
+  rating?: number;
+  addedAt: string;
+}
+
+// ==========================================
+// 17. Missing Response Types
+// ==========================================
+
+export interface NormalizedSession {
+  id: string;
+  requesterId?: string;
+  mentorId?: string;
+  mentorName?: string;
+  skillName?: string;
+  scheduledStart?: string;
+  startTime?: string;
+  endTime?: string;
+  duration?: number;
+  durationMinutes?: number;
+  status: SessionStatus;
+  title?: string;
+}
+
+export interface DashboardResponse {
+  userId: string;
+  displayName: string;
+  totalPoints: number;
+  skillsTeaching: number;
+  skillsLearning: number;
+  completedSessions: number;
+  upcomingSessions: SessionResponse[];
+}
+
+export interface PointTransactionResponse {
+  id: string;
+  userId: string;
+  type: string;
+  amount: number;
+  balance: number;
+  description: string;
+  referenceId?: string;
+  createdAt: string;
+}
+
+export interface WalletResponse {
+  userId: string;
+  totalPoints: number;
+  availablePoints: number;
+  transactions: WalletTransactionResponse[];
+}
+
+export interface ReferralSummaryResponse {
+  referralCode: string;
+  referralUrl: string;
+  totalReferrals: number;
+  totalPointsEarned: number;
+  recentReferrals: ReferralItemResponse[];
+}
+
+export interface SwapRequestResponse {
+  id: string;
+  initiatorId: string;
+  initiatorName?: string;
+  receiverId: string;
+  receiverName?: string;
+  initiatorSkillId: string;
+  initiatorSkillName?: string;
+  receiverSkillId: string;
+  receiverSkillName?: string;
+  status: "PENDING" | "ACCEPTED" | "REJECTED" | "COMPLETED" | "CANCELLED" | "PROPOSED";
+  message?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WatchlistItemResponse {
+  id: string;
+  userId: string;
   type: WatchlistItemType;
   targetId: string;
   title: string;

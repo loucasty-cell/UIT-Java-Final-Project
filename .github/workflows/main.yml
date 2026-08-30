@@ -35,7 +35,7 @@ jobs:
       - run: npm ci && npm run build
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'http://localhost:9095' }}
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: frontend-build-${{ github.run_id }}
           path: .output/
@@ -73,7 +73,7 @@ jobs:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/skillbridge_test
           SPRING_DATASOURCE_USERNAME: skillbridge
           SPRING_DATASOURCE_PASSWORD: skillbridge
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: backend-jar-${{ github.run_id }}
           path: backend/target/*.jar

@@ -59,8 +59,6 @@ public class SecurityConfig {
                                 "/api/skills/**", "/api/v1/mentors/**", "/api/v1/forum/**", "/api/requests/**")
                         .permitAll()
                         .requestMatchers("/api/v1/admin/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN")
-                        .requestMatchers("/api/v1/me/mentor-offerings/**")
-                        .hasAnyAuthority("MENTOR", "ROLE_MENTOR", "ADMIN", "ROLE_ADMIN")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.decoder(jwtDecoder())

@@ -19,8 +19,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/skills")
-@CrossOrigin(origins = "http://localhost:8081")
+@RequestMapping({"/api/skills", "/api/v1/skills"})
 public class SkillController {
 
     private final SkillService skillService;
@@ -29,7 +28,7 @@ public class SkillController {
         this.skillService = skillService;
     }
 
-    @GetMapping
+    @GetMapping({"", "/catalog"})
     public ResponseEntity<List<SkillResponse>> getAllSkills() {
         return ResponseEntity.ok(skillService.getAllSkills());
     }

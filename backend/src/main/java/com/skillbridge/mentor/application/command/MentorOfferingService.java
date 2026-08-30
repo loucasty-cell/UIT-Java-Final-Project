@@ -19,6 +19,7 @@ import java.util.UUID;
 public class MentorOfferingService {
     private final MentorOfferingRepository offeringRepository;
     private final MentorMapper mentorMapper;
+    private final com.skillbridge.auth.infrastructure.persistence.UserRoleRepository userRoleRepository;
 
     public MentorOfferingResponse createOffering(MentorOfferingCreateRequest request) {
         UUID currentUserId = com.skillbridge.shared.security.SecurityUtils.getCurrentUserId();
@@ -38,6 +39,11 @@ public class MentorOfferingService {
         entity.setUpdatedAt(OffsetDateTime.now());
 
         MentorOffering saved = offeringRepository.save(entity);
+
+        if (!userRoleRepository.existsByUserIdAndRole(currentUserId, "MENTOR")) {
+            userRoleRepository.save(new com.skillbridge.auth.domain.entity.UserRole(currentUserId, "MENTOR"));
+        }
+
         return mentorMapper.toResponse(saved);
     }
 

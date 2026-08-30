@@ -40,6 +40,13 @@ public class AdminUserController {
     // Audit service recording every wallet adjustment for the admin audit trail
     private final AdminAuditService adminAuditService;
 
+    // Lists all users for admin management table
+    // Linkage: GET /api/v1/admin/users -> AdminUserService.getAllUsers()
+    @GetMapping
+    public ResponseEntity<java.util.List<AdminUserResponse>> getAllUsers() {
+        return ResponseEntity.ok(adminUserService.getAllUsers());
+    }
+
     // Applies a signed point adjustment to a user's wallet with a mandatory audit reason
     // Linkage: POST /api/v1/admin/users/{userId}/wallet-adjustments -> WalletService.adjust() -> AdminAuditService
     @PostMapping("/{userId}/wallet-adjustments")

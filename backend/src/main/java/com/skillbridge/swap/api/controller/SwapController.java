@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/swaps")
+@RequestMapping({"/api/swaps", "/api/v1/swaps"})
 @RequiredArgsConstructor
 public class SwapController {
 

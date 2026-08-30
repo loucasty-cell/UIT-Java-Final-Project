@@ -20,6 +20,7 @@ storage/
 .env.*
 !.env.example
 !.env.staging
+!.env.production.example
 
 # IDE
 .idea/

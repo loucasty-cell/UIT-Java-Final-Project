@@ -38,10 +38,12 @@ backend/storage/
 .env
 .env.*
 !.env.example
+!.env.production.example
 
 # Backend env files are managed in backend/.gitignore
 backend/.env.*
 !backend/.env.example
+!backend/.env.production.example
 !backend/.env.staging
 
 # ==========================================

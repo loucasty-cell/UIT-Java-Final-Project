@@ -47,15 +47,15 @@ jobs:
 
       - name: Make Maven Wrapper executable
         shell: bash
-        run: chmod +x mvnw
+        run: chmod +x backend/mvnw
 
       - name: Run Backend Test Suite
         shell: bash
-        run: ./mvnw -B test
+        run: cd backend && ./mvnw -B test
 
       - name: Package Backend Artifact
         shell: bash
-        run: ./mvnw -B package -DskipTests
+        run: cd backend && ./mvnw -B package -DskipTests
 
   frontend:
     name: Build & Verify Frontend

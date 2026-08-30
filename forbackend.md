@@ -1,613 +1,310 @@
 # SkillBridge Backend Implementation Guide
 
-## 1. Goal and source of truth
+## 1. Status and authority
 
-Build the backend required by the current Lovable/React frontend using:
+This checkout contains the backend documentation, a Maven Spring Boot build, Java domain implementations, and Flyway migrations. **All feature domains are implemented**: auth, user profile/dashboard, skills, mentor discovery and offerings, swap requests (via both `swap` and `request` facade modules), sessions, reviews, wallet with escrow, notifications, forum, moderation, and admin (dashboard, settings, users, reports, disputes, audit). The `search` package is an empty scaffold reserved for the planned global-search endpoint. The suite runs **62 passing tests** via `mvnw test`.
 
-- Java 21
-- Spring Boot 3.x
-- REST API
-- Tomcat 10.1+
-- PostgreSQL hosted by Neon
-- Flyway migrations
+This guide describes architecture and rules. The detailed public interfaces are kept in:
 
-Do not use MySQL. The supplied MVC image is conceptual only: replace "MySQL Database" with Neon PostgreSQL and replace server-rendered MVC views/forwarding with a React client calling JSON REST controllers.
+- [Context files/API_CONTRACT.md](Context%20files/API_CONTRACT.md) for routes and status behavior.
+- [Context files/DTO_CATALOG.md](Context%20files/DTO_CATALOG.md) for request, response, enum, and validation fields.
+- [Context files/AUTHENTICATION_AUTHORIZATION.md](Context%20files/AUTHENTICATION_AUTHORIZATION.md) for access rules.
+- [Context files/TESTING_MATRIX.md](Context%20files/TESTING_MATRIX.md) for required verification.
 
-The current frontend routes are the functional source of truth:
+Features and endpoints without corresponding implementation files remain planned. The supplied MVC/MySQL diagrams are conceptual only. The target database is PostgreSQL on Neon; do not add MySQL drivers, SQL, or assumptions.
 
-- `/`: profile, wallet, skills, certificates, dashboard metrics, and activity.
-- `/mentors`: mentor search and point, skill-swap, or volunteer requests.
-- `/sessions`: pending, scheduled, completed, and disputed sessions; completion, reviews, escrow, and issue reporting.
-- `/forum`: volunteer posts, likes, comments, leaderboard, and free requests.
-- `/admin`: statistics, moderation, user warnings, reward settings, escrow timing, and disputes.
+## 2. Required stack and runtime
 
-[api.md](api.md) is the HTTP contract. [skills.md](skills.md) defines the expected engineering capabilities.
+- Java 25 (Temurin LTS).
+- Spring Boot 3.x.
+- Spring MVC REST with JSON, multipart PDF upload, and CSV export.
+- Embedded Tomcat 10.1+ or a WAR deployed to external Tomcat 10.1+.
+- Jakarta APIs only; never javax.servlet.
+- PostgreSQL hosted by Neon with SSL.
+- Spring Data JPA/Hibernate for persistence.
+- Flyway for forward-only schema migrations.
+- Spring Security for password hashing, JWT access tokens, refresh rotation, roles, and account-state checks.
+- Actuator, JUnit 5, AssertJ, MockMvc, and PostgreSQL Testcontainers.
 
-## 2. Important frontend corrections
+Preferred deployment is an executable JAR. A WAR is permitted when external Tomcat is required; in that case the embedded servlet container is provided and the application uses SpringBootServletInitializer.
 
-The backend must not copy the frontend's mock data literally.
+### 2.1 How to build and run locally
 
-1. The UI currently displays more than one hard-coded identity. All screens must use the user returned by `/api/v1/me`.
-2. Display strings are not database IDs. Send UUIDs for users, offerings, skills, requests, sessions, posts, and comments.
-3. The request modal must send `requestedSkillId`. A mentor may teach several skills, so mentor ID alone is insufficient.
-4. A skill-swap request must also send `offeredUserSkillId`; the backend verifies that it is owned by the requester and wanted by the mentor.
-5. The UI currently behaves as if one completion click releases points. The backend releases points only after both participants confirm or the no-dispute auto-release rule runs.
-6. Point prices, wallet balances, escrow amounts, identities, roles, rewards, ratings, and timestamps are server-owned.
-7. The current frontend's registration bonus of 50 points, helpful forum contribution reward of 5 points, and escrow auto-release of 18 hours are defaults stored in platform settings. Older diagrams showing +30 points or MySQL are outdated.
-8. Admin visibility comes from the authenticated `ADMIN` role. It is never controlled by a browser boolean alone.
+Use the committed Maven wrapper (no local Maven install needed):
 
-## 3. Architecture
+~~~powershell
+.\mvnw.cmd test          # run the 62-test suite
+.\mvnw.cmd spring-boot:run   # start the API on port 9095
+~~~
 
-```text
-Lovable React client
-        |
-        | HTTPS JSON + JWT
-        v
-Spring Security filter chain
-        |
-REST controllers -> DTO validation -> application services
-        |                                  |
-        |                                  +-> domain/state rules
-        v
-repositories / explicit locking queries
-        |
-        v
-Neon PostgreSQL
-```
+The project targets Java 25 (LTS). The JDK used is Temurin 25 installed at `C:\Users\ASUS\.jdks\temurin-25.0.4`; the user-level `JAVA_HOME` environment variable points there, and `.vscode/settings.json` registers it as the workspace runtime.
 
-Use a modular monolith for this project. It is simpler to deploy and allows request, wallet, escrow, session, review, and skill-swap changes to share one PostgreSQL transaction.
+The Spring Boot parent is **3.5.16**. `pom.xml` pins `<lombok.version>` explicitly so annotation processing works on JDK 25; without that pin, Lombok compilation can fail with misleading errors such as `cannot find symbol getId()`.
 
-Recommended packages:
+## 3. Actual repository layout
 
-```text
-com.skillbridge
-  auth
-  user
-  skill
-  mentor
-  request
-  session
-  wallet
-  forum
-  notification
-  moderation
-  admin
-  shared
-    config
-    error
-    idempotency
-    security
-```
+The existing scaffold uses package-by-feature under com.skillbridge:
 
-Within each feature, separate controller, DTO, service, domain/entity, and repository code. Controllers perform HTTP mapping and validation; services own transactions and state changes; repositories persist data.
+~~~text
+src/main/java/com/skillbridge/
+  auth/
+  user/
+  skill/
+  mentor/
+  request/
+  swap/
+  session/
+  wallet/
+  review/
+  forum/
+  notification/
+  moderation/
+  admin/
+  search/
+  shared/
+~~~
 
-## 4. Spring Boot and Tomcat setup
+Each business feature reserves these packages:
 
-Use Spring Boot 3.x compatible with Java 21. Required starters/libraries:
+~~~text
+feature/
+  api/controller
+  api/dto/request
+  api/dto/response
+  api/mapper
+  application/command
+  application/query
+  domain/entity
+  domain/model
+  infrastructure/persistence
+~~~
 
-- `spring-boot-starter-web` for REST and embedded Tomcat 10.1+.
-- `spring-boot-starter-validation`.
-- `spring-boot-starter-security`.
-- OAuth/JWT support or a maintained JWT library.
-- `spring-boot-starter-data-jpa`.
-- PostgreSQL JDBC driver.
-- Flyway PostgreSQL support.
-- Actuator for health checks.
-- Testcontainers PostgreSQL for integration tests.
+The shared package holds cross-cutting configuration, errors, security, and web support.
 
-Preferred packaging is an executable JAR using embedded Tomcat. If the course specifically requires deployment to an installed Tomcat, produce a WAR, mark the embedded servlet container as provided, extend `SpringBootServletInitializer`, and deploy only to Tomcat 10.1+ with Java 21. In both cases use `jakarta.servlet`, not `javax.servlet`.
+Resources on disk:
 
-## 5. Neon PostgreSQL configuration
+~~~text
+src/main/resources/
+  application.yml      # the only Spring config file; .env is imported from project root
+  db/migration/        # Flyway: V1..V8 plus V4.1 (skills catalog)
+~~~
 
-Keep credentials outside Git. Use environment variables:
+(`config/`, `db/seed/`, `openapi/`, and `storage/` are empty scaffolds reserved for planned features.)
 
-```text
-DATABASE_URL=jdbc:postgresql://<neon-host>/<database>?sslmode=require
-DATABASE_USERNAME=<role>
-DATABASE_PASSWORD=<secret>
-JWT_SECRET=<at-least-256-bit-secret>
-ACCESS_TOKEN_MINUTES=30
-REFRESH_TOKEN_DAYS=30
-FRONTEND_ORIGINS=http://localhost:5173,https://<lovable-domain>
-```
+Tests live flat per module — one `*Test` class per controller/service/mapper/repository plus per-module `*ModuleTestRunner` suites and a shared `support/TestAuthContext` helper. Layered trees like `integration/postgres` or `e2e` are aspirational; none exist yet.
 
-Production rules:
+Do not add implementation outside these boundaries without updating this guide.
 
-- Require SSL with Neon.
-- Use a small Hikari connection pool appropriate for the selected Neon plan; start with a maximum of 5 and tune from metrics.
-- Use Neon pooled connection details for normal web traffic and a direct connection for migrations if required by the Neon setup.
-- Set `spring.jpa.hibernate.ddl-auto=validate`. Flyway, not Hibernate, owns schema creation.
-- Disable open-session-in-view.
-- Store every instant in `timestamptz` and normalize to UTC.
-- Use separate Neon branches/databases for development, test, and production.
+## 4. Request path and layer rules
+
+~~~text
+API client
+  -> HTTPS JSON/multipart with Bearer JWT
+  -> Spring Security filter chain
+  -> REST controller and Bean Validation
+  -> application command/query
+  -> domain rules and authorization
+  -> repository or adapter
+  -> Neon PostgreSQL
+~~~
+
+- Controllers translate HTTP and call one application use case.
+- Command services own state changes, authorization, idempotency, domain events, and transactions.
+- Query services use read-only projections, pagination, allow-listed sorting, and caller-aware redaction.
+- Domain code owns states and invariants.
+- Infrastructure implements repositories, locking queries, storage, configuration, and external adapters.
+- Features communicate through narrow application interfaces, never through another feature's repository.
+
+### 4.1 Worked example: what happens for `POST /api/v1/auth/login`
+
+This is the exact call chain in the implemented code; every auth endpoint follows the same pattern. Use it to explain the architecture to a teacher.
+
+~~~text
+1. HTTP arrives as JSON: { "email": "...", "password": "..." }
+2. AuthController.login()                       api/controller/AuthController.java
+   - @Valid triggers Bean Validation on LoginRequest BEFORE any business logic
+3. AuthenticationService.login()                application/command/AuthenticationService.java
+   - UserRepository.findByEmail()               infrastructure/persistence (Spring Data JPA -> SELECT on "users")
+   - PasswordEncoder.matches()                  BCrypt comparison against password_hash column
+   - status check                               DISABLED accounts are rejected (403)
+   - UserRoleRepository.findByUserId()          loads roles from "user_roles"
+   - JwtTokenService.generateAccessToken()      signs HS256 JWT with sub/email/roles/status claims
+   - RefreshTokenIssuer.issueNewFamily()        creates opaque refresh token, stores ONLY its SHA-256 hash
+4. AuthMapper.toAuthResponse()                  api/mapper: entity + tokens -> response DTOs
+5. AuthController returns 200 + AuthResponse JSON:
+   { accessToken, accessTokenExpiresAt, refreshToken, user: { id, email, ..., roles, accountStatus } }
+~~~
+
+Failure paths never reach step 4: invalid payload -> 400 via `MethodArgumentNotValidException`, wrong credentials -> 401 via `BadCredentialsException`, disabled account -> 403 via `AccessDeniedException`; all are converted to RFC 9457 ProblemDetail by `shared/error/GlobalExceptionHandler.java`.
+
+The same layering applies to every feature slice:
+
+| Layer | Package | Responsibility | Rule of thumb |
+|---|---|---|---|
+| Controller | `api/controller` | HTTP mapping, status codes, `@Valid` | No business logic |
+| Request DTO | `api/dto/request` | Input shape + validation annotations | Never an entity |
+| Response DTO | `api/dto/response` | Output shape, safe fields only | Never leak `passwordHash`, `version` |
+| Mapper | `api/mapper` | Entity <-> DTO translation | Only place that knows both shapes |
+| Command service | `application/command` | Use cases, `@Transactional`, security checks | Owns state changes |
+| Query service | `application/query` | Reads, pagination, projections | Read-only |
+| Entity | `domain/entity` | JPA table mapping (`@Entity`) | Mirrors one table |
+| Enum/model | `domain/model` | Domain vocabulary (e.g. `Role`, `AccountStatus`) | Stored as STRING columns |
+| Repository | `infrastructure/persistence` | Spring Data JPA interfaces | The only code touching SQL |
+
+## 5. Product rules and workflow modes
+
+One account can learn, teach, volunteer, use points, participate in a reciprocal skill swap, post in the forum, and receive notifications.
+
+Roles are USER, MENTOR, and ADMIN. MENTOR is granted to an existing user when that user creates the first eligible active offering based on an owned visible TEACH skill. It is not a second identity.
+
+Supported learning modes are POINTS, SKILL_SWAP, and VOLUNTEER.
+
+- POINTS-style requests snapshot the server price, lock the learner wallet, create escrow, and append an immutable ledger hold atomically (this is what today's swap requests implement).
+- SKILL_SWAP and VOLUNTEER modes remain designed-but-unbuilt; see API_CONTRACT Part 2.
+- Accepting a request creates at most one session and changes the request state atomically.
+- Completion is currently single-action: a participant completes the session/swap, escrow is released exactly once, and both parties are notified. The double-confirmation model with `autoReleaseAt` is planned.
+- Reject, cancel, refund, release, completion, reward, and admin operations are idempotent where it matters financially.
+- Registration grants one default +50 point award. Marking one eligible forum comment helpful grants one default +5 reward. Values are stored in platform settings and are server-owned.
+
+Exact states, transitions, and response fields remain in the API and DTO contracts.
+
+## 6. Neon PostgreSQL and schema rules
+
+Use environment variables from .env.example for local configuration and .env.test.example for isolated tests. Never commit real credentials.
+
+Required runtime settings include DATABASE_URL, DATABASE_USERNAME, DATABASE_PASSWORD, FRONTEND_ORIGINS, JWT_SECRET, ACCESS_TOKEN_MINUTES (default 720 = 12 hours), REFRESH_TOKEN_DAYS (default 7), FLYWAY_ENABLED, JPA_DDL_AUTO=validate, and OPEN_SESSION_IN_VIEW=false.
+
+Database rules:
+
+- Require sslmode=require for Neon.
+- Use a small Hikari pool; start at a maximum of five connections.
+- Use separate runtime and migration roles when possible.
+- Use a separate database or Neon branch for development, test, and production.
+- Store instants as UTC timestamptz.
+- Use UUID identifiers, foreign keys, check constraints, unique constraints, version columns, and indexes.
+- Flyway owns schema creation. Hibernate validates; it never creates or updates shared schemas.
 - Never run tests against production.
 
-## 6. Database model
-
-Use UUID primary keys generated by the application or PostgreSQL. Every mutable business table should have `created_at`, `updated_at`, and an integer `version` for optimistic locking where relevant. Prefer check constraints and foreign keys over application-only validation.
-
-### Identity and profile
-
-#### `users`
-
-- `id uuid primary key`
-- `email varchar unique not null`
-- `password_hash varchar not null`
-- `display_name varchar not null`
-- `major varchar`
-- `year_of_study smallint`
-- `bio text`
-- `timezone varchar not null default 'UTC'`
-- `avatar_object_key varchar`
-- `account_status varchar not null`
-- timestamps and version
-
-#### `user_roles`
-
-- `user_id uuid references users`
-- `role varchar` with `USER`, `MENTOR`, or `ADMIN`
-- primary key `(user_id, role)`
-
-#### `refresh_tokens`
-
-- token ID/family ID, `user_id`, token hash, expiry, revoked timestamp, replacement token ID, and creation metadata
-- store only a hash of the opaque refresh token
-
-The same `users.id` identifies a learner, mentor, forum author, and admin. Do not create separate learner and mentor account tables.
-
-### Skills and mentor offerings
-
-#### `skills`
-
-- `id uuid primary key`
-- `slug varchar unique not null`
-- `name varchar unique not null`
-- `description text`
-- `active boolean not null default true`
-
-#### `user_skills`
-
-- `id uuid primary key`
-- `user_id uuid references users`
-- `skill_id uuid references skills`
-- `direction varchar` with `TEACH` or `LEARN`
-- `level varchar` with `BEGINNER`, `INTERMEDIATE`, or `ADVANCED`
-- `visible boolean not null default true`
-- timestamps
-- unique `(user_id, skill_id, direction)`
-
-#### `mentor_offerings`
-
-- `id uuid primary key`
-- `mentor_id uuid references users`
-- `teach_user_skill_id uuid references user_skills`
-- `point_cost integer check (point_cost >= 0)`
-- `points_enabled boolean`
-- `skill_swap_enabled boolean`
-- `volunteer_enabled boolean`
-- `duration_minutes integer`
-- `availability_text text`
-- `active boolean`
-- timestamps and version
-
-The service must verify that `teach_user_skill_id` belongs to `mentor_id`, has direction `TEACH`, and is visible.
-
-### Learning requests, skill swaps, and sessions
-
-#### `learning_requests`
-
-- `id uuid primary key`
-- `requester_id uuid references users`
-- `mentor_id uuid references users`
-- `mentor_offering_id uuid references mentor_offerings`
-- `requested_skill_id uuid references skills`
-- `mode varchar` with `POINTS`, `SKILL_SWAP`, or `VOLUNTEER`
-- `status varchar`
-- `scheduled_start timestamptz`
-- `duration_minutes integer`
-- `message text`
-- `point_cost_snapshot integer`
-- `source_forum_post_id uuid nullable`
-- `expires_at timestamptz`
-- timestamps and version
-
-Required constraints include requester not equal to mentor, future schedule at creation, non-negative snapshot, and one selected mode.
-
-#### `skill_swaps`
-
-- `id uuid primary key`
-- `learning_request_id uuid unique references learning_requests`
-- `requester_id uuid references users`
-- `mentor_id uuid references users`
-- `mentor_teach_user_skill_id uuid references user_skills`
-- `requester_teach_user_skill_id uuid references user_skills`
-- `mentor_skill_name_snapshot varchar not null`
-- `mentor_skill_level_snapshot varchar not null`
-- `requester_skill_name_snapshot varchar not null`
-- `requester_skill_level_snapshot varchar not null`
-- `status varchar not null`
-- `requester_confirmed_at timestamptz`
-- `mentor_confirmed_at timestamptz`
-- `completed_at timestamptz`
-- timestamps and version
+The actual schema groups (as shipped in migrations):
+
+- Identity: users, user_roles, refresh_tokens (V1).
+- Mentors and forum: mentor_offerings, forum_posts, forum_comments, forum_likes (V2–V3).
+- Administration: reports, disputes, platform_settings, admin audit tables (V4).
+- Skills catalog: skills (V4.1 — applied out of order; `spring.flyway.out-of-order: true` is set because V4.1 was added after later migrations had already shipped).
+- Profiles and wallets: user profile columns, wallets, point ledger/transactions, escrows (V5).
+- Swap requests and sessions: swap_requests, swap_sessions (V6).
+- Reviews: reviews and rating stats (V7).
+- Notifications: notifications (V8).
+
+Flyway validates all 9 migration files on startup (`baseline-on-migrate: true`); Hibernate only validates (`ddl-auto: validate`). Never edit an applied migration. Add a new version.
+
+## 7. Authentication and authorization
+
+Spring Boot owns registration, login, access-token issue, refresh rotation, logout, and account enforcement. Neon stores password hashes, roles, account status, and refresh-token hashes.
 
-The two skill snapshots preserve what was agreed even if either user later edits their profile. Foreign keys preserve traceability; snapshot columns preserve history.
-
-#### `sessions`
-
-- `id uuid primary key`
-- `learning_request_id uuid unique references learning_requests`
-- `mentor_id uuid references users`
-- `learner_id uuid references users`
-- `mode varchar not null`
-- `status varchar not null`
-- `scheduled_start timestamptz not null`
-- `duration_minutes integer not null`
-- `meeting_url varchar nullable`
-- `first_completion_at timestamptz nullable`
-- `auto_release_at timestamptz nullable`
-- `completed_at timestamptz nullable`
-- timestamps and version
-
-#### `session_confirmations`
-
-- `session_id uuid references sessions`
-- `user_id uuid references users`
-- `confirmed_at timestamptz not null`
-- primary key `(session_id, user_id)`
-
-Only the mentor and learner may have confirmation rows.
-
-#### `reviews`
-
-- `id uuid primary key`
-- `session_id uuid references sessions`
-- `reviewer_id uuid references users`
-- `reviewee_id uuid references users`
-- `rating smallint check (rating between 1 and 5)`
-- `body text`
-- `visible boolean default true`
-- timestamps
-- unique `(session_id, reviewer_id)`
-
-### Wallet, ledger, and escrow
-
-#### `wallets`
-
-- `user_id uuid primary key references users`
-- `available_points integer not null check (available_points >= 0)`
-- `held_points integer not null check (held_points >= 0)`
-- `version integer not null`
-- timestamps
-
-#### `point_ledger`
-
-- `id uuid primary key`
-- `wallet_user_id uuid references users`
-- `type varchar` such as `REGISTRATION_BONUS`, `FORUM_REWARD`, `ESCROW_HOLD`, `ESCROW_RELEASE`, `ESCROW_REFUND`, or `ADMIN_ADJUSTMENT`
-- `available_delta integer not null`
-- `held_delta integer not null`
-- `available_balance_after integer not null`
-- `held_balance_after integer not null`
-- `reference_type varchar`
-- `reference_id uuid`
-- `description varchar`
-- `idempotency_key uuid`
-- `created_at timestamptz not null`
-- unique `(wallet_user_id, idempotency_key, type)`
-
-Ledger rows are append-only. Never update or delete them; corrections use compensating entries.
-
-#### `escrows`
-
-- `id uuid primary key`
-- `learning_request_id uuid unique references learning_requests`
-- `payer_id uuid references users`
-- `payee_id uuid references users`
-- `amount integer check (amount > 0)`
-- `status varchar not null`
-- `held_at`, `released_at`, `refunded_at`, and `auto_release_at` as `timestamptz`
-- version
-
-There is no escrow row for `SKILL_SWAP` or `VOLUNTEER`.
-
-### Forum and notifications
-
-#### `forum_posts`
-
-- author, title, description, availability text, active/deleted flags, timestamps, and version
-
-#### `forum_post_skills`
-
-- primary key `(post_id, skill_id)`
-
-#### `forum_comments`
-
-- post, author, body, deleted flag, timestamps, and version
-
-#### `forum_likes`
-
-- primary key `(post_id, user_id)` and `created_at`
-
-#### `notifications`
-
-- user, type, title, detail, tone, target path, read timestamp, and creation timestamp
-
-Like and comment counts should be queried efficiently; do not trust counts submitted by clients.
-
-### Moderation and settings
-
-#### `reports`
-
-- reporter, target type, target ID, reason, details, status, assigned admin, resolution, and timestamps
-
-#### `account_warnings`
-
-- warned user, admin user, reason, message, and created timestamp
-
-#### `disputes`
-
-- session, opened by, reason, details, status, resolution, resolved by, and timestamps
-
-#### `platform_settings`
-
-- `key varchar primary key`
-- typed value or constrained JSON value
-- version, updated by, and updated timestamp
-
-Initial settings:
-
-- `registration_bonus_points = 50`
-- `helpful_forum_contribution_points = 5`
-- `escrow_auto_release_hours = 18`
-
-#### `admin_audit_events`
-
-- admin user, action, target type, target ID, before JSON, after JSON, reason, request ID, and timestamp
-
-## 7. Skill swap transaction
-
-### Creating a proposal
-
-Run all steps in one transaction:
-
-1. Load the authenticated requester.
-2. Load the selected active mentor offering and its mentor teach skill.
-3. Reject self-requests.
-4. Verify that `requestedSkillId` equals the offering's teach skill.
-5. Verify that the offering allows `SKILL_SWAP`.
-6. Load `offeredUserSkillId`; require ownership by the requester, `TEACH`, and visible.
-7. Verify that the mentor currently has a matching `LEARN` user-skill row.
-8. Create a `learning_requests` row with `PENDING`.
-9. Create a `skill_swaps` row with `PROPOSED`, both foreign keys, and both immutable skill snapshots.
-10. Create a notification for the mentor.
-11. Commit and return the server-created request/swap data.
-
-If two identical requests are retried with the same idempotency key, return the original response. If the key is reused with different content, return `409 IDEMPOTENCY_CONFLICT`.
-
-### Accepting a proposal
-
-1. Lock the request row.
-2. Require the authenticated user to be the requested mentor.
-3. Require request `PENDING` and swap `PROPOSED`.
-4. Recheck that both referenced teach skills still exist. Historical snapshots remain authoritative for the agreement text.
-5. Change request to `ACCEPTED` and swap to `ACCEPTED`.
-6. Create one scheduled session linked to the request and swap.
-7. Notify the requester.
-
-No points or wallet rows are created.
-
-### Completing a swap
-
-1. Lock the session and swap rows.
-2. Verify caller is one of the two participants and session is eligible.
-3. Insert the caller's session confirmation with a unique `(session_id, user_id)` key.
-4. If only one party confirmed, change the session and swap to `AWAITING_CONFIRMATION` and calculate `auto_release_at` from current settings.
-5. If both confirmed, set the session and swap to `COMPLETED` and set completion timestamps.
-6. Never modify either wallet.
-7. If a dispute exists, reject normal completion until an admin resolves it.
-
-## 8. Point and escrow transactions
-
-### Holding points when a request is created
-
-In one transaction:
-
-1. Load the active mentor offering and read its price; ignore any price supplied by the browser.
-2. Lock the requester's wallet row with `PESSIMISTIC_WRITE` or `SELECT ... FOR UPDATE`.
-3. Require `available_points >= price`.
-4. Subtract price from available and add it to held.
-5. Create the pending request with `point_cost_snapshot`.
-6. Create a `HELD` escrow row.
-7. Append an `ESCROW_HOLD` ledger row.
-8. Create the mentor notification.
-
-### Releasing points
-
-After both completion confirmations, or a valid auto-release job:
-
-1. Lock the session, escrow, learner wallet, and mentor wallet in a consistent UUID order to reduce deadlocks.
-2. Require escrow `HELD`, no open dispute, and a valid completion condition.
-3. Subtract amount from learner held points.
-4. Add amount to mentor available points.
-5. Append corresponding immutable release ledger rows for both wallets.
-6. Mark escrow `RELEASED` and session `COMPLETED`.
-7. Commit before sending notifications.
-
-### Refunding points
-
-On allowed rejection, cancellation, expiry, or admin decision:
-
-1. Lock the escrow and learner wallet.
-2. Require escrow `HELD` or the allowed disputed state.
-3. Subtract from held and return to available.
-4. Append an `ESCROW_REFUND` ledger row.
-5. Mark escrow `REFUNDED` and update the request/session state.
-
-Every operation requires an idempotency key and a unique database constraint. API-level duplicate checks without database constraints are insufficient.
-
-## 9. Request and session state rules
-
-### Learning request
-
-```text
-PENDING -> ACCEPTED -> session created
-PENDING -> REJECTED
-PENDING -> CANCELLED
-PENDING -> EXPIRED
-```
-
-Only the requested mentor can accept/reject. Only the requester can cancel before acceptance. Admin actions must be audited.
-
-### Session
-
-```text
-SCHEDULED -> AWAITING_CONFIRMATION -> COMPLETED
-SCHEDULED -> COMPLETED                 (second confirmation arrives immediately)
-SCHEDULED/AWAITING_CONFIRMATION -> DISPUTED
-DISPUTED -> COMPLETED or CANCELLED     (admin resolution)
-SCHEDULED -> CANCELLED                 (policy-controlled)
-```
-
-State checks belong in the service layer and must also be protected by row locks/version checks.
-
-## 10. Authentication and security
-
-- Register creates one user, `USER` role, wallet, registration ledger entry, and starter points in one transaction.
-- Access token lifetime is 30 minutes. The token contains user ID as subject and role claims.
-- Store refresh-token hashes, rotate on every refresh, and revoke the token family on reuse detection or logout.
-- Return `401 TOKEN_EXPIRED` for an expired access token so the frontend can refresh and retry once.
-- Use BCrypt strength appropriate to deployment hardware or Argon2id. Never encrypt or store a reversible password.
-- Apply method security and service-level ownership checks. URL secrecy is not authorization.
-- Allow only configured Lovable/local origins through CORS; never use wildcard origins with credentials.
-- Rate-limit login, registration, reports, comments, likes, requests, and uploads.
-- Validate and sanitize all text lengths. Render user content as text, not raw HTML.
-- Accept certificate PDFs up to 10 MB, verify file signature/MIME, generate storage object keys, and prevent path traversal.
-- Do not log JWTs, passwords, refresh tokens, Neon credentials, meeting URLs, or uploaded file contents.
-
-## 11. API implementation rules
-
-- Implement exactly the routes and payload ownership described in [api.md](api.md).
-- Use Bean Validation on request DTOs and domain validation in services.
-- Never expose JPA entities, password hashes, refresh-token hashes, internal notes, or another user's private meeting URL.
-- Use DTO projections for mentor cards, dashboard metrics, session cards, notifications, and admin queue rows.
-- Calculate ratings from visible reviews in PostgreSQL; do not store a browser-controlled rating.
-- Use soft deletion for forum content that may be referenced by moderation records.
-- Return allowed actions or enough state for the frontend to enable/disable buttons accurately.
-- Generate a request ID for every HTTP request and include it in errors and logs.
-- Use UTC internally and return the user's timezone separately when needed for display.
-
-## 12. Background jobs
-
-Implement jobs that are safe to run more than once:
-
-- Expire old pending requests and refund point escrows.
-- Auto-release eligible point sessions after `auto_release_at` when no dispute exists.
-- Auto-complete eligible skill swaps after the configured deadline only if project policy permits; otherwise leave them awaiting the second confirmation. The initial implementation should require two confirmations for swaps.
-- Send queued notifications.
-- Clean expired/revoked refresh tokens.
-
-Use PostgreSQL row locking with skip-locked batch processing or a job-lock mechanism so multiple app instances cannot process the same row twice.
-
-## 13. Flyway migration order
-
-Recommended migration sequence:
-
-1. `V1__users_roles_and_refresh_tokens.sql`
-2. `V2__skills_and_user_skills.sql`
-3. `V3__mentor_offerings.sql`
-4. `V4__wallets_ledger_and_settings.sql`
-5. `V5__learning_requests_skill_swaps_and_escrow.sql`
-6. `V6__sessions_confirmations_and_reviews.sql`
-7. `V7__forum_posts_comments_and_likes.sql`
-8. `V8__notifications_reports_disputes_and_audit.sql`
-9. `V9__indexes_and_seed_skill_catalog.sql`
-
-Migrations must work on an empty PostgreSQL database and when upgrading from the previous version. Never edit an applied production migration; add a new migration.
-
-## 14. Required indexes
-
-At minimum add indexes for:
-
-- Lowercased user email and display name search.
-- Skill slug/name.
-- `user_skills(user_id, direction)` and `(skill_id, direction, visible)`.
-- Active mentor offerings by teach skill and enabled modes.
-- Requests by requester/status and mentor/status.
-- Sessions by each participant/status/scheduled start.
-- Escrow by status/auto-release time.
-- Ledger by wallet user/created time and reference.
-- Forum posts by active/created time and post skills by skill.
-- Comments by post/created time.
-- Notifications by user/read time/created time.
-- Reports and disputes by status/created time.
-
-Use PostgreSQL full-text or trigram search only after basic indexed search is working and measured.
-
-## 15. Testing requirements
-
-### Unit tests
-
-- Request and session transition rules.
-- Skill-swap reciprocal matching.
-- Point cost and setting validation.
-- Review and permission rules.
-- DTO mapping and error mapping.
-
-### PostgreSQL integration tests with Testcontainers
-
-- Registration creates exactly one starter award.
-- Duplicate idempotency keys do not duplicate holds or awards.
-- Concurrent point requests cannot overdraw a wallet.
-- Concurrent completion calls release escrow once.
-- Rejection/cancellation refunds once.
-- Skill swap creates both snapshots and no escrow/ledger rows.
-- Non-matching offered skills return `SKILL_SWAP_NOT_MATCHED`.
-- Both swap confirmations complete once.
-- A dispute blocks point release and swap completion.
-- Unique constraints and Flyway migrations work on real PostgreSQL.
-
-### Web and security tests
-
-- Public auth endpoints work without a token.
-- Every business endpoint rejects missing/expired tokens correctly.
-- Users cannot access other users' private wallets, certificates, notifications, requests, or sessions.
-- Only participants can see meeting URLs or complete/report sessions.
-- Only admins can access admin routes or resolve disputes.
-- Validation and error JSON match [api.md](api.md).
-
-### Frontend contract tests
-
-- Dashboard response contains every value shown by the current cards and tables.
-- Mentor filters and mode labels map correctly.
-- Request payloads differ correctly for points, skill swap, and volunteer modes.
-- Session completion returns `pointsReleased` instead of relying on frontend assumptions.
-- Forum author and counts are server-owned.
-- Admin settings update only future operations.
-
-## 16. Implementation order
-
-1. Create Spring Boot project, security baseline, error format, PostgreSQL/Neon configuration, and Flyway.
-2. Implement registration/login/refresh/logout, profile, roles, and wallet starter award.
-3. Implement skill catalog, user teach/learn skills, mentor offerings, and mentor search.
-4. Implement learning requests for `VOLUNTEER` first.
-5. Add point wallet, immutable ledger, escrow, idempotency, and concurrency tests.
-6. Add `SKILL_SWAP` validation, snapshots, acceptance, and two-party completion.
-7. Implement sessions, meeting data, reviews, disputes, and background auto-release.
-8. Implement dashboard projections, wallet activity, notifications, and global search.
-9. Implement forum posts, comments, likes, leaderboard, and volunteer request linkage.
-10. Implement certificate upload/review metadata.
-11. Implement admin dashboard, moderation, warnings, settings, dispute resolution, and audit history.
-12. Connect React Query screen by screen, removing mock arrays only after each API path is tested.
-
-## 17. Backend definition of done
-
-- The application starts on Java 21 and Tomcat 10.1+.
-- Flyway creates and validates the complete schema on Neon PostgreSQL.
-- No MySQL driver, SQL, naming, or assumptions exist.
-- Every current frontend workflow has an authorized REST endpoint.
-- Point holds/releases/refunds and registration rewards are atomic, idempotent, and auditable.
-- Skill swaps are reciprocal, validated from database ownership, snapshotted, have no point movement, and require both participants to complete.
-- All integration and concurrency tests pass against PostgreSQL Testcontainers.
-- Secrets are environment-based and no production credential is committed.
-- The React frontend displays API-returned identity, balances, states, and messages rather than mock assumptions.
+### 7.1 Implemented auth module (com.skillbridge.auth)
+
+The auth slice is fully implemented and is the reference implementation for all other features.
+
+Endpoints exposed by `AuthController` (all public, no JWT required):
+
+| Method | Path | Service called | Success response |
+|---|---|---|---|
+| POST | `/api/v1/auth/register` | `RegistrationService.register()` | 201 + AuthResponse |
+| POST | `/api/v1/auth/login` | `AuthenticationService.login()` | 200 + AuthResponse |
+| POST | `/api/v1/auth/refresh` | `RefreshTokenService.refreshToken()` | 200 + rotated tokens |
+| POST | `/api/v1/auth/logout` | `RefreshTokenService.logout()` | 204 No Content |
+
+Components and their single responsibility:
+
+- `AuthController` - maps HTTP to one use case per method; no logic.
+- `LoginRequest` / `RegisterRequest` / `RefreshTokenRequest` (`api/dto/request`) - input contracts with Bean Validation annotations. Registration enforces email format + length, password length 8..100 with at least one letter and one digit (`@Pattern`).
+- `AuthResponse` / `AuthUserResponse` (`api/dto/response`) - output contracts; `AuthUserResponse` deliberately excludes `passwordHash`, `version`, and audit timestamps.
+- `AuthMapper` (`api/mapper`) - the only class that knows both entity and DTO shapes; builds the user summary via `toAuthUserResponse()`.
+- `RegistrationService`, `AuthenticationService`, `RefreshTokenService` (`application/command`) - transactional use cases.
+- `JwtTokenService` - signs HS256 access tokens (Nimbus JOSE) with claims `sub` (user id), `email`, `roles`, `status`; also generates opaque refresh tokens and their SHA-256 hex hashes.
+- `RefreshTokenIssuer` - single place that creates a refresh-token row: generate raw token -> store only hash -> return raw token once. `issueNewFamily(userId)` for register/login, `issueRotated(userId, familyId)` for refresh.
+- Repositories (`infrastructure/persistence`): `UserRepository.findByEmail/existsByEmail`, `UserRoleRepository.findByUserId`, `RefreshTokenRepository.findByTokenHash/revokeFamily/deleteExpiredTokens`.
+
+Token design:
+
+- Access token: HMAC-SHA256 signed JWT, default lifespan **720 minutes (12h)** via `skillbridge.security.jwt.access-token-minutes`; the `exp` claim is authoritative.
+- Refresh token: 64-character opaque random string, default 7 days; the client receives the raw value exactly once, PostgreSQL stores only its SHA-256 hash in `refresh_tokens`.
+- Rotation: every `/refresh` revokes the presented token and issues a new token inside the same `family_id`.
+- Reuse detection: presenting an already-revoked token is treated as theft; `revokeFamily(familyId)` invalidates the entire chain and returns 403.
+- Logout: revokes the whole family so every device sharing it is signed out.
+
+Identity database tables (Flyway V1):
+
+~~~text
+users            id UUID PK, email UNIQUE NOT NULL, password_hash NOT NULL,
+                 first_name, last_name, status (enum STRING), created_at, updated_at, version
+user_roles       composite PK (user_id, role)   -- Role enum: USER, MENTOR, ADMIN
+refresh_tokens   id UUID PK, user_id FK, token_hash UNIQUE, family_id,
+                 expires_at, created_at, revoked BOOLEAN
+~~~
+
+Error mapping for auth failures (handled by `shared/error/GlobalExceptionHandler.java`, RFC 9457 `application/problem+json`):
+
+| Exception | Status | Code |
+|---|---|---|
+| `MethodArgumentNotValidException` | 400 | VALIDATION_FAILED (+ fieldErrors map) |
+| `IllegalArgumentException` (e.g. duplicate email) | 400 | INVALID_ARGUMENT |
+| `BadCredentialsException` | 401 | UNAUTHENTICATED |
+| `AccessDeniedException` (disabled account, revoked/expired/reused token) | 403 | FORBIDDEN |
+
+### 7.2 Security rules
+
+- Access tokens expire after 12 hours (720 minutes) by default; JWT exp is authoritative.
+- Refresh tokens are opaque, rotated on every refresh, and stored only as hashes.
+- Validate signature, algorithm, issuer, audience, subject, issued-at, not-before, and expiry.
+- Load current roles and account status from PostgreSQL; JWT claims do not override database state.
+- Missing, invalid, revoked, or expired credentials return documented 401 errors.
+- Authenticated callers without permission return 403.
+- Passwords use Argon2id or BCrypt with deployment-appropriate parameters.
+- Rate-limit login and refresh without revealing whether an email exists.
+- CORS uses explicit configured origins; never wildcard credentials.
+- Never log passwords, JWTs, refresh tokens, signing keys, Neon credentials, private file keys, meeting URLs, or request bodies containing secrets.
+
+Account states are ACTIVE, WARNED, SUSPENDED, and DISABLED. Account state overrides every role. Ownership, participant, author, and admin checks use persisted relationships and the authenticated principal, never caller-supplied owner IDs.
+
+## 8. REST contract rules
+
+- Base paths: `/api/v1` for auth, profile, dashboard, wallet, mentors, forum, and admin; unversioned `/api` for skills, swaps, requests, sessions, reviews, notifications, and moderation. New modules should prefer `/api/v1`.
+- JSON uses camelCase; PostgreSQL uses snake_case.
+- IDs are UUID strings, points are integers, and timestamps are ISO-8601.
+- Controllers expose DTOs only; JPA entities and private fields never cross the API boundary.
+- Errors use RFC 9457 application/problem+json with stable codes and requestId.
+- Use GET for reads, POST for creation or commands, PATCH for partial updates, PUT for idempotent toggles, and DELETE for removal or soft deletion.
+- Collections currently return plain arrays (no pagination envelope yet); `PageResponse`, `Idempotency-Key` headers, and `If-Match` version checks are planned except where already implemented (profile and mentor-offering updates use `If-Match`).
+- API clients must display server-returned identities, balances, prices, counts, ratings, timestamps, and states.
+- Update API_CONTRACT, DTO_CATALOG, OpenAPI, tests, and this guide together when the contract changes.
+
+## 9. Background work and storage
+
+Planned scheduled jobs expire pending requests, refund eligible escrow, auto-release eligible point sessions, queue notifications, and remove expired refresh-token rows. Jobs must be repeat-safe, use row claims or locks, and work with multiple application instances.
+
+Certificate bytes are handled by a storage adapter. PostgreSQL stores owner-scoped metadata and object keys. File access requires ownership or another explicit authorization check. File transfer must remain outside long database transactions.
+
+## 10. Implementation order
+
+1. Add the Spring Boot build, application entry point, configuration, error format, security baseline, and Flyway.
+2. Implement registration, login, refresh, logout, roles, profile, and starter wallet award.
+3. Implement skills, user skills, offerings, and mentor discovery.
+4. Implement volunteer requests and sessions.
+5. Implement wallet, ledger, escrow, idempotency, and concurrency protection.
+6. Implement reciprocal skill swaps and two-party completion.
+7. Implement reviews, disputes, notifications, forum, certificates, search, and admin operations.
+8. Add OpenAPI, integration, security, contract, and end-to-end tests.
+
+## 11. Definition of done
+
+The backend is complete when:
+
+- It builds and runs on Java 25 (Temurin LTS) with Tomcat 10.1+.
+- Flyway creates and validates the PostgreSQL schema on Neon.
+- Every route in API_CONTRACT has an authorized implementation and DTO.
+- Authentication, ownership, account state, and admin checks are enforced server-side.
+- Point holds, releases, refunds, rewards, swaps, disputes, and completions are atomic, idempotent, and auditable.
+- No MySQL, direct API-client database access, secret logging, Hibernate schema creation, or legacy javax.servlet code remains.
+- Unit, web/security, PostgreSQL/Testcontainers, migration, OpenAPI, concurrency, and API contract tests pass.

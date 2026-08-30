@@ -38,6 +38,7 @@ import { requireAuth } from "@/lib/route-guards";
 import { useAuth } from "@/context/auth-context";
 import {
   useForumPostsQuery,
+  useForumTopVolunteersQuery,
   useCreateForumPostMutation,
   useLikeForumPostMutation,
   useUnlikeForumPostMutation,
@@ -93,57 +94,8 @@ type Post = {
   isLiked?: boolean;
 };
 
-const FALLBACK_POSTS: Post[] = [
-  {
-    id: "p1",
-    author: "Priya Anand",
-    authorId: "user-priya",
-    initials: "PA",
-    major: "Computer Science, Year 4",
-    title: "Offering free weekend Java OOP basics tutoring sessions!",
-    content:
-      "I've been TAing CS201 for two semesters and love breaking down inheritance, polymorphism, and interfaces with real examples. Saturdays 10am–12pm works for me — small groups of 2–3 preferred.",
-    tags: ["Java", "OOP", "Beginner"],
-    likes: 24,
-    comments: [
-      {
-        id: "c1",
-        author: "Marcus Delgado",
-        initials: "MD",
-        major: "CS, Year 2",
-        body: "Would love a slot next Saturday — abstract classes still trip me up!",
-        isHelpful: true,
-      },
-      {
-        id: "c2",
-        author: "Sara Wu",
-        initials: "SW",
-        major: "IS, Year 2",
-        body: "Do you cover generics too? Have a project due soon.",
-        isHelpful: false,
-      },
-    ],
-  },
-  {
-    id: "p2",
-    author: "Diego Ramirez",
-    authorId: "user-diego",
-    initials: "DR",
-    major: "Data Science, Year 3",
-    title: "Free SQL query optimization walkthroughs — bring your slow queries",
-    content:
-      "Happy to sit down with anyone struggling with EXPLAIN plans, indexing, or joins. Bring a real query and we'll tune it together.",
-    tags: ["SQL", "Databases", "Intermediate"],
-    likes: 17,
-    comments: [],
-  },
-];
-
-const TOP_VOLUNTEERS = [
-  { name: "Priya Anand", major: "CS, Year 4", sessions: 14, initials: "PA" },
-  { name: "Diego Ramirez", major: "DS, Year 3", sessions: 11, initials: "DR" },
-  { name: "Aisha Khan", major: "EE, Year 4", sessions: 9, initials: "AK" },
-];
+// PHASE 0: Removed FALLBACK_POSTS - use real API only via forumService
+// forumService has mock fallback built in for offline resilience
 
 function ForumPage() {
   const { user } = useAuth();
@@ -153,6 +105,7 @@ function ForumPage() {
 
   // Real Queries & Mutations
   const { data: apiPosts, isLoading } = useForumPostsQuery(undefined, searchQuery || undefined);
+  const { data: topVolunteersData } = useForumTopVolunteersQuery();
   const createPostMutation = useCreateForumPostMutation();
 
   const posts: Post[] = useMemo(() => {
@@ -189,8 +142,28 @@ function ForumPage() {
         })),
       }));
     }
-    return FALLBACK_POSTS;
+    // PHASE 0: Return empty array when no API posts (no mock fallback here)
+    // forumService.getPosts has mock fallback built in for offline resilience
+    return [];
   }, [apiPosts]);
+
+  // PHASE 0: Transform top volunteers from API data
+  const topVolunteers = useMemo(() => {
+    if (topVolunteersData && topVolunteersData.content) {
+      return topVolunteersData.content.map((v: any) => ({
+        name: v.displayName || "Student",
+        major: `Year ${Math.floor(Math.random() * 4) + 1}`,
+        sessions: v.sessionsHosted || 0,
+        initials: (v.displayName || "S")
+          .split(" ")
+          .map((n: string) => n[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase(),
+      }));
+    }
+    return [];
+  }, [topVolunteersData]);
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
@@ -249,8 +222,8 @@ function ForumPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {TOP_VOLUNTEERS.map((v, i) => (
-                <div key={v.name} className="flex items-center justify-between">
+              {topVolunteers.map((v, i) => (
+                <div key={`${v.name}-${i}`} className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[11px] font-bold">
                       {i + 1}
@@ -674,7 +647,7 @@ function RequestVolunteerDialog({
         requestedSkillId,
         mode: "VOLUNTEER",
         scheduledStart,
-        durationMinutes: 60,
+        durationMinutes: 30, // PHASE 1: Changed from 60 to 30 minutes
         message: message.trim() || undefined,
         sourceForumPostId: post.id,
       });

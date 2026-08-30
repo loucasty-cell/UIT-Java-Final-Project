@@ -1,4 +1,5 @@
 import { api } from "@/lib/api-client";
+import { handleMockApiRequest } from "@/lib/mock-api";
 import {
   CreateForumCommentRequest,
   CreateForumPostRequest,
@@ -25,21 +26,37 @@ export const forumService = {
   /**
    * List forum posts with optional skill filter, keyword search, or pagination
    * GET /api/v1/forum/posts
+   * PHASE 0: Add mock fallback for forum page (only page allowed to use mock)
    */
   async getPosts(
     skillId?: string,
     search?: string,
     params?: PaginationParams
   ): Promise<ForumPostSummaryResponse[]> {
-    const res = await api.get<any>("/api/v1/forum/posts", {
-      skillId,
-      search,
-      ...params,
-    });
-    if (res && Array.isArray(res.content)) {
-      return res.content;
+    try {
+      const res = await api.get<any>("/api/v1/forum/posts", {
+        skillId,
+        search,
+        ...params,
+      });
+      if (res && Array.isArray(res.content)) {
+        return res.content;
+      }
+      return Array.isArray(res) ? res : [];
+    } catch (error) {
+      // PHASE 0: Fallback to mock for forum page only
+      try {
+        const mockResult = handleMockApiRequest(
+          "/api/v1/forum/posts",
+          "GET",
+          undefined,
+          { skillId, search, ...params }
+        );
+        return mockResult as ForumPostSummaryResponse[];
+      } catch {
+        throw error;
+      }
     }
-    return Array.isArray(res) ? res : [];
   },
 
   /**
@@ -155,15 +172,32 @@ export const forumService = {
   /**
    * Get top volunteer leaderboard
    * GET /api/v1/forum/top-volunteers?week={date}
+   * PHASE 0: Add mock fallback for forum page (only page allowed to use mock)
    */
   async getTopVolunteers(
     week?: string,
     params?: PaginationParams
   ): Promise<PageResponse<TopVolunteerResponse>> {
-    const defaultWeek = week || new Date().toISOString().split("T")[0];
-    return api.get<PageResponse<TopVolunteerResponse>>(
-      "/api/v1/forum/top-volunteers",
-      { week: defaultWeek, ...params }
-    );
+    try {
+      const defaultWeek = week || new Date().toISOString().split("T")[0];
+      return await api.get<PageResponse<TopVolunteerResponse>>(
+        "/api/v1/forum/top-volunteers",
+        { week: defaultWeek, ...params }
+      );
+    } catch (error) {
+      // PHASE 0: Fallback to mock for forum page only
+      try {
+        const defaultWeek = week || new Date().toISOString().split("T")[0];
+        const mockResult = handleMockApiRequest(
+          "/api/v1/forum/top-volunteers",
+          "GET",
+          undefined,
+          { week: defaultWeek, ...params }
+        );
+        return mockResult as PageResponse<TopVolunteerResponse>;
+      } catch {
+        throw error;
+      }
+    }
   },
 };

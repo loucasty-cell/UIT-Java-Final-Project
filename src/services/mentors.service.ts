@@ -1,4 +1,5 @@
 import { api } from "@/lib/api-client";
+import { handleMockApiRequest } from "@/lib/mock-api";
 import {
   CreateMentorOfferingRequest,
   MentorDetailResponse,
@@ -26,16 +27,32 @@ export const mentorsService = {
   /**
    * Search and filter mentors
    * GET /api/v1/mentors?skillId={}&search={}&minRating={}
+   * PHASE 0: Add mock fallback for mentors page (only page allowed to use mock)
    */
   async searchMentors(
     filters: MentorSearchFilters = {}
   ): Promise<MentorSearchResponse[] | PageResponse<MentorSearchResponse>> {
-    const res = await api.get<any>("/api/v1/mentors", filters);
-    // If backend returns Page<MentorSummaryResponse>, res.content exists
-    if (res && Array.isArray(res.content)) {
-      return res.content;
+    try {
+      const res = await api.get<any>("/api/v1/mentors", filters);
+      // If backend returns Page<MentorSummaryResponse>, res.content exists
+      if (res && Array.isArray(res.content)) {
+        return res.content;
+      }
+      return res;
+    } catch (error) {
+      // PHASE 0: Fallback to mock for mentors page only
+      try {
+        const mockResult = handleMockApiRequest(
+          "/api/v1/mentors",
+          "GET",
+          undefined,
+          filters
+        );
+        return mockResult as MentorSearchResponse[];
+      } catch {
+        throw error;
+      }
     }
-    return res;
   },
 
   /**

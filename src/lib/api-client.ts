@@ -168,22 +168,13 @@ export async function apiClient<T>(endpoint: string, options: RequestOptions = {
   try {
     response = await fetch(url, config);
   } catch (networkError: unknown) {
-    // When backend is offline or network fails, fallback to local in-memory mock handler
-    try {
-      const mockResult = handleMockApiRequest(
-        endpoint,
-        options.method || "GET",
-        options.body ? JSON.parse(String(options.body)) : undefined,
-        params,
-      );
-      return mockResult as T;
-    } catch {
-      throw new ApiError(
-        0,
-        networkError instanceof Error ? networkError.message : "Network error occurred",
-        "NetworkError",
-      );
-    }
+    // PHASE 0: Remove global mock fallback - let errors throw
+    // Mock fallback is now only in mentors.service and forum.service
+    throw new ApiError(
+      0,
+      networkError instanceof Error ? networkError.message : "Network error occurred",
+      "NetworkError",
+    );
   }
 
   // Handle Token Expiry (401 Unauthorized) & Auto-Refresh

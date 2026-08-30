@@ -37,6 +37,7 @@ export const queryKeys = {
   },
   forum: {
     posts: (skillId?: string, search?: string) => ["forum", "posts", { skillId, search }] as const,
+    topVolunteers: (week?: string) => ["forum", "topVolunteers", week] as const,
   },
   notifications: {
     all: ["notifications", "all"] as const,

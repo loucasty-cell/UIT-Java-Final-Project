@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { forumService } from "@/services/forum.service";
+import { forumService, TopVolunteerResponse } from "@/services/forum.service";
 import {
   CreateForumCommentRequest,
   CreateForumPostRequest,
   RewardCommentRequest,
+  PageResponse,
 } from "@/types/api";
 import { queryKeys } from "./query-keys";
 
@@ -12,6 +13,15 @@ export function useForumPostsQuery(skillId?: string, search?: string) {
     queryKey: queryKeys.forum.posts(skillId, search),
     queryFn: () => forumService.getPosts(skillId, search),
     staleTime: 1000 * 60 * 2,
+  });
+}
+
+// PHASE 0: Add hook for top volunteers with mock fallback
+export function useForumTopVolunteersQuery(week?: string) {
+  return useQuery({
+    queryKey: queryKeys.forum.topVolunteers(week),
+    queryFn: () => forumService.getTopVolunteers(week),
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
 

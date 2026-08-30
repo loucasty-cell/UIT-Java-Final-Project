@@ -1,5 +1,23 @@
+# ==========================================
+# Frontend & Node / Vite / Bun / TanStack
+# ==========================================
+node_modules/
+dist/
+dist-ssr/
+.output/
+.vinxi/
+.tanstack/
+.tanstack/**
+.nitro/
+.vite/
+*.local
+
+# Wrangler / Cloudflare
+.wrangler/
+.dev.vars
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,24 +25,42 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-.output
-.vinxi
-.tanstack/**
-.nitro
-*.local
+# ==========================================
+# Java / Spring Boot / Maven
+# ==========================================
+target/
+*.class
+*.ctxt
+.mtj.tmp/
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+replay_pid*
+storage/
+.mvn/wrapper/maven-wrapper.jar
 
-# Wrangler / Cloudflare
-.wrangler/
-.dev.vars
+# ==========================================
+# Environment Variables
+# ==========================================
+.env
+.env.*
+!.env.example
+!.env.test.example
 
-# Editor directories and files
+# ==========================================
+# IDE & Operating System
+# ==========================================
+.idea/
+*.iml
 .vscode/*
 !.vscode/extensions.json
-.idea
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj

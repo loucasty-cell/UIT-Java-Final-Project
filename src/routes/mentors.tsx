@@ -28,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AvailabilityCalendar } from "@/components/ui/availability-calendar";
 import {
   Select,
   SelectContent,
@@ -650,54 +651,20 @@ function RequestSessionDialog({
           </Select>
         </div>
 
-        {/* Date + time */}
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Preferred Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start rounded-lg font-normal",
-                    !date && "text-muted-foreground",
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : "Pick a date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
-                  initialFocus
-                  className="pointer-events-auto p-3"
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Time Slot</Label>
-            <Select value={time} onValueChange={setTime}>
-              <SelectTrigger className="rounded-lg">
-                <SelectValue placeholder="Select time" />
-              </SelectTrigger>
-              <SelectContent>
-                {timeSlots.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>{timeDisplayLabels[t]}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        {/* Date & Time Selection using AvailabilityCalendar */}
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium">Select Available Slot</Label>
+          <AvailabilityCalendar
+            slots={(availabilityData as any)?.slots || []}
+            selectedDate={date}
+            selectedTime={time}
+            bookedDates={[]}
+            minDate={new Date()}
+            onSelectDateTime={(selectedDate, selectedTime) => {
+              setDate(selectedDate);
+              setTime(selectedTime);
+            }}
+          />
         </div>
 
          {/* PHASE 3: Duration selector */}

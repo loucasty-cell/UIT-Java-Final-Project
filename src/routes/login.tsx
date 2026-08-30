@@ -223,6 +223,56 @@ function LoginPage() {
                       {loginLoading ? "Signing in..." : "Sign In"}
                       {!loginLoading && <ArrowRight className="ml-2 h-4 w-4" />}
                     </Button>
+
+                    <div className="pt-2">
+                      <div className="relative my-3">
+                        <div className="absolute inset-0 flex items-center">
+                          <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-card px-2 text-muted-foreground">Or sign in with demo role</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-9"
+                          onClick={() => {
+                            setLoginEmail("student@university.edu");
+                            setLoginPassword("password123");
+                          }}
+                        >
+                          Student
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-9"
+                          onClick={() => {
+                            setLoginEmail("mentor@university.edu");
+                            setLoginPassword("password123");
+                          }}
+                        >
+                          Mentor
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-9"
+                          onClick={() => {
+                            setLoginEmail("admin@university.edu");
+                            setLoginPassword("password123");
+                          }}
+                        >
+                          Admin
+                        </Button>
+                      </div>
+                    </div>
                   </form>
                 </TabsContent>
 

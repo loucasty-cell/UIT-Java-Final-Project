@@ -119,6 +119,19 @@ function statusBadge(status: NormalizedSession["status"]) {
           DISPUTED
         </Badge>
       );
+    case "ACCEPTED":
+      return (
+        <Badge className="border-sky-500/30 bg-sky-500/15 text-sky-700 hover:bg-sky-500/15 dark:text-sky-400">
+          ACCEPTED
+        </Badge>
+      );
+    case "CANCELLED":
+    default:
+      return (
+        <Badge variant="outline" className="text-muted-foreground">
+          {status || "UNKNOWN"}
+        </Badge>
+      );
   }
 }
 

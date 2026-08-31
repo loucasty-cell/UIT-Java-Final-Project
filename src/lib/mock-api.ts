@@ -780,6 +780,100 @@ export function handleMockApiRequest(endpoint: string, method: string = "GET", b
   }
 
   // ==========================================
+  // Learning Requests & Bookings
+  // ==========================================
+  if (cleanPath === "/api/v1/learning-requests" || cleanPath === "/api/requests/swaps") {
+    if (method === "POST") {
+      const newReq = {
+        id: "lr-" + Date.now(),
+        learnerId: db.users[0].id,
+        learnerName: db.users[0].displayName,
+        mentorId: body.mentorId || "user-mentor",
+        mentorName: "Priya Anand",
+        mentorOfferingId: body.mentorOfferingId || "off-1",
+        requestedSkillId: body.requestedSkillId || "sk-react",
+        requestedSkillName: "React",
+        mode: body.mode || "POINTS",
+        offeredUserSkillId: body.offeredUserSkillId,
+        scheduledStart: body.scheduledStart || new Date(Date.now() + 86400000).toISOString(),
+        durationMinutes: body.durationMinutes || 60,
+        message: body.message || "Mentorship session request",
+        status: "PENDING",
+        pointCostSnapshot: body.mode === "POINTS" ? 40 : 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      return newReq;
+    }
+    return [
+      {
+        id: "lr-1",
+        learnerId: db.users[0].id,
+        learnerName: db.users[0].displayName,
+        mentorId: "user-mentor",
+        mentorName: "Priya Anand",
+        mentorOfferingId: "off-1",
+        requestedSkillId: "sk-react",
+        requestedSkillName: "React",
+        mode: "POINTS",
+        scheduledStart: new Date(Date.now() + 86400000 * 2).toISOString(),
+        durationMinutes: 60,
+        status: "ACCEPTED",
+        sessionId: "sess-1",
+        pointCostSnapshot: 50,
+        meetingUrl: "https://meet.skillbridge.edu/session-101",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+  }
+
+  if (cleanPath.startsWith("/api/v1/learning-requests/")) {
+    const parts = cleanPath.split("/");
+    const id = parts[4];
+    const action = parts[5];
+    if (action === "accept") {
+      return { id, status: "ACCEPTED", meetingUrl: "https://meet.skillbridge.edu/" + id };
+    }
+    if (action === "reject") {
+      return { id, status: "REJECTED" };
+    }
+    if (action === "cancel") {
+      return { id, status: "CANCELLED" };
+    }
+    return { id, status: "PENDING" };
+  }
+
+  // ==========================================
+  // Mentor Applications & Milestones
+  // ==========================================
+  if (cleanPath === "/api/v1/mentor-applications" || cleanPath === "/api/v1/me/mentor-application") {
+    if (method === "POST") {
+      return {
+        id: "ma-" + Date.now(),
+        userId: db.users[0].id,
+        status: "PENDING",
+        motivation: body.motivation,
+        appliedAt: new Date().toISOString(),
+      };
+    }
+    return {
+      id: "ma-1",
+      userId: db.users[0].id,
+      status: "APPROVED",
+      appliedAt: new Date(Date.now() - 86400000 * 15).toISOString(),
+    };
+  }
+
+  if (cleanPath === "/api/v1/milestones" || cleanPath === "/api/v1/me/milestones") {
+    return [
+      { id: "ms-1", title: "Complete First Session", target: 1, current: 1, rewardPoints: 5, completed: true },
+      { id: "ms-2", title: "Join Community", target: 1, current: 1, rewardPoints: 30, completed: true },
+      { id: "ms-3", title: "Teach 5 Sessions", target: 5, current: 2, rewardPoints: 10, completed: false },
+    ];
+  }
+
+  // ==========================================
   // Notifications & Watchlist & Referrals
   // ==========================================
   if (cleanPath === "/api/v1/notifications") {

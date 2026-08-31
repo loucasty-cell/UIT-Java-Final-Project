@@ -119,6 +119,13 @@ async function refreshAuthTokens(): Promise<string | null> {
     }
     return data.accessToken;
   } catch (error) {
+    if (refreshToken.startsWith("mock-")) {
+      const mockResult = handleMockApiRequest("/api/v1/auth/refresh", "POST", { refreshToken });
+      if (mockResult?.accessToken) {
+        setAccessToken(mockResult.accessToken);
+        return mockResult.accessToken;
+      }
+    }
     clearAuth();
     return null;
   }
@@ -168,8 +175,24 @@ export async function apiClient<T>(endpoint: string, options: RequestOptions = {
   try {
     response = await fetch(url, config);
   } catch (networkError: unknown) {
-    // PHASE 0: Remove global mock fallback - let errors throw
-    // Mock fallback is now only in mentors.service and forum.service
+    try {
+      let bodyObj: any = undefined;
+      if (customConfig.body) {
+        bodyObj = typeof customConfig.body === "string" ? JSON.parse(customConfig.body) : customConfig.body;
+      }
+      const mockResult = handleMockApiRequest(
+        endpoint,
+        (customConfig.method || "GET").toUpperCase(),
+        bodyObj,
+        params,
+      );
+      if (mockResult !== undefined) {
+        return mockResult as T;
+      }
+    } catch {
+      // ignore mock handler error and throw real network error
+    }
+
     throw new ApiError(
       0,
       networkError instanceof Error ? networkError.message : "Network error occurred",

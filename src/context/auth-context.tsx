@@ -139,7 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Normalize roles once, reuse for all role checks
-  const rawRoles: string[] = (user as any)?.roles || [];
+  const rawRoles: string[] = useMemo(() => (user as any)?.roles || [], [user]);
   const normalizedRoles = useMemo(() => normalizeRoles(rawRoles), [rawRoles]);
 
   const isLearner = normalizedRoles.includes("USER") || normalizedRoles.length > 0;

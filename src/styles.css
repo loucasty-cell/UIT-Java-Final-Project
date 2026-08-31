@@ -48,18 +48,18 @@
   --radius: 1rem;
   /* Coursera-inspired Light Mode with Dodger Blue (#1e90ff) & Ice-Sky White */
   --background: oklch(0.985 0.008 240); /* Crisp clean ice-sky white #F8FAFD */
-  --foreground: oklch(0.20 0.04 250); /* Coursera deep midnight navy #0F203D - replaces dull grey */
+  --foreground: oklch(0.14 0.01 250); /* Darker, nearly black for crisp contrast */
   --card: oklch(1.0 0 0); /* Pure crisp white cards */
-  --card-foreground: oklch(0.20 0.04 250); /* Deep midnight navy */
+  --card-foreground: oklch(0.14 0.01 250); /* Deep midnight navy */
   --popover: oklch(1.0 0 0);
-  --popover-foreground: oklch(0.20 0.04 250);
+  --popover-foreground: oklch(0.14 0.01 250);
   /* Dodger Blue primary (#1e90ff / hsl(210 100% 56%)) */
   --primary: oklch(0.67 0.18 240); /* Vivid Dodger Blue #1e90ff */
   --primary-foreground: oklch(0.99 0.005 240); /* Crisp pure white text on primary */
   --secondary: oklch(0.94 0.03 240); /* Soft ice-dodger blue #EBF3FF - replaces chalk grey */
-  --secondary-foreground: oklch(0.30 0.06 250); /* Deep royal navy */
+  --secondary-foreground: oklch(0.20 0.02 250); /* Darker royal navy */
   --muted: oklch(0.94 0.03 240); /* Soft ice-dodger blue background */
-  --muted-foreground: oklch(0.48 0.06 245); /* Refined steel-blue #3B5675 - replaces washed-out grey */
+  --muted-foreground: oklch(0.35 0.02 250); /* Darker steel-grey for better readability */
   /* Soft Dodger Blue accent & highlights */
   --accent: oklch(0.93 0.04 240); /* Gentle dodger sky tint #E1EEFF */
   --accent-foreground: oklch(0.67 0.18 240); /* Dodger blue text */
@@ -81,7 +81,7 @@
   --chart-5: oklch(0.55 0.20 220); /* Deep Cyan */
   /* Sidebar — Coursera Clean Ice-Sky */
   --sidebar: oklch(0.985 0.008 240); /* Soft ice white */
-  --sidebar-foreground: oklch(0.24 0.04 250); /* Deep navy */
+  --sidebar-foreground: oklch(0.14 0.01 250); /* Deep navy */
   --sidebar-primary: oklch(0.67 0.18 240); /* Dodger blue */
   --sidebar-primary-foreground: oklch(0.99 0.005 240);
   --sidebar-accent: oklch(0.93 0.04 240); /* Light dodger blue hover */
@@ -93,18 +93,18 @@
 .dark {
   /* Coursera Midnight Navy + Dodger Blue (#1e90ff) Dark Mode */
   --background: oklch(0.12 0.03 250); /* Midnight Navy #080E1C */
-  --foreground: oklch(0.96 0.015 240); /* Crystal ice white #F1F6FF */
+  --foreground: oklch(0.98 0 0); /* Pure white text for high contrast */
   --card: oklch(0.16 0.04 250); /* Deep Navy Card #0E1830 */
-  --card-foreground: oklch(0.96 0.015 240);
+  --card-foreground: oklch(0.98 0 0);
   --popover: oklch(0.16 0.04 250);
-  --popover-foreground: oklch(0.96 0.015 240);
+  --popover-foreground: oklch(0.98 0 0);
   /* Dodger Blue primary (#1e90ff) */
   --primary: oklch(0.67 0.18 240); /* Glowing Dodger Blue #1e90ff */
   --primary-foreground: oklch(0.99 0.005 240);
   --secondary: oklch(0.22 0.05 245); /* Deep Sky Navy #142446 */
-  --secondary-foreground: oklch(0.92 0.03 240);
+  --secondary-foreground: oklch(0.95 0.01 240);
   --muted: oklch(0.22 0.05 245);
-  --muted-foreground: oklch(0.72 0.05 240); /* Soft ice-slate #8CAFD4 */
+  --muted-foreground: oklch(0.85 0.02 240); /* Brighter muted text */
   --accent: oklch(0.67 0.18 240); /* Dodger Blue accent */
   --accent-foreground: oklch(0.99 0.005 240);
   --destructive: oklch(0.65 0.18 25);
@@ -117,7 +117,7 @@
   --input: oklch(0.26 0.05 245);
   --ring: oklch(0.67 0.18 240); /* Dodger Blue focus ring */
   --sidebar: oklch(0.14 0.035 250); /* Midnight Navy sidebar */
-  --sidebar-foreground: oklch(0.92 0.02 240);
+  --sidebar-foreground: oklch(0.95 0.01 240);
   --sidebar-primary: oklch(0.67 0.18 240);
   --sidebar-primary-foreground: oklch(0.99 0.005 240);
   --sidebar-accent: oklch(0.22 0.05 245);
@@ -131,16 +131,23 @@
     border-color: var(--color-border);
   }
 
+  body, .bg-background, .bg-card, .bg-secondary, .bg-muted, .bg-primary, .bg-accent, .border-border, .text-foreground, .text-muted-foreground, .border, header, nav {
+    @apply transition-colors duration-300 ease-in-out;
+  }
+
   html {
-    font-size: 16px;
+    font-size: 17px;
   }
 
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     font-size: 1rem;
     line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   /* Soft, minimal Lucide icons everywhere */

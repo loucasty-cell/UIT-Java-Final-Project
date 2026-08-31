@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   Users,
+  User,
   MessagesSquare,
   CalendarClock,
   Shield,
@@ -35,6 +36,7 @@ import { cn } from "@/lib/utils";
 
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "My Profile", url: "/profile", icon: User },
   { title: "Browse Skills", url: "/browse", icon: Compass },
   { title: "Find Mentors", url: "/mentors", icon: Users },
   { title: "Volunteer Forum", url: "/forum", icon: MessagesSquare },
@@ -105,7 +107,7 @@ export function AppSidebar() {
               {mainItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
-                    <Link to={item.url}>
+                    <Link to={item.url} preload="intent">
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </Link>
@@ -125,7 +127,7 @@ export function AppSidebar() {
                 {instructorItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
-                      <Link to={item.url}>
+                      <Link to={item.url} preload="intent">
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
                       </Link>
@@ -146,7 +148,7 @@ export function AppSidebar() {
                 {adminItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
-                      <Link to={item.url}>
+                      <Link to={item.url} preload="intent">
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
                       </Link>
@@ -163,6 +165,7 @@ export function AppSidebar() {
         {!collapsed && (
           <Link
             to="/wallet"
+            preload="intent"
             className="group block rounded-2xl border border-border bg-gradient-to-br from-card to-secondary/50 p-3 shadow-xs hover:border-[#1e90ff]/50 transition duration-200"
           >
             <div className="flex items-center justify-between">

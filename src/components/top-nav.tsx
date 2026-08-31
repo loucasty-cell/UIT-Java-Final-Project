@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Bell, Search, Coins, LogOut, User, Info, GraduationCap, Sparkles } from "lucide-react";
+import { Bell, Search, Coins, LogOut, User, Info, GraduationCap, Sparkles, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
@@ -75,6 +76,7 @@ export function TopNav() {
   const { data: notificationsData } = useNotificationsQuery();
   const { data: unreadCountData } = useUnreadNotificationsCountQuery();
   const markAllReadMutation = useMarkAllNotificationsReadMutation();
+  const { theme, setTheme, resolvedTheme } = useTheme();
 
   const [localDismissed, setLocalDismissed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -172,6 +174,7 @@ export function TopNav() {
               <TooltipTrigger asChild>
                 <Link
                   to="/mentor-application"
+                  preload="intent"
                   className="group hidden items-center gap-1.5 rounded-full border border-[#1e90ff]/40 bg-secondary px-3 py-1.5 text-sm font-semibold text-[#1e90ff] shadow-sm transition hover:bg-secondary/80 sm:flex"
                 >
                   <Sparkles className="h-4 w-4" />
@@ -210,6 +213,18 @@ export function TopNav() {
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
+
+        {/* Theme Toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative rounded-xl overflow-hidden"
+          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+          aria-label="Toggle theme"
+        >
+          <Sun className="h-5 w-5 rotate-0 scale-100 transition-all duration-300 dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all duration-300 dark:rotate-0 dark:scale-100" />
+        </Button>
 
         {/* Notifications */}
         <Popover>
@@ -313,7 +328,7 @@ export function TopNav() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link to="/" className="cursor-pointer">
+              <Link to="/" preload="intent" className="cursor-pointer">
                 <User className="mr-2 h-4 w-4" />
                 Dashboard Profile
               </Link>
@@ -321,7 +336,7 @@ export function TopNav() {
             {isLearner && !isInstructor && (
               <>
                 <DropdownMenuItem asChild>
-                  <Link to="/mentor-application" className="cursor-pointer">
+                  <Link to="/mentor-application" preload="intent" className="cursor-pointer">
                     <GraduationCap className="mr-2 h-4 w-4" />
                     Become an Instructor
                   </Link>

@@ -73,7 +73,6 @@ import { useDashboardQuery } from "@/hooks/api/use-dashboard";
 import { useMyMilestonesQuery } from "@/hooks/api/use-milestones";
 import { walletService } from "@/services/wallet.service";
 import { DashboardCalendarWidget } from "@/components/dashboard/dashboard-calendar-widget";
-import { DashboardWalletWidget } from "@/components/dashboard/dashboard-wallet-widget";
 import { LearningProgressWidget } from "@/components/dashboard/learning-progress-widget";
 import { AchievementsWidget } from "@/components/dashboard/achievements-widget";
 import { QuickActionsPanel } from "@/components/dashboard/quick-actions-panel";
@@ -83,7 +82,8 @@ import { EngagementWidget } from "@/components/dashboard/engagement-widget";
 import { RecommendationsWidget } from "@/components/dashboard/recommendations-widget";
 import { useLearningRequestsQuery } from "@/hooks/api/use-learning-requests";
 import { useMilestonesQuery } from "@/hooks/api/use-milestones";
-import type { NormalizedSession, SkillProgress } from "@/types/api";
+import type { NormalizedSession, SkillProgress, GlobalCatalogSkill } from "@/types/api";
+import { SkillAutocomplete } from "@/components/dashboard/skill-autocomplete";
 
 export const Route = createFileRoute("/")({
   beforeLoad: requireAuth,
@@ -110,9 +110,9 @@ function Dashboard() {
   const { user, isInstructor } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Add Skill Dialog State (declare before queries that depend on newSkillName to avoid TDZ)
+  // Add Skill Dialog State
   const [isAddSkillOpen, setIsAddSkillOpen] = useState(false);
-  const [newSkillName, setNewSkillName] = useState("");
+  const [selectedSkill, setSelectedSkill] = useState<GlobalCatalogSkill | null>(null);
   const [newSkillDirection, setNewSkillDirection] = useState<"TEACH" | "LEARN">("TEACH");
   const [newSkillLevel, setNewSkillLevel] = useState<"BEGINNER" | "INTERMEDIATE" | "ADVANCED">(
     "INTERMEDIATE",
@@ -123,14 +123,13 @@ function Dashboard() {
   const [selectedSkillForCert, setSelectedSkillForCert] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
 
-  // Real Queries (after state so newSkillName is declared)
+  // Real Queries
   const { data: walletData } = useWalletBalanceQuery();
   const { data: transactionsData } = useWalletTransactionsQuery({ size: 10 } as any);
   const { data: teachSkillsData } = useUserSkillsQuery("TEACH");
   const { data: learnSkillsData } = useUserSkillsQuery("LEARN");
   const { data: sessionsData } = useSessionsQuery("SCHEDULED");
   const { data: catalogData } = useCatalogSkillsQuery();
-  const { data: searchResults } = useSearchCatalogSkillsQuery(newSkillName.trim());
   const { data: dashboardData, isLoading: isDashboardLoading } = useDashboardQuery();
   const { data: milestonesData, isLoading: isMilestonesLoading } = useMyMilestonesQuery();
   const { data: outgoingRequests, isLoading: isRequestsLoading } = useLearningRequestsQuery("OUTGOING");
@@ -498,42 +497,26 @@ function Dashboard() {
 
   const handleAddSkill = async (e: React.FormEvent) => {
     e.preventDefault();
-    const nameTrim = newSkillName.trim();
-    if (!nameTrim) return;
-
-    // Resolve to canonical catalog UUID — api.md:124 requires real skillId UUID, not synthetic name
-    const catalog = (catalogData as any) || [];
-    const catalogList: any[] = Array.isArray(catalog) ? catalog : catalog?.content || [];
-    const matched =
-      (searchResults as any)?.content?.find((s: any) => s?.name?.toLowerCase() === nameTrim.toLowerCase()) ||
-      searchResults?.find?.((s: any) => s?.name?.toLowerCase() === nameTrim.toLowerCase()) ||
-      catalogList.find((s: any) => s?.name?.toLowerCase() === nameTrim.toLowerCase());
-
-    if (!matched?.id) {
-      const suggestions = (searchResults as any)?.content?.slice(0, 3) || (catalogList as any)?.slice(0, 3) || [];
-      if (suggestions.length > 0) {
-        toast.error(`"${nameTrim}" not in catalog. Try: ${suggestions.map((s: any) => s.name).join(", ")}`, { duration: 4000 });
-      } else {
-        toast.error(`"${nameTrim}" not found in skill catalog. Please pick from Browse or ask admin to add it.`);
-      }
+    if (!selectedSkill) {
+      toast.error("Please select a skill first.");
       return;
     }
 
     try {
       await addSkillMutation.mutateAsync({
-        skillId: matched.id,
+        skillId: selectedSkill.id,
         direction: newSkillDirection,
         level: newSkillLevel as any,
       } as any);
-      toast.success(`Added ${matched.name} to your ${newSkillDirection.toLowerCase()} skills!`);
-      setNewSkillName("");
+      toast.success(`Added ${selectedSkill.name} to your ${newSkillDirection.toLowerCase()} skills!`);
+      setSelectedSkill(null);
       setIsAddSkillOpen(false);
     } catch (err: any) {
       const msg = err?.message || err?.error || "Failed to add skill";
       const fieldErr = (err?.data as any)?.error?.fieldErrors || (err?.data as any)?.fieldErrors;
       const detail = fieldErr ? Object.values(fieldErr).join("; ") : msg;
       if (String(err?.error || err?.message).includes("409") || String(err?.status) === "409") {
-        toast.error(`Already have ${matched.name} as ${newSkillDirection.toLowerCase()} — ${detail}`);
+        toast.error(`Already have ${selectedSkill.name} as ${newSkillDirection.toLowerCase()} — ${detail}`);
       } else {
         toast.error(detail);
       }
@@ -744,106 +727,34 @@ function Dashboard() {
       {/* Calendar & Selected Day Schedule Module (Side-by-Side Dual Box) */}
       <DashboardCalendarWidget sessions={dashboardSessions} />
 
-      {/* Main Grid: Profile + Skills + Referrals */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column: Profile Summary & Referrals */}
-        <div className="space-y-6">
-          {/* Profile Card */}
-          <Card id="student-profile-card" className="rounded-2xl border-border/70 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold">Student Profile</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-14 w-14 ring-2 ring-primary/20">
-                  <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-base">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="font-semibold text-base">{displayName}</h3>
-                  <p className="text-xs text-muted-foreground">{major} · {yearOfStudy}</p>
-                  <div className="flex gap-1.5 mt-1.5">
-                    {isInstructor ? (
-                      <Badge className="bg-indigo-500/15 text-indigo-700 border-indigo-500/30 text-[10px]">
-                        Instructor
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="text-[10px]">
-                        Learner
-                      </Badge>
-                    )}
-                    <Badge variant="outline" className="text-[10px]">
-                      ⭐ 4.9 Rating
-                    </Badge>
-                  </div>
-                </div>
+      {/* Main Grid: Skills Portfolio & Transactions */}
+      <div className="space-y-6">
+        {/* Skills Management Panel */}
+        <Card className="rounded-2xl border-border/70 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <div>
+              <CardTitle className="text-base font-semibold">Skills Portfolio</CardTitle>
+              <CardDescription className="text-xs">
+                Manage skills you teach and skills you want to learn.
+              </CardDescription>
+            </div>
+            <Button
+              onClick={() => setIsAddSkillOpen(true)}
+              size="sm"
+              className="rounded-xl shadow-sm text-xs"
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Skill
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {/* Teachable Skills */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Skills I Can Teach (Mentorship)
+                </span>
+                <span className="text-xs text-muted-foreground">{teachSkills.length} skills</span>
               </div>
-
-              <Separator />
-
-              {/* Referral Box */}
-              <div className="rounded-2xl border border-sky-200 bg-sky-50/60 p-3.5 dark:border-sky-900/50 dark:bg-sky-950/20">
-                <div className="flex items-center gap-2">
-                  <Share2 className="h-4 w-4 text-sky-600" />
-                  <span className="text-xs font-semibold text-sky-900 dark:text-sky-200">
-                    Invite Friends · Earn +5 Points
-                  </span>
-                </div>
-                <p className="mt-1 text-[11px] text-sky-800/80 dark:text-sky-300/80">
-                  Share your link. When a classmate joins, you both get bonus points!
-                </p>
-                <Button
-                  onClick={handleCopyReferral}
-                  size="sm"
-                  variant="outline"
-                  className="w-full mt-2.5 rounded-xl text-xs font-medium"
-                >
-                  Copy Referral Link
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Real-time Wallet Escrow & Balance Card */}
-          <DashboardWalletWidget
-            availablePoints={availablePoints}
-            heldPoints={heldPoints}
-            totalEarned={totalEarned}
-            totalSpent={totalSpent}
-            transactions={activityList as any}
-            isLoading={isWalletLoading}
-          />
-        </div>
-
-        {/* Middle & Right Column: Skills & Transactions */}
-        <div className="space-y-6 lg:col-span-2">
-          {/* Skills Management Panel */}
-          <Card className="rounded-2xl border-border/70 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <div>
-                <CardTitle className="text-base font-semibold">Skills Portfolio</CardTitle>
-                <CardDescription className="text-xs">
-                  Manage skills you teach and skills you want to learn.
-                </CardDescription>
-              </div>
-              <Button
-                onClick={() => setIsAddSkillOpen(true)}
-                size="sm"
-                className="rounded-xl shadow-sm text-xs"
-              >
-                <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Skill
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              {/* Teachable Skills */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Skills I Can Teach (Mentorship)
-                  </span>
-                  <span className="text-xs text-muted-foreground">{teachSkills.length} skills</span>
-                </div>
                 <div className="flex flex-wrap gap-2">
                   {teachSkills.map((s) => (
                     <Badge
@@ -893,20 +804,10 @@ function Dashboard() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Wallet Balance & History Widget */}
-          <DashboardWalletWidget
-            availablePoints={availablePoints}
-            heldPoints={heldPoints}
-            totalEarned={totalEarned}
-            totalSpent={totalSpent}
-            transactions={activityList as any}
-          />
         </div>
-      </div>
 
       {/* Add Skill Modal */}
-      <Dialog open={isAddSkillOpen} onOpenChange={setIsAddSkillOpen}>
+      <Dialog open={isAddSkillOpen} onOpenChange={(open) => { setIsAddSkillOpen(open); if (!open) setSelectedSkill(null); }}>
         <DialogContent className="max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle>Add Skill to Portfolio</DialogTitle>
@@ -915,13 +816,15 @@ function Dashboard() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddSkill} className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-xs">Skill Name</Label>
-              <Input
-                placeholder="e.g. Next.js, Python, Figma"
-                value={newSkillName}
-                onChange={(e) => setNewSkillName(e.target.value)}
-                required
+            <div className="space-y-2 relative z-50">
+              <Label className="text-xs">Search Catalog</Label>
+              <SkillAutocomplete
+                selectedSkill={selectedSkill}
+                onSelectSkill={setSelectedSkill}
+                existingSkillIds={[
+                  ...(Array.isArray(teachSkillsData) ? teachSkillsData : []).map((s: any) => s.skill?.id),
+                  ...(Array.isArray(learnSkillsData) ? learnSkillsData : []).map((s: any) => s.skill?.id)
+                ].filter(Boolean)}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">

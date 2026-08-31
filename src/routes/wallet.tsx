@@ -30,7 +30,7 @@ export const Route = createFileRoute("/wallet")({
 
 type FilterTab = "all" | "expenses" | "receives";
 
-export function WalletPage() {
+function WalletPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -47,8 +47,8 @@ export function WalletPage() {
     refetch: refetchTransactions,
   } = useWalletTransactionsQuery({ size: 50 });
 
-  const availablePoints = balanceData?.availableBalance ?? user?.walletBalance ?? 30;
-  const heldPoints = balanceData?.heldBalance ?? 0;
+  const availablePoints = (balanceData as any)?.availableBalance ?? (balanceData as any)?.availablePoints ?? (user as any)?.walletBalance ?? 30;
+  const heldPoints = (balanceData as any)?.heldBalance ?? (balanceData as any)?.heldPoints ?? 0;
   const totalPoints = availablePoints + heldPoints;
 
   // Real or rich fallback transactions
@@ -159,7 +159,7 @@ export function WalletPage() {
     }
   };
 
-  const displayName = user?.fullName || "Maria Student";
+  const displayName = (user as any)?.fullName || (user as any)?.displayName || "Maria Student";
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
@@ -167,7 +167,7 @@ export function WalletPage() {
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Avatar className="h-12 w-12 border-2 border-[#1e90ff]/30 shadow-sm">
-            <AvatarImage src={user?.avatarUrl} alt={displayName} />
+            <AvatarImage src={(user as any)?.avatarUrl || (user as any)?.profilePictureUrl} alt={displayName} />
             <AvatarFallback className="bg-[#1e90ff] text-white font-bold text-base">
               {displayName.slice(0, 2).toUpperCase()}
             </AvatarFallback>

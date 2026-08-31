@@ -47,6 +47,11 @@ public class SessionController {
         return ResponseEntity.ok(sessionService.getCalendarSessions(start, end));
     }
 
+    @GetMapping({"/api/sessions/{sessionId}", "/api/v1/sessions/{sessionId}"})
+    public ResponseEntity<SessionResponse> getSessionDetail(@PathVariable UUID sessionId) {
+        return ResponseEntity.ok(sessionService.getSessionDetail(sessionId));
+    }
+
     @PostMapping({"/api/sessions/{sessionId}/start", "/api/v1/sessions/{sessionId}/start"})
     public ResponseEntity<SessionResponse> startSession(@PathVariable UUID sessionId) {
         return ResponseEntity.ok(sessionService.startSession(sessionId));

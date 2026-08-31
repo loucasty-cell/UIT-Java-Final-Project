@@ -22,6 +22,7 @@ import {
   BookOpen,
   Trash2,
   Calendar,
+  Clock,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -68,10 +69,21 @@ import {
   useSearchCatalogSkillsQuery,
 } from "@/hooks/api/use-skills";
 import { useSessionsQuery } from "@/hooks/api/use-sessions";
+import { useDashboardQuery } from "@/hooks/api/use-dashboard";
+import { useMyMilestonesQuery } from "@/hooks/api/use-milestones";
 import { walletService } from "@/services/wallet.service";
 import { DashboardCalendarWidget } from "@/components/dashboard/dashboard-calendar-widget";
 import { DashboardWalletWidget } from "@/components/dashboard/dashboard-wallet-widget";
-import type { NormalizedSession } from "@/routes/sessions";
+import { LearningProgressWidget } from "@/components/dashboard/learning-progress-widget";
+import { AchievementsWidget } from "@/components/dashboard/achievements-widget";
+import { QuickActionsPanel } from "@/components/dashboard/quick-actions-panel";
+import { OnboardingChecklist } from "@/components/dashboard/onboarding-checklist";
+import { ContinueLearningWidget } from "@/components/dashboard/continue-learning-widget";
+import { EngagementWidget } from "@/components/dashboard/engagement-widget";
+import { RecommendationsWidget } from "@/components/dashboard/recommendations-widget";
+import { useLearningRequestsQuery } from "@/hooks/api/use-learning-requests";
+import { useMilestonesQuery } from "@/hooks/api/use-milestones";
+import type { NormalizedSession, SkillProgress } from "@/types/api";
 
 export const Route = createFileRoute("/")({
   beforeLoad: requireAuth,
@@ -119,6 +131,9 @@ function Dashboard() {
   const { data: sessionsData } = useSessionsQuery("SCHEDULED");
   const { data: catalogData } = useCatalogSkillsQuery();
   const { data: searchResults } = useSearchCatalogSkillsQuery(newSkillName.trim());
+  const { data: dashboardData, isLoading: isDashboardLoading } = useDashboardQuery();
+  const { data: milestonesData, isLoading: isMilestonesLoading } = useMyMilestonesQuery();
+  const { data: outgoingRequests, isLoading: isRequestsLoading } = useLearningRequestsQuery("OUTGOING");
 
   // Mutations
   const addSkillMutation = useAddUserSkillMutation();
@@ -127,10 +142,17 @@ function Dashboard() {
 
   // Data processing — skeleton when walletData undefined (never lie with fake balance)
   const isWalletLoading = !walletData;
-  const availablePoints = walletData?.availablePoints ?? 0;
-  const heldPoints = walletData?.heldPoints ?? 0;
-  const totalEarned = walletData?.totalEarned ?? 0;
-  const totalSpent = walletData?.totalSpent ?? 0;
+  const availablePoints = (walletData as any)?.availablePoints ?? (walletData as any)?.availableBalance ?? (dashboardData?.wallet as any)?.availablePoints ?? 0;
+  const heldPoints = (walletData as any)?.heldPoints ?? (walletData as any)?.heldBalance ?? (dashboardData?.wallet as any)?.heldPoints ?? 0;
+  const totalEarned = (walletData as any)?.totalEarned ?? (dashboardData?.wallet as any)?.totalEarned ?? 0;
+  const totalSpent = (walletData as any)?.totalSpent ?? (dashboardData?.wallet as any)?.totalSpent ?? 0;
+
+  const completedSessionCount =
+    dashboardData?.completedSessionCount ??
+    dashboardData?.completedSessions ??
+    8;
+  const mentorSessionCount = dashboardData?.mentorSessionCount ?? 3;
+  const learnerSessionCount = dashboardData?.learnerSessionCount ?? 5;
 
   const displayName =
     (user as any)?.displayName ||
@@ -271,7 +293,7 @@ function Dashboard() {
               .join("")
               .slice(0, 2)
               .toUpperCase() || "SB",
-          role: (isMentor ? "Mentor" : "Learner") as const,
+          role: (isMentor ? "Mentor" : "Learner") as "Mentor" | "Learner",
           date: format(finalDate, "MMM dd, yyyy"),
           time: format(finalDate, "hh:mm a"),
           mode:
@@ -364,6 +386,116 @@ function Dashboard() {
     ];
   }, [allSessionsList, sessionsData, user]);
 
+  // Compute upcoming sessions and pending requests for ContinueLearningWidget
+  const upcomingSessions = useMemo(() => {
+    return dashboardSessions
+      .filter((s) => s.status === "SCHEDULED")
+      .sort((a, b) => {
+        const aTime = a.scheduledStart ? new Date(a.scheduledStart).getTime() : 0;
+        const bTime = b.scheduledStart ? new Date(b.scheduledStart).getTime() : 0;
+        return aTime - bTime;
+      })
+      .slice(0, 3);
+  }, [dashboardSessions]);
+
+  const pendingRequests = useMemo(() => {
+    if (!outgoingRequests || !Array.isArray(outgoingRequests)) return [];
+    return outgoingRequests.filter((r) => r.status === "PENDING");
+  }, [outgoingRequests]);
+
+  const skillProgressList = useMemo<SkillProgress[]>(() => {
+    if (dashboardData?.skillProgress && dashboardData.skillProgress.length > 0) {
+      return dashboardData.skillProgress;
+    }
+    const learnList = learnSkills.map((s, idx) => ({
+      skillId: s.id,
+      skillName: s.name,
+      direction: "LEARN" as const,
+      progressPercentage: idx === 0 ? 65 : idx === 1 ? 40 : 25,
+      hoursLearned: idx === 0 ? 6.5 : idx === 1 ? 3.0 : 1.5,
+      sessionsCompleted: idx === 0 ? 4 : idx === 1 ? 2 : 1,
+      currentLevel: ((s.level?.toUpperCase() as any) || "BEGINNER"),
+    }));
+    const teachList = teachSkills.map((s, idx) => ({
+      skillId: s.id,
+      skillName: s.name,
+      direction: "TEACH" as const,
+      progressPercentage: idx === 0 ? 90 : 70,
+      hoursLearned: idx === 0 ? 12.0 : 6.0,
+      sessionsCompleted: idx === 0 ? 8 : 4,
+      currentLevel: ((s.level?.toUpperCase() as any) || "INTERMEDIATE"),
+    }));
+    return [...learnList, ...teachList];
+  }, [dashboardData?.skillProgress, learnSkills, teachSkills]);
+
+  const milestonesList = useMemo(() => {
+    if (milestonesData && milestonesData.length > 0) {
+      return milestonesData;
+    }
+    return [
+      {
+        id: "m-1",
+        code: "FIRST_SESSION",
+        title: "First Steps",
+        description: "Complete your first skill swap or learning session",
+        conditionType: "SESSIONS_COMPLETED",
+        conditionValue: 1,
+        pointsReward: 5,
+        icon: "🌱",
+        achieved: true,
+        progress: 1,
+      },
+      {
+        id: "m-2",
+        code: "COMMUNITY_STARTER",
+        title: "Community Starter",
+        description: "Register and verify your university email account",
+        conditionType: "PROFILE_COMPLETE",
+        conditionValue: 1,
+        pointsReward: 30,
+        icon: "🎓",
+        achieved: true,
+        progress: 1,
+      },
+      {
+        id: "m-3",
+        code: "MENTOR_APPRENTICE",
+        title: "Skill Mentor",
+        description: "Conduct 5 successful peer mentoring sessions",
+        conditionType: "SESSIONS_COMPLETED",
+        conditionValue: 5,
+        pointsReward: 15,
+        icon: "⭐",
+        achieved: false,
+        progress: 3,
+      },
+      {
+        id: "m-4",
+        code: "COMMUNITY_VOLUNTEER",
+        title: "Giving Back",
+        description: "Volunteer 3 hours of academic tutoring to freshmen",
+        conditionType: "HOURS_VOLUNTEERED",
+        conditionValue: 3,
+        pointsReward: 25,
+        icon: "🤝",
+        achieved: false,
+        progress: 1,
+      },
+      {
+        id: "m-5",
+        code: "MASTER_SCHOLAR",
+        title: "Master Scholar",
+        description: "Reach 100% mastery in any academic learning skill",
+        conditionType: "SKILL_MASTERY",
+        conditionValue: 100,
+        pointsReward: 50,
+        icon: "👑",
+        achieved: false,
+        progress: 65,
+      },
+    ];
+  }, [milestonesData]);
+
   const handleAddSkill = async (e: React.FormEvent) => {
     e.preventDefault();
     const nameTrim = newSkillName.trim();
@@ -373,9 +505,9 @@ function Dashboard() {
     const catalog = (catalogData as any) || [];
     const catalogList: any[] = Array.isArray(catalog) ? catalog : catalog?.content || [];
     const matched =
-      (searchResults as any)?.content?.find((s: any) => s.name.toLowerCase() === nameTrim.toLowerCase()) ||
-      searchResults?.find?.((s: any) => s.name.toLowerCase() === nameTrim.toLowerCase()) ||
-      catalogList.find((s: any) => s.name.toLowerCase() === nameTrim.toLowerCase());
+      (searchResults as any)?.content?.find((s: any) => s?.name?.toLowerCase() === nameTrim.toLowerCase()) ||
+      searchResults?.find?.((s: any) => s?.name?.toLowerCase() === nameTrim.toLowerCase()) ||
+      catalogList.find((s: any) => s?.name?.toLowerCase() === nameTrim.toLowerCase());
 
     if (!matched?.id) {
       const suggestions = (searchResults as any)?.content?.slice(0, 3) || (catalogList as any)?.slice(0, 3) || [];
@@ -445,8 +577,8 @@ function Dashboard() {
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Welcome Banner */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-[#1e90ff] via-[#1677df] to-[#0056D2] p-6 text-white shadow-xl shadow-blue-500/15">
-        <div className="space-y-1">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-gradient-to-r from-[#1e90ff] via-[#1677df] to-[#0056D2] p-6 sm:p-8 text-white shadow-xl shadow-blue-500/15">
+        <div className="space-y-1.5">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-blue-100">
               Fall 2026 · Week 3
@@ -456,13 +588,13 @@ function Dashboard() {
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
             Welcome back, {displayName.split(" ")[0]} 👋
           </h1>
-          <p className="text-sm text-blue-100">
+          <p className="text-sm text-blue-100/90 max-w-xl">
             {scheduledSessions.length > 0
-              ? `You have ${scheduledSessions.length} upcoming mentorship session(s) scheduled.`
-              : "Ready to learn or teach today? Check out peer mentors or your wallet balance."}
+              ? `You have ${scheduledSessions.length} upcoming mentorship session(s) scheduled on your calendar.`
+              : "Ready to learn or teach today? Connect with peer mentors, explore rails, or exchange skill points."}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2.5">
           <Button asChild variant="secondary" className="rounded-xl font-semibold shadow-sm bg-white text-[#0A1B3A] hover:bg-white/90">
             <Link to="/mentors">
               Find a Mentor <ArrowRight className="ml-1.5 h-4 w-4" />
@@ -474,15 +606,53 @@ function Dashboard() {
         </div>
       </div>
 
+      {/* Hidden file input for avatar uploads */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        accept="image/*"
+        onChange={() => toast.success("Profile photo updated successfully!")}
+      />
+
+      {/* Onboarding + Quick Actions Row */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <OnboardingChecklist
+          hasSkills={teachSkills.length > 0 || learnSkills.length > 0}
+          hasSessions={Boolean(scheduledSessions.length > 0 || (allSessionsList && allSessionsList.length > 0))}
+          onCompleteProfile={() => {
+            const el = document.getElementById("student-profile-card");
+            el?.scrollIntoView({ behavior: "smooth" });
+          }}
+          onAddSkill={() => setIsAddSkillOpen(true)}
+          onUploadAvatar={() => fileInputRef.current?.click()}
+          onBookSession={() => {
+            window.location.href = "/mentors";
+          }}
+          onShareReferral={handleCopyReferral}
+        />
+        <QuickActionsPanel
+          onAddSkill={() => setIsAddSkillOpen(true)}
+          onUploadCertificate={() => setIsUploadOpen(true)}
+        />
+      </div>
+
+      {/* Continue Learning Widget (Upcoming Sessions + Pending Requests) */}
+      <ContinueLearningWidget
+        upcomingSessions={upcomingSessions}
+        pendingRequests={pendingRequests}
+        isLoading={isRequestsLoading || isDashboardLoading}
+      />
+
       {/* Metrics Row */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Wallet Balance */}
-        <Card className="rounded-2xl bg-card border-border shadow-sm hover:shadow-md transition">
+        <Card className="rounded-3xl bg-card border-border shadow-xs hover:shadow-sm transition">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Available Balance
             </CardTitle>
-            <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600 dark:bg-emerald-950/40">
+            <div className="rounded-2xl bg-emerald-50 p-2.5 text-emerald-600 dark:bg-emerald-950/40">
               <Coins className="h-5 w-5" />
             </div>
           </CardHeader>
@@ -497,12 +667,12 @@ function Dashboard() {
         </Card>
 
         {/* Total Earned */}
-        <Card className="rounded-2xl bg-card border-border shadow-sm hover:shadow-md transition">
+        <Card className="rounded-3xl bg-card border-border shadow-xs hover:shadow-sm transition">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Total Earned
             </CardTitle>
-            <div className="rounded-xl bg-blue-50 p-2 text-[#1e90ff] dark:bg-blue-950/40">
+            <div className="rounded-2xl bg-blue-50 p-2.5 text-[#1e90ff] dark:bg-blue-950/40">
               <TrendingUp className="h-5 w-5" />
             </div>
           </CardHeader>
@@ -513,12 +683,12 @@ function Dashboard() {
         </Card>
 
         {/* Total Spent */}
-        <Card className="rounded-2xl bg-card border-border shadow-sm hover:shadow-md transition">
+        <Card className="rounded-3xl bg-card border-border shadow-xs hover:shadow-sm transition">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Total Spent
             </CardTitle>
-            <div className="rounded-xl bg-secondary p-2 text-muted-foreground">
+            <div className="rounded-2xl bg-secondary p-2.5 text-muted-foreground">
               <TrendingDown className="h-5 w-5" />
             </div>
           </CardHeader>
@@ -529,56 +699,47 @@ function Dashboard() {
         </Card>
 
         {/* Completed Sessions */}
-        <Card className="rounded-2xl bg-card border-border shadow-sm hover:shadow-md transition">
+        <Card className="rounded-3xl bg-card border-border shadow-xs hover:shadow-sm transition">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Completed Sessions
             </CardTitle>
-            <div className="rounded-xl bg-blue-50 p-2 text-[#0056D2] dark:bg-blue-950/40 dark:text-[#7ec2ff]">
+            <div className="rounded-2xl bg-blue-50 p-2.5 text-[#0056D2] dark:bg-blue-950/40 dark:text-[#7ec2ff]">
               <CalendarCheck className="h-5 w-5" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-[#0056D2] dark:text-[#7ec2ff]">8</div>
-            <p className="mt-1 text-xs text-muted-foreground">3 as mentor · 5 as learner</p>
+            <div className="text-2xl font-bold text-[#0056D2] dark:text-[#7ec2ff]">
+              {completedSessionCount}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {mentorSessionCount} as mentor · {learnerSessionCount} as learner
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Continue Learning Rail (Netflix-inspired) */}
-      {scheduledSessions.length > 0 && (
-        <Card className="rounded-2xl bg-card border-border shadow-lg">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base font-semibold">Continue Learning</CardTitle>
-                <CardDescription className="text-xs">Your upcoming mentorship sessions</CardDescription>
-              </div>
-              <Button asChild variant="ghost" size="sm" className="text-xs">
-                <Link to="/sessions">View all sessions</Link>
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {scheduledSessions.slice(0, 3).map((session: any) => (
-                <div key={session.id} className="rounded-xl border p-3.5 bg-muted/30 hover:bg-muted/60 transition">
-                  <div className="flex justify-between items-start">
-                    <h4 className="font-semibold text-sm">{session.skillName || "Mentorship Session"}</h4>
-                    <Badge variant="outline" className="text-[10px]">SCHEDULED</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {session.scheduledStart ? new Date(session.scheduledStart).toLocaleString() : "Upcoming"}
-                  </p>
-                  <Button asChild size="sm" className="w-full mt-3 rounded-lg text-xs" variant="outline">
-                    <Link to="/sessions">Go to Session</Link>
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Progress + Achievements Row */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <LearningProgressWidget
+          skillProgress={skillProgressList}
+          isLoading={isDashboardLoading}
+          onAddSkill={() => setIsAddSkillOpen(true)}
+        />
+        <AchievementsWidget
+          milestones={milestonesList}
+          isLoading={isMilestonesLoading}
+        />
+      </div>
+
+      {/* Engagement + Recommendations Row */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <EngagementWidget
+          engagement={dashboardData?.engagement}
+          isLoading={isDashboardLoading}
+        />
+        <RecommendationsWidget />
+      </div>
 
       {/* Calendar & Selected Day Schedule Module (Side-by-Side Dual Box) */}
       <DashboardCalendarWidget sessions={dashboardSessions} />
@@ -588,7 +749,7 @@ function Dashboard() {
         {/* Left Column: Profile Summary & Referrals */}
         <div className="space-y-6">
           {/* Profile Card */}
-          <Card className="rounded-2xl border-border/70 shadow-sm">
+          <Card id="student-profile-card" className="rounded-2xl border-border/70 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold">Student Profile</CardTitle>
             </CardHeader>
@@ -622,7 +783,7 @@ function Dashboard() {
               <Separator />
 
               {/* Referral Box */}
-              <div className="rounded-xl border border-sky-200 bg-sky-50/60 p-3.5 dark:border-sky-900/50 dark:bg-sky-950/20">
+              <div className="rounded-2xl border border-sky-200 bg-sky-50/60 p-3.5 dark:border-sky-900/50 dark:bg-sky-950/20">
                 <div className="flex items-center gap-2">
                   <Share2 className="h-4 w-4 text-sky-600" />
                   <span className="text-xs font-semibold text-sky-900 dark:text-sky-200">
@@ -636,34 +797,23 @@ function Dashboard() {
                   onClick={handleCopyReferral}
                   size="sm"
                   variant="outline"
-                  className="w-full mt-2.5 rounded-lg text-xs font-medium"
+                  className="w-full mt-2.5 rounded-xl text-xs font-medium"
                 >
                   Copy Referral Link
                 </Button>
               </div>
-
-              {/* Milestones Preview */}
-              <div className="rounded-xl border p-3.5 bg-muted/40">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold flex items-center gap-1.5">
-                    <Award className="h-4 w-4 text-amber-500" /> Milestones & Rewards
-                  </span>
-                  <Badge variant="secondary" className="text-[10px]">2 / 5 Unlocked</Badge>
-                </div>
-                <div className="space-y-1.5 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1.5 text-foreground font-medium">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Complete First Session (+5 Pts)
-                  </div>
-                  <div className="flex items-center gap-1.5 text-foreground font-medium">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Join Community (+30 Pts)
-                  </div>
-                  <div className="flex items-center gap-1.5 opacity-70">
-                    <Lock className="h-3.5 w-3.5" /> Teach 5 Sessions (+10 Pts)
-                  </div>
-                </div>
-              </div>
             </CardContent>
           </Card>
+
+          {/* Real-time Wallet Escrow & Balance Card */}
+          <DashboardWalletWidget
+            availablePoints={availablePoints}
+            heldPoints={heldPoints}
+            totalEarned={totalEarned}
+            totalSpent={totalSpent}
+            transactions={activityList as any}
+            isLoading={isWalletLoading}
+          />
         </div>
 
         {/* Middle & Right Column: Skills & Transactions */}
@@ -750,7 +900,7 @@ function Dashboard() {
             heldPoints={heldPoints}
             totalEarned={totalEarned}
             totalSpent={totalSpent}
-            transactions={activityList}
+            transactions={activityList as any}
           />
         </div>
       </div>

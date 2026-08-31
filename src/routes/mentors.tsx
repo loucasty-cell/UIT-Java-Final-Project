@@ -81,7 +81,7 @@ type Mode = "points" | "exchange" | "volunteer";
 
 type Skill = { id?: string; name: string; level: Level };
 
-export type MentorDisplay = {
+type MentorDisplay = {
   id: string;
   name: string;
   initials: string;

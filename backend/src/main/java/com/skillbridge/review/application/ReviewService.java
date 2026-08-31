@@ -119,6 +119,25 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
+    public List<ReviewResponse> getSessionReviews(UUID sessionId) {
+        if (sessionId == null) {
+            throw new IllegalArgumentException("Session ID must not be null");
+        }
+        List<Review> reviews = reviewRepository.findBySessionId(sessionId);
+        return reviews.stream().map(review -> {
+            RatingStats userStats = stats(reviewRepository.findByRevieweeId(review.getRevieweeId()));
+            RatingStats skillStats = stats(reviewRepository.findBySkillId(review.getSkillId()));
+            return reviewMapper.toResponse(
+                    review,
+                    userStats.averageRating(),
+                    userStats.reviewCount(),
+                    skillStats.averageRating(),
+                    skillStats.reviewCount()
+            );
+        }).toList();
+    }
+
+    @Transactional(readOnly = true)
     public PageResponse<ReviewResponse> getMentorReviews(UUID mentorId, Pageable pageable) {
         if (mentorId == null) {
             throw new IllegalArgumentException("Mentor ID must not be null");

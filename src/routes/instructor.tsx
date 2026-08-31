@@ -61,7 +61,7 @@ import {
   useRejectSwapProposalMutation,
 } from "@/hooks/api/use-swaps";
 import { SessionCalendar } from "@/components/sessions/session-calendar";
-import type { NormalizedSession } from "@/routes/sessions";
+import type { NormalizedSession } from "@/types/api";
 
 export const Route = createFileRoute("/instructor")({
   beforeLoad: requireRole("MENTOR", "ADMIN"),

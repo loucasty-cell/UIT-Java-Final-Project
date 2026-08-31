@@ -31,6 +31,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/auth-context";
 import { useWalletBalanceQuery } from "@/hooks/api/use-wallet";
+import { cn } from "@/lib/utils";
 
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -56,16 +57,33 @@ export function AppSidebar() {
 
   const { data: walletData } = useWalletBalanceQuery();
 
-  const availablePoints = walletData?.availableBalance ?? user?.walletBalance ?? 30;
+  const availablePoints = (walletData as any)?.availableBalance ?? (walletData as any)?.availablePoints ?? (user as any)?.walletBalance ?? 30;
 
   const isActive = (path: string) => (path === "/" ? pathname === "/" : pathname.startsWith(path));
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
-        <Link to="/" className="flex items-center gap-2.5 px-2 py-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[#1e90ff] text-white shadow-md shadow-blue-500/20">
-            <GraduationCap className="h-5 w-5" strokeWidth={1.5} />
+      <SidebarHeader className={cn(collapsed && "p-2 items-center")}>
+        <Link
+          to="/"
+          className={cn(
+            "flex items-center rounded-lg transition-all",
+            collapsed
+              ? "w-full justify-center p-0 py-2"
+              : "gap-2.5 px-2 py-3"
+          )}
+          title="SkillBridge"
+        >
+          <div
+            className={cn(
+              "flex shrink-0 aspect-square items-center justify-center rounded-xl bg-[#1e90ff] text-white shadow-md shadow-blue-500/20 transition-all",
+              collapsed ? "h-8 w-8" : "h-9 w-9"
+            )}
+          >
+            <GraduationCap
+              className={cn("transition-all", collapsed ? "h-4 w-4" : "h-5 w-5")}
+              strokeWidth={1.5}
+            />
           </div>
           {!collapsed && (
             <div className="flex min-w-0 flex-col">

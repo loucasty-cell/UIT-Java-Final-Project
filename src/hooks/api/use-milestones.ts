@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api-client";
+import { api, apiClient } from "@/lib/api-client";
 import { queryKeys } from "./query-keys";
 import type { MilestoneResponse } from "@/types/api";
 
 export const milestonesService = {
   getMyMilestones: async (): Promise<MilestoneResponse[]> => {
     try {
-      const res = await apiClient<MilestoneResponse[] | { content: MilestoneResponse[] }>(
+      const res = await api.get<MilestoneResponse[] | { content: MilestoneResponse[] }>(
         "/api/v1/me/milestones",
       );
       return Array.isArray(res) ? res : res.content || [];
@@ -80,9 +80,12 @@ export const milestonesService = {
   },
 };
 
-export function useMyMilestonesQuery() {
+export function useMilestonesQuery() {
   return useQuery({
     queryKey: queryKeys.milestones.me,
     queryFn: () => milestonesService.getMyMilestones(),
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
+
+export const useMyMilestonesQuery = useMilestonesQuery;

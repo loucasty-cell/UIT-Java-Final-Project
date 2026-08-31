@@ -72,4 +72,7 @@ export const queryKeys = {
   watchlist: {
     all: ["watchlist"] as const,
   },
+  dashboard: {
+    me: ["dashboard", "me"] as const,
+  },
 } as const;

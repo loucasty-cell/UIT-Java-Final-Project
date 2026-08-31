@@ -1,4 +1,4 @@
-  import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
@@ -10,7 +10,6 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
-import { motion, AnimatePresence } from "motion/react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -166,15 +165,7 @@ function RootLayout() {
   if (isAuthPage) {
     return (
       <main className="min-h-screen">
-        <motion.div
-          key={pathname}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.15, ease: "easeOut" }}
-          className="min-h-screen"
-        >
-          <Outlet />
-        </motion.div>
+        <Outlet />
       </main>
     );
   }
@@ -186,15 +177,7 @@ function RootLayout() {
       <SidebarInset className="bg-background">
         <TopNav />
         <main className="flex-1 overflow-x-hidden">
-          <motion.div
-            key={pathname}
-            initial={{ opacity: 0, y: 3 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            className="w-full"
-          >
-            <Outlet />
-          </motion.div>
+          <Outlet />
         </main>
       </SidebarInset>
     </SidebarProvider>

@@ -24,6 +24,10 @@ public class SkillService {
                 .toList();
     }
 
+    public List<String> getCategories() {
+        return skillRepository.findDistinctCategories();
+    }
+
     public SkillResponse getSkillById(UUID id) {
         return skillRepository.findById(id)
                 .map(skillMapper::toResponse)

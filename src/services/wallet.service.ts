@@ -56,11 +56,15 @@ export const walletService = {
 
   /**
    * Direct point transfer to another peer user
-   * POST /api/wallet/transfer
+   * POST /api/v1/wallet/transfer or /api/wallet/transfer
    */
   async transferPoints(
     data: TransferPointsRequest
   ): Promise<WalletTransactionResponse> {
-    return api.post<WalletTransactionResponse>("/api/wallet/transfer", data);
+    try {
+      return await api.post<WalletTransactionResponse>("/api/v1/wallet/transfer", data);
+    } catch {
+      return api.post<WalletTransactionResponse>("/api/wallet/transfer", data);
+    }
   },
 };

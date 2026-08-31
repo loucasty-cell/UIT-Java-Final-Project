@@ -43,6 +43,48 @@ public class DashboardResponse {
     // Most recent immutable point activity, sourced live from the wallet ledger
     private final List<PointTransactionResponse> recentActivity;
 
+    // Detailed learning/teaching progress per skill
+    private final List<SkillProgressSummary> skillProgress;
+
+    // Engagement and streak metrics
+    private final EngagementMetrics engagement;
+
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    public static class EngagementMetrics {
+
+        private final Integer currentStreak;
+
+        private final Integer longestStreak;
+
+        private final Double hoursThisWeek;
+
+        private final Double hoursThisMonth;
+
+        private final OffsetDateTime lastActiveDate;
+    }
+
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    public static class SkillProgressSummary {
+
+        private final java.util.UUID skillId;
+
+        private final String skillName;
+
+        private final String direction; // TEACH or LEARN
+
+        private final Integer progressPercentage; // 0-100
+
+        private final Double hoursLearned;
+
+        private final Integer sessionsCompleted;
+
+        private final String currentLevel; // BEGINNER, INTERMEDIATE, ADVANCED
+    }
+
     // Minimal upcoming-session shape reserved for the session feature slice
     @Getter
     @Builder

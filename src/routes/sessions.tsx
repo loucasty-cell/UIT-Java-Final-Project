@@ -71,7 +71,7 @@ export const Route = createFileRoute("/sessions")({
   component: SessionsPage,
 });
 
-export type NormalizedSession = {
+type NormalizedSession = {
   id: string;
   counterpart: string;
   initials: string;
@@ -229,7 +229,7 @@ function SessionsPage() {
       s.status === "SCHEDULED" ||
       s.status === "ACCEPTED" ||
       s.status === "STARTED" ||
-      s.status === "AWAITING_CONFIRMATION" ||
+      (s.status as string) === "AWAITING_CONFIRMATION" ||
       (s as any).status === "IN_PROGRESS",
   );
   const completedSessions = allSessions.filter((s) => s.status === "COMPLETED");

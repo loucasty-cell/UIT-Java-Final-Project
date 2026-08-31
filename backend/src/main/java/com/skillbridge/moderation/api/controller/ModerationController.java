@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/moderation")
+@RequestMapping({"/api/moderation", "/api/v1/moderation"})
 @CrossOrigin(origins = "http://localhost:8081")
 @RequiredArgsConstructor
 public class ModerationController {

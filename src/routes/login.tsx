@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { motion } from "motion/react";
 import { GraduationCap, Eye, EyeOff, Sparkles, ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -30,7 +29,16 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { login, register } = useAuth();
+  const { login, register, isAuthenticated, user } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const roles = normalizeRoles((user as any)?.roles || []);
+      const target = getPostLoginRedirect(roles);
+      navigate({ to: target, replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
 
   // Login state
   const [loginEmail, setLoginEmail] = useState("");
@@ -63,7 +71,7 @@ function LoginPage() {
       const roles = normalizeRoles(response.user?.roles || []);
       const target = getPostLoginRedirect(roles);
       toast.success(`Welcome back${response.user?.displayName ? `, ${response.user.displayName}` : ""}!`);
-      navigate({ to: target });
+      await navigate({ to: target, replace: true });
     } catch (err: any) {
       const message = err?.message || "Login failed. Please check your credentials.";
       toast.error(message);
@@ -93,7 +101,7 @@ function LoginPage() {
       const bonus = regReferralCode.trim() ? " +30 starter & +5 referral bonus" : " +30 starter points";
       toast.success(`Account created! You received${bonus} 🎉`);
       // backend awards +30, +5 referral if code valid — not client-calculated
-      navigate({ to: "/" });
+      await navigate({ to: "/", replace: true });
     } catch (err: any) {
       const message = err?.message || "Registration failed. Please try again.";
       toast.error(message);

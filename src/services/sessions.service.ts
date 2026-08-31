@@ -43,18 +43,26 @@ export const sessionsService = {
 
   /**
    * Get single session details
-   * GET /api/sessions/{id}
+   * GET /api/v1/sessions/{id}
    */
   async getSessionDetail(id: string): Promise<SessionResponse> {
-    return api.get<SessionResponse>(`/api/sessions/${id}`);
+    try {
+      return await api.get<SessionResponse>(`/api/v1/sessions/${id}`);
+    } catch {
+      return api.get<SessionResponse>(`/api/sessions/${id}`);
+    }
   },
 
   /**
    * Start a scheduled session
-   * POST /api/sessions/{id}/start
+   * POST /api/v1/sessions/{id}/start
    */
   async startSession(id: string): Promise<SessionResponse> {
-    return api.post<SessionResponse>(`/api/sessions/${id}/start`);
+    try {
+      return await api.post<SessionResponse>(`/api/v1/sessions/${id}/start`);
+    } catch {
+      return api.post<SessionResponse>(`/api/sessions/${id}/start`);
+    }
   },
 
   /**

@@ -28,7 +28,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import type { NormalizedSession } from "@/routes/sessions";
+import type { NormalizedSession } from "@/types/api";
 
 interface DashboardCalendarWidgetProps {
   sessions: NormalizedSession[];
@@ -271,95 +271,122 @@ export function DashboardCalendarWidget({
           {/* Content: Selected Day Session Cards or Clean Empty State */}
           <div className="flex-1 pt-4 space-y-3 overflow-y-auto">
             {selectedDaySessions.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-3.5">
                 {selectedDaySessions.map((session) => {
                   const isMentor = session.role === "Mentor";
                   return (
                     <div
                       key={session.id}
-                      className="rounded-2xl p-4 border border-border bg-secondary/40 hover:bg-secondary/70 hover:border-[#1e90ff]/40 transition border-l-4 border-l-[#1e90ff] space-y-2.5"
+                      className="group relative rounded-xl border border-border/80 bg-card p-4 sm:p-4.5 shadow-xs hover:border-[#0056D2]/40 hover:shadow-md transition-all duration-200 flex flex-col gap-3"
                     >
-                      {/* Card Top Row */}
-                      <div className="flex items-start justify-between gap-3">
+                      {/* Top Row: Category / Role Badge & Status */}
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <span
-                            className={`h-2.5 w-2.5 rounded-full shrink-0 ${
-                              isMentor ? "bg-purple-500" : "bg-emerald-500"
+                            className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold tracking-wide border ${
+                              isMentor
+                                ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/60"
+                                : "bg-blue-50 text-[#0056D2] border-blue-200/80 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/60"
                             }`}
-                          />
-                          <h4 className="font-semibold text-sm leading-snug text-foreground">
-                            {session.skillName || "Peer Mentorship"}
-                          </h4>
-                        </div>
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px] uppercase font-bold shrink-0 bg-secondary text-muted-foreground border border-border"
-                        >
-                          {isMentor ? "Teaching" : "Learning"}
-                        </Badge>
-                      </div>
-
-                      {/* Time & Location / Meeting info */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="h-3.5 w-3.5 shrink-0 text-[#1e90ff]" />
-                          <span>
-                            {session.time || "Scheduled"} · {session.duration || 60} mins
+                          >
+                            {isMentor ? "Mentoring / Teaching" : "Enrolled Mentorship"}
                           </span>
+                          {session.mode && (
+                            <span className="hidden sm:inline-flex items-center text-[11px] text-muted-foreground font-medium">
+                              • {session.mode}
+                            </span>
+                          )}
                         </div>
-                        <div className="flex items-center gap-1.5 truncate">
-                          <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                          <span className="truncate">Google Meet / Video Room</span>
+
+                        {session.points !== undefined && session.points > 0 && (
+                          <span className="inline-flex items-center text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/40">
+                            {session.points} Pts
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Title & Metadata */}
+                      <div className="space-y-1.5">
+                        <h4 className="text-sm sm:text-base font-semibold text-foreground tracking-tight group-hover:text-[#0056D2] transition-colors line-clamp-1">
+                          {session.skillName || "Peer Mentorship Session"}
+                        </h4>
+
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1.5 font-medium text-foreground/80">
+                            <Clock className="h-3.5 w-3.5 text-[#0056D2] shrink-0" />
+                            <span>
+                              {session.time || "Scheduled"} · {session.duration || 60} mins
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Video className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span>1-on-1 Interactive Video</span>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Counterpart & Action Row */}
-                      <div className="flex items-center justify-between pt-2 border-t border-border/50 gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Avatar className="h-7 w-7 border border-border shrink-0">
-                            <AvatarFallback className="text-[10px] font-bold bg-secondary text-foreground">
+                      {/* Bottom Row: Partner Profile & Actions (Coursera Blue CTA) */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-border/60">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Avatar className="h-8 w-8 ring-1 ring-border shrink-0">
+                            <AvatarFallback className="text-xs font-semibold bg-secondary text-foreground">
                               {session.initials || "SB"}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="text-xs truncate text-muted-foreground">
-                            <span>{isMentor ? "Learner: " : "Mentor: "}</span>
-                            <strong className="font-medium text-foreground">{session.counterpart}</strong>
-                          </span>
+                          <div className="min-w-0">
+                            <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold leading-none">
+                              {isMentor ? "Learner" : "Instructor / Mentor"}
+                            </p>
+                            <p className="text-xs font-semibold text-foreground truncate mt-0.5">
+                              {session.counterpart}
+                            </p>
+                          </div>
                         </div>
 
-                        {session.meetingUrl && (
-                          <Button
-                            size="sm"
-                            onClick={() => window.open(session.meetingUrl, "_blank")}
-                            className="rounded-xl text-xs h-7 px-3 shrink-0 bg-[#1e90ff] hover:bg-blue-600 text-white font-semibold shadow-xs"
-                          >
-                            <Video className="mr-1.5 h-3 w-3" /> Join Room
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 w-full sm:w-auto">
+                          {session.meetingUrl ? (
+                            <Button
+                              size="sm"
+                              onClick={() => window.open(session.meetingUrl, "_blank")}
+                              className="w-full sm:w-auto rounded-lg text-xs h-8 px-4 font-semibold bg-[#0056D2] hover:bg-[#00419E] active:scale-[0.98] text-white shadow-xs transition-all"
+                            >
+                              <Video className="mr-1.5 h-3.5 w-3.5" /> Join Live Classroom
+                            </Button>
+                          ) : (
+                            <Button
+                              asChild
+                              size="sm"
+                              variant="outline"
+                              className="w-full sm:w-auto rounded-lg text-xs h-8 px-3 border-border hover:bg-secondary"
+                            >
+                              <Link to="/sessions">View Details</Link>
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-border bg-secondary/20 p-6 text-center flex flex-col items-center justify-center h-full min-h-[180px]">
-                <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center mb-2.5 text-muted-foreground">
-                  <Clock className="h-5 w-5" />
+              <div className="rounded-2xl border border-dashed border-border/80 bg-secondary/15 p-6 sm:p-8 text-center flex flex-col items-center justify-center h-full min-h-[200px]">
+                <div className="h-11 w-11 rounded-full bg-blue-50 dark:bg-blue-950/40 text-[#0056D2] dark:text-blue-300 flex items-center justify-center mb-3">
+                  <CalendarIcon className="h-5 w-5" />
                 </div>
-                <h4 className="text-sm font-semibold mb-1 text-foreground">
-                  No sessions on {format(selectedDate, "MMM d")}
+                <h4 className="text-sm font-semibold text-foreground mb-1">
+                  No sessions scheduled for {format(selectedDate, "MMMM d")}
                 </h4>
-                <p className="text-xs text-muted-foreground max-w-sm mb-4">
-                  You are free on this day. You can request a 1-on-1 session with a student mentor or schedule teaching availability.
+                <p className="text-xs text-muted-foreground max-w-sm mb-4 leading-relaxed">
+                  You have an open schedule on this day. Explore certified student mentors or offer a peer session.
                 </p>
-                <div className="flex items-center gap-2">
-                  <Button asChild size="sm" className="rounded-xl text-xs font-semibold bg-[#1e90ff] hover:bg-blue-600 text-white">
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button asChild size="sm" className="rounded-lg text-xs font-semibold bg-[#0056D2] hover:bg-[#00419E] text-white shadow-xs">
                     <Link to="/mentors">
                       <Plus className="mr-1 h-3.5 w-3.5" /> Book a Mentor
                     </Link>
                   </Button>
-                  <Button asChild variant="outline" size="sm" className="rounded-xl text-xs border-border bg-card">
-                    <Link to="/sessions">View All Dates</Link>
+                  <Button asChild variant="outline" size="sm" className="rounded-lg text-xs border-border bg-card">
+                    <Link to="/sessions">View Full Calendar</Link>
                   </Button>
                 </div>
               </div>

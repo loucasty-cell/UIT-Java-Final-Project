@@ -81,8 +81,8 @@ public class MentorQueryService {
                     Direction.LEARN);
             List<MentorOffering> offerings = mentorOfferingRepository.findByMentorIdAndActiveTrue(userId);
 
-            if (query != null && query.getQ() != null && !query.getQ().isBlank()) {
-                String qLower = query.getQ().toLowerCase(Locale.ROOT);
+            if (query != null && query.getEffectiveQuery() != null && !query.getEffectiveQuery().isBlank()) {
+                String qLower = query.getEffectiveQuery().toLowerCase(Locale.ROOT);
                 boolean matchesUser = (user.getDisplayName() != null
                         && user.getDisplayName().toLowerCase(Locale.ROOT).contains(qLower))
                         || (user.getFirstName() != null
@@ -137,6 +137,10 @@ public class MentorQueryService {
             double avgRating = reviews.isEmpty() ? 5.0
                     : reviews.stream().mapToInt(Review::getRating).average().orElse(5.0);
             int ratingCount = reviews.size();
+
+            if (query != null && query.getMinRating() != null && avgRating < query.getMinRating()) {
+                continue;
+            }
 
             int minCost = offerings.stream()
                     .map(MentorOffering::getPointCost)

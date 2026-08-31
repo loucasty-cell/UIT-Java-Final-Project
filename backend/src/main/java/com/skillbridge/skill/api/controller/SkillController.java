@@ -33,6 +33,11 @@ public class SkillController {
         return ResponseEntity.ok(skillService.getAllSkills());
     }
 
+    @GetMapping("/categories")
+    public ResponseEntity<List<String>> getCategories() {
+        return ResponseEntity.ok(skillService.getCategories());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<SkillResponse> getSkillById(@PathVariable UUID id) {
         return ResponseEntity.ok(skillService.getSkillById(id));

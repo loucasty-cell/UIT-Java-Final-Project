@@ -268,4 +268,54 @@ export const adminService = {
       );
     }
   },
+
+  /**
+   * List pending mentor applications
+   * GET /api/v1/admin/mentor-applications
+   */
+  async getPendingMentorApplications(): Promise<any[]> {
+    return api.get<any[]>("/api/v1/admin/mentor-applications");
+  },
+
+  /**
+   * Approve mentor application
+   * POST /api/v1/admin/mentor-applications/{id}/approve
+   */
+  async approveMentorApplication(id: string): Promise<any> {
+    return api.post<any>(`/api/v1/admin/mentor-applications/${id}/approve`);
+  },
+
+  /**
+   * Reject mentor application
+   * POST /api/v1/admin/mentor-applications/{id}/reject
+   */
+  async rejectMentorApplication(id: string, reason?: string): Promise<any> {
+    return api.post<any>(`/api/v1/admin/mentor-applications/${id}/reject`, {
+      reason,
+    });
+  },
+
+  /**
+   * List platform milestones
+   * GET /api/v1/admin/milestones
+   */
+  async getMilestones(): Promise<any[]> {
+    return api.get<any[]>("/api/v1/admin/milestones");
+  },
+
+  /**
+   * Create a platform milestone
+   * POST /api/v1/admin/milestones
+   */
+  async createMilestone(data: any): Promise<any> {
+    return api.post<any>("/api/v1/admin/milestones", data);
+  },
+
+  /**
+   * Update a platform milestone
+   * PATCH /api/v1/admin/milestones/{id}
+   */
+  async updateMilestone(id: string, data: any): Promise<any> {
+    return api.patch<any>(`/api/v1/admin/milestones/${id}`, data);
+  },
 };

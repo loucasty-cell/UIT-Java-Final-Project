@@ -81,6 +81,16 @@ public class SessionService {
         return list.stream().map(sessionMapper::toResponse).toList();
     }
 
+    @Transactional(readOnly = true)
+    public SessionResponse getSessionDetail(UUID sessionId) {
+        if (sessionId == null) {
+            throw new IllegalArgumentException("Session ID must not be null");
+        }
+        SwapSession session = loadSession(sessionId);
+        requireParticipant(session, "Only session participants can view this session");
+        return sessionMapper.toResponse(session);
+    }
+
     public SessionResponse startSession(UUID sessionId) {
         if (sessionId == null) {
             throw new IllegalArgumentException("Session ID must not be null");

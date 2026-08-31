@@ -247,6 +247,66 @@ public class WalletService {
                 reason, "ADMIN", null, null);
     }
 
+    // Direct peer-to-peer point transfer between students
+    public PointTransaction transferPoints(UUID senderId, UUID recipientId, int amount, String note) {
+        if (senderId == null || recipientId == null) {
+            throw new IllegalArgumentException("Sender and recipient IDs must not be null");
+        }
+        if (senderId.equals(recipientId)) {
+            throw new IllegalArgumentException("Cannot transfer points to yourself");
+        }
+        validatePositiveAmount(amount);
+
+        // Ensure both wallets exist
+        ensureWallet(senderId);
+        ensureWallet(recipientId);
+
+        // Deterministic locking order
+        if (senderId.compareTo(recipientId) < 0) {
+            lockWallet(senderId);
+            lockWallet(recipientId);
+        } else {
+            lockWallet(recipientId);
+            lockWallet(senderId);
+        }
+
+        Wallet senderWallet = lockWallet(senderId);
+        if (senderWallet.getAvailablePoints() < amount) {
+            throw new IllegalArgumentException("Insufficient available points for transfer");
+        }
+
+        senderWallet.setAvailablePoints(senderWallet.getAvailablePoints() - amount);
+        senderWallet.setTotalSpent(senderWallet.getTotalSpent() + amount);
+
+        Wallet recipientWallet = lockWallet(recipientId);
+        recipientWallet.setAvailablePoints(recipientWallet.getAvailablePoints() + amount);
+        recipientWallet.setTotalEarned(recipientWallet.getTotalEarned() + amount);
+
+        String description = note != null && !note.isBlank() ? note : "Direct point transfer";
+        appendLedgerEntry(recipientWallet, PointEventType.POINT_TRANSFER, amount, 0,
+                description, "TRANSFER_IN", senderId, null);
+
+        PointTransaction senderTx = new PointTransaction();
+        senderTx.setId(UUID.randomUUID());
+        senderTx.setWalletId(senderWallet.getId());
+        senderTx.setUserId(senderWallet.getUserId());
+        senderTx.setEventType(PointEventType.POINT_TRANSFER);
+        senderTx.setAvailableDelta(-amount);
+        senderTx.setHeldDelta(0);
+        senderTx.setBalanceAfterAvailable(senderWallet.getAvailablePoints());
+        senderTx.setBalanceAfterHeld(senderWallet.getHeldPoints());
+        senderTx.setDescription(description);
+        senderTx.setReferenceType("TRANSFER_OUT");
+        senderTx.setReferenceId(recipientId);
+        senderTx.setCreatedAt(OffsetDateTime.now());
+        pointTransactionRepository.save(senderTx);
+
+        senderWallet.setUpdatedAt(OffsetDateTime.now());
+        walletRepository.save(senderWallet);
+
+        return senderTx;
+    }
+
     // --- internal helpers ---
 
     // Loads the wallet with a pessimistic write lock so concurrent financial

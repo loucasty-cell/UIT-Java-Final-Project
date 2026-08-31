@@ -10,3 +10,7 @@ export * from "./notifications.service";
 export * from "./admin.service";
 export * from "./learning-requests.service";
 export * from "./referrals.service";
+export * from "./watchlist.service";
+export * from "./milestones.service";
+export * from "./moderation.service";
+export * from "./mentor-application.service";

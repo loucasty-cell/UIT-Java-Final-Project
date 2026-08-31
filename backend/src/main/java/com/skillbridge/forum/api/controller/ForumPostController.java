@@ -55,7 +55,11 @@ public class ForumPostController {
     }
 
     @GetMapping("/top-volunteers")
-    public ResponseEntity<Page<TopVolunteerResponse>> getTopVolunteers(@RequestParam LocalDate week, Pageable pageable) {
-        return ResponseEntity.ok(volunteerRankingQueryService.getTopVolunteers(week, pageable));
+    public ResponseEntity<Page<TopVolunteerResponse>> getTopVolunteers(
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate week,
+            Pageable pageable
+    ) {
+        LocalDate targetWeek = week != null ? week : LocalDate.now();
+        return ResponseEntity.ok(volunteerRankingQueryService.getTopVolunteers(targetWeek, pageable));
     }
 }

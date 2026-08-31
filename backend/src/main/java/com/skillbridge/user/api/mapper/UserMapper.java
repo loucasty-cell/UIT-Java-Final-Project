@@ -47,11 +47,13 @@ public class UserMapper {
     }
 
     // Assembles the dashboard projection; session/skill/certificate groups stay empty until
-    // their feature slices land, while wallet and recent activity are sourced live
+    // their feature slices land, while wallet, skill progress, and recent activity are sourced live
     public DashboardResponse toDashboardResponse(
             MyProfileResponse profile,
             com.skillbridge.wallet.api.dto.response.WalletResponse wallet,
-            List<PointTransactionResponse> recentActivity
+            List<PointTransactionResponse> recentActivity,
+            List<DashboardResponse.SkillProgressSummary> skillProgress,
+            DashboardResponse.EngagementMetrics engagement
     ) {
         return DashboardResponse.builder()
                 .profile(profile)
@@ -64,6 +66,25 @@ public class UserMapper {
                 .learnSkills(List.of())
                 .certificates(List.of())
                 .recentActivity(recentActivity)
+                .skillProgress(skillProgress != null ? skillProgress : List.of())
+                .engagement(engagement)
                 .build();
+    }
+
+    public DashboardResponse toDashboardResponse(
+            MyProfileResponse profile,
+            com.skillbridge.wallet.api.dto.response.WalletResponse wallet,
+            List<PointTransactionResponse> recentActivity,
+            List<DashboardResponse.SkillProgressSummary> skillProgress
+    ) {
+        return toDashboardResponse(profile, wallet, recentActivity, skillProgress, null);
+    }
+
+    public DashboardResponse toDashboardResponse(
+            MyProfileResponse profile,
+            com.skillbridge.wallet.api.dto.response.WalletResponse wallet,
+            List<PointTransactionResponse> recentActivity
+    ) {
+        return toDashboardResponse(profile, wallet, recentActivity, List.of(), null);
     }
 }

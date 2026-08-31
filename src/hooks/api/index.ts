@@ -11,3 +11,7 @@ export * from "./use-notifications";
 export * from "./use-admin";
 export * from "./use-learning-requests";
 export * from "./use-mentor-application";
+export * from "./use-milestones";
+export * from "./use-referrals";
+export * from "./use-dashboard";
+

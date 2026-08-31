@@ -703,14 +703,46 @@ export interface NormalizedSession {
   mentorId?: string;
 }
 
+export interface SkillProgress {
+  skillId: string;
+  skillName: string;
+  direction: "TEACH" | "LEARN";
+  progressPercentage: number; // 0-100
+  hoursLearned: number;
+  sessionsCompleted: number;
+  currentLevel: "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
+}
+
+export type SkillProgressSummary = SkillProgress;
+
+export interface EngagementMetrics {
+  currentStreak: number;
+  longestStreak: number;
+  hoursThisWeek: number;
+  hoursThisMonth: number;
+  lastActiveDate?: string;
+}
+
 export interface DashboardResponse {
-  userId: string;
-  displayName: string;
-  totalPoints: number;
-  skillsTeaching: number;
-  skillsLearning: number;
-  completedSessions: number;
-  upcomingSessions: SessionResponse[];
+  userId?: string;
+  displayName?: string;
+  profile?: UserProfileResponse;
+  wallet?: WalletResponse;
+  totalPoints?: number;
+  skillsTeaching?: number;
+  skillsLearning?: number;
+  completedSessions?: number;
+  completedSessionCount?: number;
+  mentorSessionCount?: number;
+  learnerSessionCount?: number;
+  upcomingSessions?: SessionResponse[];
+  nextSessions?: any[];
+  teachSkills?: any[];
+  learnSkills?: any[];
+  certificates?: any[];
+  recentActivity?: PointTransactionResponse[];
+  skillProgress?: SkillProgress[];
+  engagement?: EngagementMetrics;
 }
 
 export interface PointTransactionResponse {

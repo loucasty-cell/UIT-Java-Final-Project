@@ -12,6 +12,15 @@ dist-ssr/
 .vite/
 *.local
 
+# ==========================================
+# Testing & E2E (Playwright, Vitest)
+# ==========================================
+/test-results/
+/playwright-report/
+/playwright/.cache/
+.vitest/
+coverage/
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars

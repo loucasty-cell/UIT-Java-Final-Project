@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { GraduationCap, Eye, EyeOff, Sparkles, ArrowRight } from "lucide-react";
+import { motion } from "motion/react";
+import { GraduationCap, Eye, EyeOff, Sparkles, ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -66,7 +67,6 @@ function LoginPage() {
     } catch (err: any) {
       const message = err?.message || "Login failed. Please check your credentials.";
       toast.error(message);
-    } finally {
       setLoginLoading(false);
     }
   };
@@ -97,7 +97,6 @@ function LoginPage() {
     } catch (err: any) {
       const message = err?.message || "Registration failed. Please try again.";
       toast.error(message);
-    } finally {
       setRegLoading(false);
     }
   };
@@ -105,23 +104,23 @@ function LoginPage() {
   return (
     <div className="flex min-h-screen">
       {/* Left panel — branding */}
-      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-sky-900 p-12 lg:flex">
+      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-gradient-to-br from-[#060D1E] via-[#0A1633] to-[#0E2A66] p-12 lg:flex">
         {/* Background pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
-            backgroundImage: "radial-gradient(circle at 2px 2px, rgba(255,255,255,0.15) 1px, transparent 0)",
+            backgroundImage: "radial-gradient(circle at 2px 2px, rgba(30,144,255,0.25) 1px, transparent 0)",
             backgroundSize: "40px 40px",
           }} />
         </div>
 
         <div className="relative z-10">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500 text-white">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1e90ff] text-white shadow-lg shadow-blue-500/30">
               <GraduationCap className="h-7 w-7" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">SkillBridge</h1>
-              <p className="text-sm text-sky-300">Learn. Teach. Earn.</p>
+              <p className="text-sm text-blue-200">Learn. Teach. Earn.</p>
             </div>
           </div>
         </div>
@@ -132,41 +131,41 @@ function LoginPage() {
               Share your skills.<br />
               Grow together.
             </h2>
-            <p className="mt-4 max-w-md text-lg text-slate-300">
+            <p className="mt-4 max-w-md text-lg text-blue-100/90">
               Connect with mentors and learners in your university. Trade skills, earn points, 
               and build your expertise — all for free.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Badge className="rounded-full bg-sky-500/20 text-sky-300 border-sky-500/30 px-3 py-1">
+            <Badge className="rounded-full bg-[#1e90ff]/20 text-[#7ec2ff] border-[#1e90ff]/40 px-3 py-1">
               <Sparkles className="mr-1 h-3 w-3" />
               +30 starter points
             </Badge>
             <Badge className="rounded-full bg-emerald-500/20 text-emerald-300 border-emerald-500/30 px-3 py-1">
               Skill swap: 0 points
             </Badge>
-            <Badge className="rounded-full bg-violet-500/20 text-violet-300 border-violet-500/30 px-3 py-1">
+            <Badge className="rounded-full bg-blue-500/20 text-blue-300 border-blue-500/30 px-3 py-1">
               Volunteer mentoring
             </Badge>
           </div>
         </div>
 
         <div className="relative z-10">
-          <p className="text-xs text-slate-500">© 2026 SkillBridge · University of IT</p>
+          <p className="text-xs text-blue-200/60">© 2026 SkillBridge · University of IT</p>
         </div>
       </div>
 
       {/* Right panel — auth forms */}
-      <div className="flex flex-1 items-center justify-center bg-slate-50 p-6 sm:p-12">
+      <div className="flex flex-1 items-center justify-center bg-background p-6 sm:p-12">
         <div className="w-full max-w-md">
           {/* Mobile branding */}
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-600 text-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#1e90ff] text-white">
               <GraduationCap className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">SkillBridge</h1>
+              <h1 className="text-xl font-bold text-foreground">SkillBridge</h1>
               <p className="text-xs text-muted-foreground">Learn. Teach. Earn.</p>
             </div>
           </div>
@@ -219,9 +218,18 @@ function LoginPage() {
                       </div>
                     </div>
 
-                    <Button type="submit" className="w-full h-11" disabled={loginLoading}>
-                      {loginLoading ? "Signing in..." : "Sign In"}
-                      {!loginLoading && <ArrowRight className="ml-2 h-4 w-4" />}
+                    <Button type="submit" className="w-full h-11 transition-all" disabled={loginLoading}>
+                      {loginLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          <span>Signing in...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Sign In</span>
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </>
+                      )}
                     </Button>
 
                     <div className="pt-2">
@@ -383,16 +391,25 @@ function LoginPage() {
                       />
                     </div>
 
-                    <div className="rounded-lg bg-sky-50 p-3 text-center">
-                      <p className="text-sm text-sky-700">
-                        <Sparkles className="mr-1 inline h-4 w-4" />
-                        You'll receive <span className="font-bold">+30 starter points</span> on signup!
+                    <div className="rounded-lg bg-secondary/80 border border-border p-3 text-center">
+                      <p className="text-sm text-foreground">
+                        <Sparkles className="mr-1 inline h-4 w-4 text-primary" />
+                        You'll receive <span className="font-bold text-primary">+30 starter points</span> on signup!
                       </p>
                     </div>
 
-                    <Button type="submit" className="w-full h-11" disabled={regLoading}>
-                      {regLoading ? "Creating account..." : "Create Account"}
-                      {!regLoading && <ArrowRight className="ml-2 h-4 w-4" />}
+                    <Button type="submit" className="w-full h-11 transition-all" disabled={regLoading}>
+                      {regLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          <span>Creating account...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Create Account</span>
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </>
+                      )}
                     </Button>
                   </form>
                 </TabsContent>

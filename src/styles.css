@@ -46,84 +46,84 @@
 
 :root {
   --radius: 1rem;
-  /* Rose Veil & Chalk Grey Light Mode */
-  --background: oklch(0.94 0.02 340); /* Rose veil #F3E7EC */
-  --foreground: oklch(0.52 0.04 250); /* Dusty denim #66758F */
-  --card: oklch(0.97 0.01 340); /* Lighter rose veil */
-  --card-foreground: oklch(0.40 0.04 250); /* Darker dusty denim */
-  --popover: oklch(0.97 0.01 340); /* Light rose veil */
-  --popover-foreground: oklch(0.40 0.04 250);
-  /* Dusty denim primary */
-  --primary: oklch(0.52 0.04 250);
-  --primary-foreground: oklch(0.97 0.01 340);
-  --secondary: oklch(0.85 0.01 270); /* Chalk grey - 30% */
-  --secondary-foreground: oklch(0.40 0.04 250);
-  --muted: oklch(0.85 0.01 270); /* Chalk grey */
-  --muted-foreground: oklch(0.58 0.03 250);
-  /* Soft accent blend */
-  --accent: oklch(0.88 0.015 320);
-  --accent-foreground: oklch(0.52 0.04 250);
-  --destructive: oklch(0.55 0.15 20);
-  --destructive-foreground: oklch(0.97 0.01 340);
-  /* Emerald-300 soft */
-  --success: oklch(0.63 0.13 163);
-  --success-foreground: oklch(0.97 0.01 340);
-  --warning: oklch(0.85 0.12 82);
-  --warning-foreground: oklch(0.35 0.08 60);
-  /* Chalk grey borders - 30% usage */
-  --border: oklch(0.85 0.01 270);
-  --input: oklch(0.85 0.01 270);
-  --ring: oklch(0.52 0.04 250);
-  --chart-1: oklch(0.75 0.12 235);
-  --chart-2: oklch(0.82 0.13 165);
-  --chart-3: oklch(0.85 0.12 82);
-  --chart-4: oklch(0.75 0.14 300);
-  --chart-5: oklch(0.7 0.12 220);
-  /* Sidebar — Rose veil light */
-  --sidebar: oklch(0.96 0.015 340);
-  --sidebar-foreground: oklch(0.45 0.04 250);
-  --sidebar-primary: oklch(0.52 0.04 250);
-  --sidebar-primary-foreground: oklch(0.97 0.01 340);
-  --sidebar-accent: oklch(0.88 0.015 320);
-  --sidebar-accent-foreground: oklch(0.52 0.04 250);
-  --sidebar-border: oklch(0.87 0.01 270);
-  --sidebar-ring: oklch(0.52 0.04 250);
+  /* Coursera-inspired Light Mode with Dodger Blue (#1e90ff) & Ice-Sky White */
+  --background: oklch(0.985 0.008 240); /* Crisp clean ice-sky white #F8FAFD */
+  --foreground: oklch(0.20 0.04 250); /* Coursera deep midnight navy #0F203D - replaces dull grey */
+  --card: oklch(1.0 0 0); /* Pure crisp white cards */
+  --card-foreground: oklch(0.20 0.04 250); /* Deep midnight navy */
+  --popover: oklch(1.0 0 0);
+  --popover-foreground: oklch(0.20 0.04 250);
+  /* Dodger Blue primary (#1e90ff / hsl(210 100% 56%)) */
+  --primary: oklch(0.67 0.18 240); /* Vivid Dodger Blue #1e90ff */
+  --primary-foreground: oklch(0.99 0.005 240); /* Crisp pure white text on primary */
+  --secondary: oklch(0.94 0.03 240); /* Soft ice-dodger blue #EBF3FF - replaces chalk grey */
+  --secondary-foreground: oklch(0.30 0.06 250); /* Deep royal navy */
+  --muted: oklch(0.94 0.03 240); /* Soft ice-dodger blue background */
+  --muted-foreground: oklch(0.48 0.06 245); /* Refined steel-blue #3B5675 - replaces washed-out grey */
+  /* Soft Dodger Blue accent & highlights */
+  --accent: oklch(0.93 0.04 240); /* Gentle dodger sky tint #E1EEFF */
+  --accent-foreground: oklch(0.67 0.18 240); /* Dodger blue text */
+  --destructive: oklch(0.58 0.20 25); /* Crimson */
+  --destructive-foreground: oklch(0.99 0.005 240);
+  /* Success & Warning */
+  --success: oklch(0.62 0.16 155); /* Electric emerald */
+  --success-foreground: oklch(0.99 0.005 240);
+  --warning: oklch(0.82 0.14 80); /* Warm amber */
+  --warning-foreground: oklch(0.28 0.08 65);
+  /* Dodger Blue tinted borders & inputs - replaces grey borders */
+  --border: oklch(0.89 0.04 240); /* Soft dodger blue border #D2E4FF */
+  --input: oklch(0.89 0.04 240); /* Clean dodger sky input border */
+  --ring: oklch(0.67 0.18 240); /* Dodger blue focus ring #1e90ff */
+  --chart-1: oklch(0.67 0.18 240); /* Dodger Blue */
+  --chart-2: oklch(0.65 0.16 160); /* Emerald */
+  --chart-3: oklch(0.80 0.13 80); /* Amber */
+  --chart-4: oklch(0.65 0.18 290); /* Purple */
+  --chart-5: oklch(0.55 0.20 220); /* Deep Cyan */
+  /* Sidebar — Coursera Clean Ice-Sky */
+  --sidebar: oklch(0.985 0.008 240); /* Soft ice white */
+  --sidebar-foreground: oklch(0.24 0.04 250); /* Deep navy */
+  --sidebar-primary: oklch(0.67 0.18 240); /* Dodger blue */
+  --sidebar-primary-foreground: oklch(0.99 0.005 240);
+  --sidebar-accent: oklch(0.93 0.04 240); /* Light dodger blue hover */
+  --sidebar-accent-foreground: oklch(0.67 0.18 240);
+  --sidebar-border: oklch(0.89 0.04 240); /* Dodger sky divider */
+  --sidebar-ring: oklch(0.67 0.18 240);
 }
 
 .dark {
-  /* Asphalt Black + Ivy Cloud + Polar Blue Dark Mode */
-  --background: oklch(0.12 0.01 250); /* Asphalt black #14161B - 65% */
-  --foreground: oklch(0.96 0.01 80); /* Ivy cloud #F7F6F2 - 15% text */
-  --card: oklch(0.16 0.01 250); /* Slightly lighter asphalt */
-  --card-foreground: oklch(0.96 0.01 80);
-  --popover: oklch(0.16 0.01 250);
-  --popover-foreground: oklch(0.96 0.01 80);
-  /* Polar blue primary - 15% */
-  --primary: oklch(0.82 0.10 210); /* Polar blue #7FD4FF */
-  --primary-foreground: oklch(0.12 0.01 250);
-  --secondary: oklch(0.20 0.01 250); /* Darker grey */
-  --secondary-foreground: oklch(0.96 0.01 80);
-  --muted: oklch(0.20 0.01 250);
-  --muted-foreground: oklch(0.75 0.02 80);
-  --accent: oklch(0.82 0.10 210); /* Polar blue accent */
-  --accent-foreground: oklch(0.12 0.01 250);
+  /* Coursera Midnight Navy + Dodger Blue (#1e90ff) Dark Mode */
+  --background: oklch(0.12 0.03 250); /* Midnight Navy #080E1C */
+  --foreground: oklch(0.96 0.015 240); /* Crystal ice white #F1F6FF */
+  --card: oklch(0.16 0.04 250); /* Deep Navy Card #0E1830 */
+  --card-foreground: oklch(0.96 0.015 240);
+  --popover: oklch(0.16 0.04 250);
+  --popover-foreground: oklch(0.96 0.015 240);
+  /* Dodger Blue primary (#1e90ff) */
+  --primary: oklch(0.67 0.18 240); /* Glowing Dodger Blue #1e90ff */
+  --primary-foreground: oklch(0.99 0.005 240);
+  --secondary: oklch(0.22 0.05 245); /* Deep Sky Navy #142446 */
+  --secondary-foreground: oklch(0.92 0.03 240);
+  --muted: oklch(0.22 0.05 245);
+  --muted-foreground: oklch(0.72 0.05 240); /* Soft ice-slate #8CAFD4 */
+  --accent: oklch(0.67 0.18 240); /* Dodger Blue accent */
+  --accent-foreground: oklch(0.99 0.005 240);
   --destructive: oklch(0.65 0.18 25);
-  --destructive-foreground: oklch(0.96 0.01 80);
-  --success: oklch(0.75 0.13 165);
-  --success-foreground: oklch(0.12 0.01 250);
-  --warning: oklch(0.80 0.12 82);
-  --warning-foreground: oklch(0.15 0.03 60);
-  --border: oklch(0.25 0.01 250); /* Subtle dark border */
-  --input: oklch(0.25 0.01 250);
-  --ring: oklch(0.82 0.10 210); /* Polar blue ring */
-  --sidebar: oklch(0.14 0.01 250);
-  --sidebar-foreground: oklch(0.90 0.01 80);
-  --sidebar-primary: oklch(0.82 0.10 210);
-  --sidebar-primary-foreground: oklch(0.12 0.01 250);
-  --sidebar-accent: oklch(0.22 0.03 210);
-  --sidebar-accent-foreground: oklch(0.96 0.01 80);
-  --sidebar-border: oklch(0.20 0.01 250);
-  --sidebar-ring: oklch(0.82 0.10 210);
+  --destructive-foreground: oklch(0.99 0.005 240);
+  --success: oklch(0.70 0.15 160);
+  --success-foreground: oklch(0.12 0.03 250);
+  --warning: oklch(0.80 0.13 80);
+  --warning-foreground: oklch(0.15 0.04 60);
+  --border: oklch(0.26 0.05 245); /* Deep midnight blue border #1C335B */
+  --input: oklch(0.26 0.05 245);
+  --ring: oklch(0.67 0.18 240); /* Dodger Blue focus ring */
+  --sidebar: oklch(0.14 0.035 250); /* Midnight Navy sidebar */
+  --sidebar-foreground: oklch(0.92 0.02 240);
+  --sidebar-primary: oklch(0.67 0.18 240);
+  --sidebar-primary-foreground: oklch(0.99 0.005 240);
+  --sidebar-accent: oklch(0.22 0.05 245);
+  --sidebar-accent-foreground: oklch(0.67 0.18 240);
+  --sidebar-border: oklch(0.22 0.045 245);
+  --sidebar-ring: oklch(0.67 0.18 240);
 }
 
 @layer base {

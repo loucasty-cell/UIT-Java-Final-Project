@@ -25,9 +25,9 @@ export function HeroBanner() {
           </Badge>
           <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl">
             Master React & TypeScript
-            <span className="block text-red-500">with peer mentors</span>
+            <span className="block text-[#1e90ff]">with peer mentors</span>
           </h1>
-          <p className="max-w-2xl text-lg leading-relaxed text-gray-300 sm:text-xl">
+          <p className="max-w-2xl text-lg leading-relaxed text-blue-100/90 sm:text-xl">
             Learn from top-rated Computer Science peers. Book a 60-min session with Skill Points,
             swap knowledge, or join free volunteer hours. Escrow-protected, 18-hour auto-release.
           </p>
@@ -62,7 +62,7 @@ export function HeroBanner() {
 
         <div className="hidden lg:block">
           <div className="rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 p-5 shadow-xl">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-red-400">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#1e90ff]">
               <TrendingUp className="h-4 w-4" /> Trending now
             </div>
             <div className="mt-3 space-y-3">
@@ -77,9 +77,9 @@ export function HeroBanner() {
                 >
                   <div>
                     <p className="text-sm font-semibold">{m.name}</p>
-                    <p className="text-xs text-gray-300">{m.skill}</p>
+                    <p className="text-xs text-blue-100/80">{m.skill}</p>
                   </div>
-                  <Badge className="bg-white text-slate-900 rounded-full">{m.pts} Pts</Badge>
+                  <Badge className="bg-white text-[#0A1B3A] font-semibold rounded-full">{m.pts} Pts</Badge>
                 </div>
               ))}
             </div>

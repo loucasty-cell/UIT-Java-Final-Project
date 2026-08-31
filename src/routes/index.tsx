@@ -70,6 +70,7 @@ import {
 import { useSessionsQuery } from "@/hooks/api/use-sessions";
 import { walletService } from "@/services/wallet.service";
 import { DashboardCalendarWidget } from "@/components/dashboard/dashboard-calendar-widget";
+import { DashboardWalletWidget } from "@/components/dashboard/dashboard-wallet-widget";
 import type { NormalizedSession } from "@/routes/sessions";
 
 export const Route = createFileRoute("/")({
@@ -301,7 +302,66 @@ function Dashboard() {
         };
       });
     }
-    return [];
+
+    // Dynamic sessions relative to current date if user has no backend sessions yet
+    const now = new Date();
+    const todayAt2 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 0);
+    const inTwoDaysAt4 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2, 16, 30);
+    const inFiveDaysAt10 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 5, 10, 0);
+
+    return [
+      {
+        id: "demo-session-1",
+        counterpart: "Sarah Jenkins",
+        initials: "SJ",
+        role: "Mentor" as const,
+        date: format(todayAt2, "MMM dd, yyyy"),
+        time: format(todayAt2, "hh:mm a"),
+        mode: "Skill Points",
+        points: 25,
+        status: "SCHEDULED" as any,
+        meetingUrl: "https://meet.google.com/sb-demo-1",
+        skillName: "Advanced React & Architecture",
+        scheduledStart: todayAt2.toISOString(),
+        scheduledAt: todayAt2.toISOString(),
+        duration: 60,
+        counterpartAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80",
+      },
+      {
+        id: "demo-session-2",
+        counterpart: "David Kumar",
+        initials: "DK",
+        role: "Learner" as const,
+        date: format(inTwoDaysAt4, "MMM dd, yyyy"),
+        time: format(inTwoDaysAt4, "hh:mm a"),
+        mode: "Skill Exchange",
+        points: 30,
+        status: "SCHEDULED" as any,
+        meetingUrl: "https://meet.google.com/sb-demo-2",
+        skillName: "Full-Stack System Design",
+        scheduledStart: inTwoDaysAt4.toISOString(),
+        scheduledAt: inTwoDaysAt4.toISOString(),
+        duration: 90,
+        counterpartAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80",
+      },
+      {
+        id: "demo-session-3",
+        counterpart: "Elena Rostova",
+        initials: "ER",
+        role: "Mentor" as const,
+        date: format(inFiveDaysAt10, "MMM dd, yyyy"),
+        time: format(inFiveDaysAt10, "hh:mm a"),
+        mode: "Skill Points",
+        points: 20,
+        status: "SCHEDULED" as any,
+        meetingUrl: "https://meet.google.com/sb-demo-3",
+        skillName: "Data Structures & Algorithms",
+        scheduledStart: inFiveDaysAt10.toISOString(),
+        scheduledAt: inFiveDaysAt10.toISOString(),
+        duration: 60,
+        counterpartAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
+      },
+    ];
   }, [allSessionsList, sessionsData, user]);
 
   const handleAddSkill = async (e: React.FormEvent) => {
@@ -385,10 +445,10 @@ function Dashboard() {
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Welcome Banner */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-sky-600 via-sky-500 to-indigo-600 p-6 text-white shadow-lg">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-[#1e90ff] via-[#1677df] to-[#0056D2] p-6 text-white shadow-xl shadow-blue-500/15">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-sky-100">
+            <span className="text-xs font-semibold uppercase tracking-wider text-blue-100">
               Fall 2026 · Week 3
             </span>
             <Badge className="bg-white/20 text-white border-0 text-[10px]">Active Semester</Badge>
@@ -396,14 +456,14 @@ function Dashboard() {
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
             Welcome back, {displayName.split(" ")[0]} 👋
           </h1>
-          <p className="text-sm text-sky-100">
+          <p className="text-sm text-blue-100">
             {scheduledSessions.length > 0
               ? `You have ${scheduledSessions.length} upcoming mentorship session(s) scheduled.`
               : "Ready to learn or teach today? Check out peer mentors or your wallet balance."}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button asChild variant="secondary" className="rounded-xl font-semibold shadow-sm">
+          <Button asChild variant="secondary" className="rounded-xl font-semibold shadow-sm bg-white text-[#0A1B3A] hover:bg-white/90">
             <Link to="/mentors">
               Find a Mentor <ArrowRight className="ml-1.5 h-4 w-4" />
             </Link>
@@ -417,7 +477,7 @@ function Dashboard() {
       {/* Metrics Row */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Wallet Balance */}
-        <Card className="rounded-2xl bg-card border-border shadow-lg">
+        <Card className="rounded-2xl bg-card border-border shadow-sm hover:shadow-md transition">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Available Balance
@@ -437,49 +497,49 @@ function Dashboard() {
         </Card>
 
         {/* Total Earned */}
-        <Card className="rounded-2xl bg-card border-border shadow-lg">
+        <Card className="rounded-2xl bg-card border-border shadow-sm hover:shadow-md transition">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Total Earned
             </CardTitle>
-            <div className="rounded-xl bg-sky-50 p-2 text-sky-600 dark:bg-sky-950/40">
+            <div className="rounded-xl bg-blue-50 p-2 text-[#1e90ff] dark:bg-blue-950/40">
               <TrendingUp className="h-5 w-5" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-sky-600 dark:text-sky-400">{totalEarned} Pts</div>
+            <div className="text-2xl font-bold text-[#1e90ff]">{totalEarned} Pts</div>
             <p className="mt-1 text-xs text-muted-foreground">Lifetime teaching & bonus points</p>
           </CardContent>
         </Card>
 
         {/* Total Spent */}
-        <Card className="rounded-2xl bg-card border-border shadow-lg">
+        <Card className="rounded-2xl bg-card border-border shadow-sm hover:shadow-md transition">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Total Spent
             </CardTitle>
-            <div className="rounded-xl bg-slate-100 p-2 text-slate-600 dark:bg-muted">
+            <div className="rounded-xl bg-secondary p-2 text-muted-foreground">
               <TrendingDown className="h-5 w-5" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalSpent} Pts</div>
+            <div className="text-2xl font-bold text-foreground">{totalSpent} Pts</div>
             <p className="mt-1 text-xs text-muted-foreground">Invested in mentorship sessions</p>
           </CardContent>
         </Card>
 
         {/* Completed Sessions */}
-        <Card className="rounded-2xl bg-card border-border shadow-lg">
+        <Card className="rounded-2xl bg-card border-border shadow-sm hover:shadow-md transition">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Completed Sessions
             </CardTitle>
-            <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600 dark:bg-indigo-950/40">
+            <div className="rounded-xl bg-blue-50 p-2 text-[#0056D2] dark:bg-blue-950/40 dark:text-[#7ec2ff]">
               <CalendarCheck className="h-5 w-5" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">8</div>
+            <div className="text-2xl font-bold text-[#0056D2] dark:text-[#7ec2ff]">8</div>
             <p className="mt-1 text-xs text-muted-foreground">3 as mentor · 5 as learner</p>
           </CardContent>
         </Card>
@@ -684,66 +744,14 @@ function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Activity Log / Transactions Table */}
-          <Card className="rounded-2xl border-border/70 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <div>
-                <CardTitle className="text-base font-semibold">Point Activity & Ledger</CardTitle>
-                <CardDescription className="text-xs">
-                  Immutable transaction history backed by the SkillBridge escrow ledger.
-                </CardDescription>
-              </div>
-              <Button
-                onClick={handleExportCsv}
-                variant="outline"
-                size="sm"
-                className="rounded-xl text-xs"
-              >
-                <Download className="mr-1.5 h-3.5 w-3.5" /> Export CSV
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">Date</TableHead>
-                    <TableHead className="text-xs">Activity Description</TableHead>
-                    <TableHead className="text-xs">Type</TableHead>
-                    <TableHead className="text-right text-xs">Points Delta</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {activityList.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="text-xs font-medium text-muted-foreground">
-                        {item.date}
-                      </TableCell>
-                      <TableCell className="text-xs font-medium">{item.activity}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={item.type === "earn" ? "default" : "secondary"}
-                          className={`text-[10px] ${
-                            item.type === "earn"
-                              ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30"
-                              : "bg-slate-100 text-slate-700 dark:bg-muted dark:text-muted-foreground"
-                          }`}
-                        >
-                          {item.type === "earn" ? "Earned" : "Spent"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell
-                        className={`text-right text-xs font-semibold ${
-                          item.type === "earn" ? "text-emerald-600" : "text-rose-600"
-                        }`}
-                      >
-                        {item.type === "earn" ? `+${item.amount}` : `-${item.amount}`} Pts
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          {/* Wallet Balance & History Widget */}
+          <DashboardWalletWidget
+            availablePoints={availablePoints}
+            heldPoints={heldPoints}
+            totalEarned={totalEarned}
+            totalSpent={totalSpent}
+            transactions={activityList}
+          />
         </div>
       </div>
 

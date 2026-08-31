@@ -58,12 +58,12 @@ export function MentorPreviewCard({ item, onRequest }: MentorPreviewCardProps) {
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <h4 className="font-bold text-sm truncate text-white">{item.name}</h4>
-                <p className="text-[11px] text-gray-400 truncate">{item.major}</p>
+                <h4 className="font-bold text-sm truncate text-foreground">{item.name}</h4>
+                <p className="text-[11px] text-muted-foreground truncate">{item.major}</p>
                 <div className="flex items-center gap-1 text-[11px] mt-0.5">
                   <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                   <span className="font-semibold">{item.rating.toFixed(1)}</span>
-                  <span className="text-muted-foreground text-gray-500">({item.reviews})</span>
+                  <span className="text-muted-foreground">({item.reviews})</span>
                 </div>
               </div>
             </div>
@@ -71,7 +71,7 @@ export function MentorPreviewCard({ item, onRequest }: MentorPreviewCardProps) {
             <button
               type="button"
               onClick={handleToggle}
-              className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition"
+              className="p-1.5 rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground transition"
               aria-label="Add to list"
             >
               {inWatchlist ? (
@@ -84,7 +84,7 @@ export function MentorPreviewCard({ item, onRequest }: MentorPreviewCardProps) {
 
           {/* Teaches Skills */}
           <div className="space-y-1.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Teaches
             </p>
             <div className="flex flex-wrap gap-1">
@@ -92,7 +92,7 @@ export function MentorPreviewCard({ item, onRequest }: MentorPreviewCardProps) {
                 <Badge
                   key={s.name}
                   variant="outline"
-                  className="rounded-full text-[10px] px-2 py-0 border-neutral-700/80 bg-neutral-800/50 text-gray-300"
+                  className="rounded-full text-[10px] px-2 py-0 border-border bg-secondary/80 text-foreground"
                 >
                   {s.name}
                 </Badge>

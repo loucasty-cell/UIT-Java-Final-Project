@@ -145,14 +145,14 @@ export function TopNav() {
   if (isLearner && !isInstructor && !isAdmin) roleBadges.push({ label: "Learner", variant: "secondary" });
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 bg-background/70 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/50 sm:px-8">
-      <SidebarTrigger className="shrink-0 hover:bg-sky-50" />
-      <Separator orientation="vertical" className="h-5 bg-slate-100" />
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 bg-background/70 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/50 sm:px-8 border-b border-border">
+      <SidebarTrigger className="shrink-0 hover:bg-secondary" />
+      <Separator orientation="vertical" className="h-5 bg-border" />
 
       {/* Search — navigates to /browse on submit */}
       <form onSubmit={handleSearch} className="relative flex-1 max-w-xl">
         <Search
-          className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+          className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
           strokeWidth={1.5}
         />
         <Input
@@ -160,7 +160,7 @@ export function TopNav() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search skills, mentors, or forum topics..."
-          className="h-11 rounded-xl border-slate-100 bg-white pl-10 pr-3 text-base shadow-none focus-visible:ring-sky-200"
+          className="h-11 rounded-xl border-border bg-card pl-10 pr-3 text-base shadow-none focus-visible:ring-[#1e90ff] focus-visible:border-[#1e90ff]"
         />
       </form>
 
@@ -172,7 +172,7 @@ export function TopNav() {
               <TooltipTrigger asChild>
                 <Link
                   to="/mentor-application"
-                  className="group hidden items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm font-semibold text-violet-700 shadow-sm transition hover:bg-violet-100 sm:flex"
+                  className="group hidden items-center gap-1.5 rounded-full border border-[#1e90ff]/40 bg-secondary px-3 py-1.5 text-sm font-semibold text-[#1e90ff] shadow-sm transition hover:bg-secondary/80 sm:flex"
                 >
                   <Sparkles className="h-4 w-4" />
                   <span>Teach</span>

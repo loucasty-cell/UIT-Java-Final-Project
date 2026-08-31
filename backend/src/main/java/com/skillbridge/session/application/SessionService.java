@@ -57,6 +57,30 @@ public class SessionService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<SessionResponse> getAllUserSessions(SwapSessionStatus status) {
+        UUID userId = SecurityUtils.getCurrentUserId();
+        List<SwapSession> list;
+        if (status != null) {
+            list = sessionRepository.findByUserIdAndStatus(userId, status);
+        } else {
+            list = sessionRepository.findAllByUserId(userId);
+        }
+        return list.stream().map(sessionMapper::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<SessionResponse> getCalendarSessions(OffsetDateTime start, OffsetDateTime end) {
+        UUID userId = SecurityUtils.getCurrentUserId();
+        List<SwapSession> list;
+        if (start != null && end != null) {
+            list = sessionRepository.findSessionsInDateRange(userId, start, end);
+        } else {
+            list = sessionRepository.findAllByUserId(userId);
+        }
+        return list.stream().map(sessionMapper::toResponse).toList();
+    }
+
     public SessionResponse startSession(UUID sessionId) {
         if (sessionId == null) {
             throw new IllegalArgumentException("Session ID must not be null");
@@ -196,10 +220,23 @@ public class SessionService {
             throw new IllegalStateException("Completed, cancelled, or disputed sessions cannot be updated");
         }
 
-        session.setScheduledAt(request.getScheduledAt());
-        session.setDurationMinutes(request.getDurationMinutes());
-        session.setMeetingUrl(request.getMeetingUrl());
-        session.setNotes(request.getNotes());
+        if (request.getScheduledAt() != null) {
+            session.setScheduledAt(request.getScheduledAt());
+            int duration = request.getDurationMinutes() != null ? request.getDurationMinutes() : (session.getDurationMinutes() != null ? session.getDurationMinutes() : 60);
+            session.setScheduledEnd(request.getScheduledAt().plusMinutes(duration));
+        }
+        if (request.getDurationMinutes() != null) {
+            session.setDurationMinutes(request.getDurationMinutes());
+            if (session.getScheduledAt() != null) {
+                session.setScheduledEnd(session.getScheduledAt().plusMinutes(request.getDurationMinutes()));
+            }
+        }
+        if (request.getMeetingUrl() != null) {
+            session.setMeetingUrl(request.getMeetingUrl());
+        }
+        if (request.getNotes() != null) {
+            session.setNotes(request.getNotes());
+        }
         session.setUpdatedAt(OffsetDateTime.now());
         SwapSession saved = sessionRepository.save(session);
         notifyParticipants(saved, NotificationType.SESSION_UPDATED);

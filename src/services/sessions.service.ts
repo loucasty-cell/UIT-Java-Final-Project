@@ -8,13 +8,36 @@ import {
 export const sessionsService = {
   /**
    * List active/all user sessions
-   * GET /api/sessions/active/me or /api/sessions
+   * GET /api/sessions/me, /api/v1/sessions/me, /api/sessions/active/me, or /api/sessions
    */
   async listSessions(status?: string): Promise<SessionResponse[]> {
+    const params = status ? { status } : undefined;
     try {
-      return await api.get<SessionResponse[]>("/api/sessions/active/me");
+      if (!status || status === "ALL") {
+        return await api.get<SessionResponse[]>("/api/sessions/me");
+      }
+      return await api.get<SessionResponse[]>("/api/sessions/me", params);
     } catch {
-      return api.get<SessionResponse[]>("/api/sessions", { status });
+      try {
+        return await api.get<SessionResponse[]>("/api/sessions/active/me");
+      } catch {
+        return api.get<SessionResponse[]>("/api/sessions", params);
+      }
+    }
+  },
+
+  /**
+   * Get calendar sessions in date interval
+   * GET /api/sessions/calendar/me
+   */
+  async getCalendarSessions(start?: string, end?: string): Promise<SessionResponse[]> {
+    const params: Record<string, string> = {};
+    if (start) params.start = start;
+    if (end) params.end = end;
+    try {
+      return await api.get<SessionResponse[]>("/api/sessions/calendar/me", params);
+    } catch {
+      return this.listSessions();
     }
   },
 

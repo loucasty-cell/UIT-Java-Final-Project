@@ -11,6 +11,14 @@ export function useSessionsQuery(status?: string) {
   });
 }
 
+export function useCalendarSessionsQuery(start?: string, end?: string) {
+  return useQuery({
+    queryKey: queryKeys.sessions.calendar(start, end),
+    queryFn: () => sessionsService.getCalendarSessions(start, end),
+    staleTime: 1000 * 30, // 30 seconds
+  });
+}
+
 export function useSessionDetailQuery(id: string) {
   return useQuery({
     queryKey: queryKeys.sessions.detail(id),

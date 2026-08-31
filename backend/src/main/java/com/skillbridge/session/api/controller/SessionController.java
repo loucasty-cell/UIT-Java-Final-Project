@@ -32,6 +32,21 @@ public class SessionController {
         return ResponseEntity.ok(sessionService.getActiveSwapSessions());
     }
 
+    @GetMapping({"/api/sessions/me", "/api/v1/sessions/me", "/api/sessions", "/api/v1/sessions"})
+    public ResponseEntity<List<SessionResponse>> getAllUserSessions(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) com.skillbridge.swap.domain.model.SwapSessionStatus status
+    ) {
+        return ResponseEntity.ok(sessionService.getAllUserSessions(status));
+    }
+
+    @GetMapping({"/api/sessions/calendar/me", "/api/v1/sessions/calendar/me"})
+    public ResponseEntity<List<SessionResponse>> getCalendarSessions(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.OffsetDateTime start,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.OffsetDateTime end
+    ) {
+        return ResponseEntity.ok(sessionService.getCalendarSessions(start, end));
+    }
+
     @PostMapping({"/api/sessions/{sessionId}/start", "/api/v1/sessions/{sessionId}/start"})
     public ResponseEntity<SessionResponse> startSession(@PathVariable UUID sessionId) {
         return ResponseEntity.ok(sessionService.startSession(sessionId));

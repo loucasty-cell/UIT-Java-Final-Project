@@ -26,6 +26,7 @@ export const queryKeys = {
   },
   sessions: {
     list: (status?: string) => ["sessions", "list", status] as const,
+    calendar: (start?: string, end?: string) => ["sessions", "calendar", { start, end }] as const,
     detail: (id: string) => ["sessions", "detail", id] as const,
   },
   reviews: {

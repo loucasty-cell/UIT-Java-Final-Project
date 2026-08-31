@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState, useMemo } from "react";
+import { format } from "date-fns";
 import {
   ArrowRight,
   CalendarCheck,
@@ -20,6 +21,7 @@ import {
   CheckCircle2,
   BookOpen,
   Trash2,
+  Calendar,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -67,6 +69,8 @@ import {
 } from "@/hooks/api/use-skills";
 import { useSessionsQuery } from "@/hooks/api/use-sessions";
 import { walletService } from "@/services/wallet.service";
+import { DashboardCalendarWidget } from "@/components/dashboard/dashboard-calendar-widget";
+import type { NormalizedSession } from "@/routes/sessions";
 
 export const Route = createFileRoute("/")({
   beforeLoad: requireAuth,
@@ -210,12 +214,95 @@ function Dashboard() {
     ];
   }, [transactionsData]);
 
+  // Query all sessions for dashboard calendar and overview
+  const { data: allSessionsList } = useSessionsQuery();
+
   const scheduledSessions = useMemo(() => {
     if (sessionsData && sessionsData.length > 0) {
       return sessionsData;
     }
     return [];
   }, [sessionsData]);
+
+  // Normalized sessions for the Dashboard Calendar Widget
+  const dashboardSessions: NormalizedSession[] = useMemo(() => {
+    const rawList = allSessionsList || sessionsData || [];
+    if (rawList && rawList.length > 0) {
+      return rawList.map((s: any) => {
+        const isMentor =
+          s.mentorId === user?.id ||
+          s.responderId === user?.id ||
+          s.responder?.id === user?.id ||
+          s.role === "Mentor";
+        let counterpartName = "Peer Partner";
+        if (isMentor) {
+          counterpartName =
+            s.learnerName ||
+            s.counterpartName ||
+            s.requester?.displayName ||
+            s.requester?.name ||
+            (s.requester?.firstName
+              ? `${s.requester.firstName} ${s.requester.lastName || ""}`.trim()
+              : "Learner");
+        } else {
+          counterpartName =
+            s.mentorName ||
+            s.counterpartName ||
+            s.responder?.displayName ||
+            s.responder?.name ||
+            (s.responder?.firstName
+              ? `${s.responder.firstName} ${s.responder.lastName || ""}`.trim()
+              : "Mentor");
+        }
+        const rawDateStr = s.scheduledStart || s.scheduledAt || s.createdAt;
+        const startDate = rawDateStr ? new Date(rawDateStr) : new Date();
+        const isValidDate = !isNaN(startDate.getTime());
+        const finalDate = isValidDate ? startDate : new Date();
+
+        return {
+          id: s.id,
+          counterpart: counterpartName,
+          initials:
+            counterpartName
+              .split(" ")
+              .filter(Boolean)
+              .map((n: string) => n[0])
+              .join("")
+              .slice(0, 2)
+              .toUpperCase() || "SB",
+          role: (isMentor ? "Mentor" : "Learner") as const,
+          date: format(finalDate, "MMM dd, yyyy"),
+          time: format(finalDate, "hh:mm a"),
+          mode:
+            s.mode === "POINTS"
+              ? "Skill Points"
+              : s.mode === "SKILL_SWAP"
+                ? "Skill Exchange"
+                : s.mode === "VOLUNTEER"
+                  ? "Volunteer"
+                  : (s.mode || "Skill Points"),
+          points: s.pointCostSnapshot ?? s.pointCost ?? s.points ?? 0,
+          status: s.status as any,
+          meetingUrl: s.meetingUrl || `https://meet.google.com/sb-${String(s.id).slice(0, 8)}`,
+          completedAt: s.completedAt,
+          skillName:
+            s.skillName ||
+            s.requestedSkill?.name ||
+            s.offeredSkill?.name ||
+            s.title ||
+            "Mentorship Session",
+          scheduledStart: isValidDate ? finalDate.toISOString() : undefined,
+          scheduledAt: isValidDate ? finalDate.toISOString() : undefined,
+          duration: s.durationMinutes || s.duration || 60,
+          mentorName: isMentor ? undefined : counterpartName,
+          learnerName: isMentor ? counterpartName : undefined,
+          counterpartAvatar: isMentor ? s.requester?.avatarUrl : s.responder?.avatarUrl,
+          raw: s,
+        };
+      });
+    }
+    return [];
+  }, [allSessionsList, sessionsData, user]);
 
   const handleAddSkill = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -432,6 +519,9 @@ function Dashboard() {
           </CardContent>
         </Card>
       )}
+
+      {/* Calendar & Selected Day Schedule Module (Side-by-Side Dual Box) */}
+      <DashboardCalendarWidget sessions={dashboardSessions} />
 
       {/* Main Grid: Profile + Skills + Referrals */}
       <div className="grid gap-6 lg:grid-cols-3">

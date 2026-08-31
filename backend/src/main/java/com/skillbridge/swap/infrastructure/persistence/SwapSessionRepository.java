@@ -32,6 +32,38 @@ public interface SwapSessionRepository extends JpaRepository<SwapSession, UUID> 
 
     @Query("""
             select session from SwapSession session
+            where (session.requesterId = :userId or session.responderId = :userId)
+            order by coalesce(session.scheduledAt, session.createdAt) desc
+            """)
+    List<SwapSession> findAllByUserId(@Param("userId") UUID userId);
+
+    @Query("""
+            select session from SwapSession session
+            where (session.requesterId = :userId or session.responderId = :userId)
+              and session.status = :status
+            order by coalesce(session.scheduledAt, session.createdAt) desc
+            """)
+    List<SwapSession> findByUserIdAndStatus(
+            @Param("userId") UUID userId,
+            @Param("status") SwapSessionStatus status
+    );
+
+    @Query("""
+            select session from SwapSession session
+            where (session.requesterId = :userId or session.responderId = :userId)
+              and session.scheduledAt is not null
+              and session.scheduledAt >= :startDate
+              and session.scheduledAt <= :endDate
+            order by session.scheduledAt asc
+            """)
+    List<SwapSession> findSessionsInDateRange(
+            @Param("userId") UUID userId,
+            @Param("startDate") OffsetDateTime startDate,
+            @Param("endDate") OffsetDateTime endDate
+    );
+
+    @Query("""
+            select session from SwapSession session
             where session.status in :statuses
               and session.autoReleaseAt is not null
               and session.autoReleaseAt <= :now

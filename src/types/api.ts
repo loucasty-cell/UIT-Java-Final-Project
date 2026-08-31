@@ -678,17 +678,29 @@ export interface WatchlistItem {
 
 export interface NormalizedSession {
   id: string;
-  requesterId?: string;
-  mentorId?: string;
-  mentorName?: string;
+  counterpart: string;
+  initials: string;
+  role: "Mentor" | "Learner";
+  date: string;
+  time: string;
+  mode: string;
+  points: number;
+  status: SessionStatus | string;
+  meetingUrl?: string;
+  completedAt?: string;
   skillName?: string;
   scheduledStart?: string;
-  startTime?: string;
-  endTime?: string;
+  scheduledAt?: string;
   duration?: number;
   durationMinutes?: number;
-  status: SessionStatus;
+  mentorName?: string;
+  learnerName?: string;
+  counterpartAvatar?: string;
+  raw?: any;
   title?: string;
+  requesterId?: string;
+  responderId?: string;
+  mentorId?: string;
 }
 
 export interface DashboardResponse {

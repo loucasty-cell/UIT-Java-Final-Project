@@ -149,49 +149,88 @@ function SessionsPage() {
   const allSessions: NormalizedSession[] = useMemo(() => {
     if (apiSessionsData && apiSessionsData.length > 0) {
       return apiSessionsData.map((s: any) => {
-        const isMentor = s.mentorId === user?.id;
-        const counterpartName = isMentor
-          ? s.learnerName || "Learner"
-          : s.mentorName || "Mentor";
-        const startDate = s.scheduledStart ? new Date(s.scheduledStart) : new Date();
+        const isMentor =
+          s.mentorId === user?.id ||
+          s.responderId === user?.id ||
+          s.responder?.id === user?.id ||
+          s.role === "Mentor";
+        let counterpartName = "Peer Partner";
+        if (isMentor) {
+          counterpartName =
+            s.learnerName ||
+            s.counterpartName ||
+            s.requester?.displayName ||
+            s.requester?.name ||
+            (s.requester?.firstName
+              ? `${s.requester.firstName} ${s.requester.lastName || ""}`.trim()
+              : "Learner");
+        } else {
+          counterpartName =
+            s.mentorName ||
+            s.counterpartName ||
+            s.responder?.displayName ||
+            s.responder?.name ||
+            (s.responder?.firstName
+              ? `${s.responder.firstName} ${s.responder.lastName || ""}`.trim()
+              : "Mentor");
+        }
+        const rawDateStr = s.scheduledStart || s.scheduledAt || s.createdAt;
+        const startDate = rawDateStr ? new Date(rawDateStr) : new Date();
+        const isValidDate = !isNaN(startDate.getTime());
+        const finalDate = isValidDate ? startDate : new Date();
 
         return {
           id: s.id,
           counterpart: counterpartName,
-          initials: counterpartName
-            .split(" ")
-            .map((n: string) => n[0])
-            .join("")
-            .slice(0, 2)
-            .toUpperCase(),
+          initials:
+            counterpartName
+              .split(" ")
+              .filter(Boolean)
+              .map((n: string) => n[0])
+              .join("")
+              .slice(0, 2)
+              .toUpperCase() || "SB",
           role: isMentor ? ("Mentor" as const) : ("Learner" as const),
-          date: format(startDate, "MMM dd, yyyy"),
-          time: format(startDate, "hh:mm a"),
+          date: format(finalDate, "MMM dd, yyyy"),
+          time: format(finalDate, "hh:mm a"),
           mode:
             s.mode === "POINTS"
               ? "Skill Points"
               : s.mode === "SKILL_SWAP"
                 ? "Skill Exchange"
-                : "Volunteer",
-          points: s.pointCostSnapshot || s.points || 0,
+                : s.mode === "VOLUNTEER"
+                  ? "Volunteer"
+                  : (s.mode || "Skill Points"),
+          points: s.pointCostSnapshot ?? s.pointCost ?? s.points ?? 0,
           status: s.status as any,
-          meetingUrl: s.meetingUrl || `https://meet.google.com/sb-${s.id.slice(0, 8)}`,
+          meetingUrl: s.meetingUrl || `https://meet.google.com/sb-${String(s.id).slice(0, 8)}`,
           completedAt: s.completedAt,
-          skillName: s.skillName || "Skill Session",
-          scheduledStart: s.scheduledStart, // PHASE 4: For calendar
-          duration: s.durationMinutes || 30, // PHASE 4: For calendar
-          mentorName: s.mentorName, // PHASE 4: For calendar
+          skillName:
+            s.skillName ||
+            s.requestedSkill?.name ||
+            s.offeredSkill?.name ||
+            s.title ||
+            "Skill Session",
+          scheduledStart: isValidDate ? finalDate.toISOString() : undefined,
+          scheduledAt: isValidDate ? finalDate.toISOString() : undefined,
+          duration: s.durationMinutes || s.duration || 60,
+          mentorName: isMentor ? undefined : counterpartName,
+          learnerName: isMentor ? counterpartName : undefined,
+          counterpartAvatar: isMentor ? s.requester?.avatarUrl : s.responder?.avatarUrl,
           raw: s,
         };
       });
     }
-    // PHASE 0: Return empty array - no mock fallback for sessions page
-    // Sessions page uses real API only
     return [];
   }, [apiSessionsData, user]);
 
   const activeSessions = allSessions.filter(
-    (s) => s.status === "SCHEDULED" || (s as any).status === "IN_PROGRESS",
+    (s) =>
+      s.status === "SCHEDULED" ||
+      s.status === "ACCEPTED" ||
+      s.status === "STARTED" ||
+      s.status === "AWAITING_CONFIRMATION" ||
+      (s as any).status === "IN_PROGRESS",
   );
   const completedSessions = allSessions.filter((s) => s.status === "COMPLETED");
   const disputedSessions = allSessions.filter((s) => s.status === "DISPUTED");
@@ -290,7 +329,7 @@ function SessionsPage() {
 
         {/* Calendar Tab */}
         <TabsContent value="calendar" className="mt-6">
-          <SessionCalendar sessions={allSessions} />
+          <SessionCalendar sessions={allSessions} userRoleTitle="Peer Sessions Schedule" />
         </TabsContent>
 
         {/* Pending Requests Tab */}

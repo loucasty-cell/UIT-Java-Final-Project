@@ -40,9 +40,41 @@ public class SessionMapper {
         response.setVersion(swapResponse.getVersion());
         response.setStartedAt(session.getStartedAt());
         response.setScheduledAt(session.getScheduledAt());
+        response.setScheduledStart(session.getScheduledAt());
+        response.setScheduledEnd(session.getScheduledEnd());
         response.setDurationMinutes(session.getDurationMinutes());
+        response.setMode(session.getMode());
         response.setMeetingUrl(session.getMeetingUrl());
+        response.setRecordingUrl(session.getRecordingUrl());
         response.setNotes(session.getNotes());
+        response.setAutoReleaseAt(session.getAutoReleaseAt());
+        response.setPointCostSnapshot(session.getPointCostSnapshot());
+
+        // Mentorship roles & names
+        if (swapResponse.getResponder() != null) {
+            response.setMentorId(swapResponse.getResponder().getId());
+            response.setMentorName(swapResponse.getResponder().getDisplayName() != null 
+                ? swapResponse.getResponder().getDisplayName() 
+                : swapResponse.getResponder().getName());
+        } else if (session.getResponderId() != null) {
+            response.setMentorId(session.getResponderId());
+        }
+
+        if (swapResponse.getRequester() != null) {
+            response.setLearnerId(swapResponse.getRequester().getId());
+            response.setLearnerName(swapResponse.getRequester().getDisplayName() != null 
+                ? swapResponse.getRequester().getDisplayName() 
+                : swapResponse.getRequester().getName());
+        } else if (session.getRequesterId() != null) {
+            response.setLearnerId(session.getRequesterId());
+        }
+
+        if (swapResponse.getRequestedSkill() != null && swapResponse.getRequestedSkill().getName() != null) {
+            response.setSkillName(swapResponse.getRequestedSkill().getName());
+        } else if (swapResponse.getOfferedSkill() != null && swapResponse.getOfferedSkill().getName() != null) {
+            response.setSkillName(swapResponse.getOfferedSkill().getName());
+        }
+
         return response;
     }
 
@@ -55,14 +87,22 @@ public class SessionMapper {
         response.setOfferedSkill(skillSummary(session.getOfferedSkillId()));
         response.setRequestedSkill(skillSummary(session.getRequestedSkillId()));
         response.setPointCost(session.getPointCost());
+        response.setPointCostSnapshot(session.getPointCostSnapshot());
         response.setStatus(session.getStatus());
+        response.setMode(session.getMode());
         response.setAcceptedAt(session.getAcceptedAt());
         response.setStartedAt(session.getStartedAt());
         response.setCompletedAt(session.getCompletedAt());
+        response.setAutoReleaseAt(session.getAutoReleaseAt());
         response.setScheduledAt(session.getScheduledAt());
+        response.setScheduledStart(session.getScheduledAt());
+        response.setScheduledEnd(session.getScheduledEnd());
         response.setDurationMinutes(session.getDurationMinutes());
         response.setMeetingUrl(session.getMeetingUrl());
+        response.setRecordingUrl(session.getRecordingUrl());
         response.setNotes(session.getNotes());
+        response.setMentorId(session.getResponderId());
+        response.setLearnerId(session.getRequesterId());
         response.setCreatedAt(session.getCreatedAt());
         response.setUpdatedAt(session.getUpdatedAt());
         response.setVersion(session.getVersion());

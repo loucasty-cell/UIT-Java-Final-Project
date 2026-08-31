@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
+import { format } from "date-fns";
 import {
   BookOpen,
   Plus,
@@ -51,6 +52,7 @@ import {
   useAcceptLearningRequestMutation,
   useRejectLearningRequestMutation,
 } from "@/hooks/api/use-learning-requests";
+import { useSessionsQuery } from "@/hooks/api/use-sessions";
 import { useUserSkillsQuery } from "@/hooks/api/use-skills";
 import { useWalletBalanceQuery } from "@/hooks/api/use-wallet";
 import {
@@ -58,6 +60,8 @@ import {
   useAcceptSwapProposalMutation,
   useRejectSwapProposalMutation,
 } from "@/hooks/api/use-swaps";
+import { SessionCalendar } from "@/components/sessions/session-calendar";
+import type { NormalizedSession } from "@/routes/sessions";
 
 export const Route = createFileRoute("/instructor")({
   beforeLoad: requireRole("MENTOR", "ADMIN"),
@@ -89,6 +93,48 @@ function InstructorDashboard() {
   const { data: pendingSwapsData } = usePendingSwapsQuery();
   const { data: teachSkills } = useUserSkillsQuery("TEACH");
   const { data: walletData } = useWalletBalanceQuery();
+  const { data: allSessionsData } = useSessionsQuery();
+
+  // Normalized teaching sessions for instructor calendar
+  const mentorSessions: NormalizedSession[] = useMemo(() => {
+    if (allSessionsData && allSessionsData.length > 0) {
+      return allSessionsData.map((s: any) => {
+        const isMentor = s.mentorId === user?.id || !s.mentorId;
+        const counterpartName = isMentor ? s.learnerName || "Learner" : s.mentorName || "Mentor";
+        const startDate = s.scheduledStart ? new Date(s.scheduledStart) : new Date();
+
+        return {
+          id: s.id,
+          counterpart: counterpartName,
+          initials: counterpartName
+            .split(" ")
+            .map((n: string) => n[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase(),
+          role: "Mentor" as const,
+          date: format(startDate, "MMM dd, yyyy"),
+          time: format(startDate, "hh:mm a"),
+          mode:
+            s.mode === "POINTS"
+              ? "Skill Points"
+              : s.mode === "SKILL_SWAP"
+                ? "Skill Exchange"
+                : "Volunteer",
+          points: s.pointCostSnapshot || s.points || 0,
+          status: s.status as any,
+          meetingUrl: s.meetingUrl || `https://meet.google.com/sb-${s.id.slice(0, 8)}`,
+          completedAt: s.completedAt,
+          skillName: s.skillName || "Mentorship Session",
+          scheduledStart: s.scheduledStart || new Date().toISOString(),
+          duration: s.durationMinutes || 60,
+          mentorName: s.mentorName,
+          raw: s,
+        };
+      });
+    }
+    return [];
+  }, [allSessionsData, user]);
 
   // Real Mutations
   const createOfferingMutation = useCreateOfferingMutation();
@@ -246,11 +292,31 @@ function InstructorDashboard() {
 
       {/* Tabs */}
       <Tabs defaultValue="requests" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 sm:w-auto rounded-xl">
+        <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:grid-cols-4 rounded-xl">
           <TabsTrigger value="requests">Incoming Requests ({incomingRequests.length})</TabsTrigger>
+          <TabsTrigger value="calendar">
+            <span className="flex items-center gap-1.5">
+              <Calendar className="h-4 w-4 text-rose-500" />
+              <span>Teaching Schedule</span>
+              {mentorSessions.length > 0 && (
+                <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                  {mentorSessions.length}
+                </Badge>
+              )}
+            </span>
+          </TabsTrigger>
           <TabsTrigger value="offerings">My Teaching Offerings ({offerings.length})</TabsTrigger>
           <TabsTrigger value="swaps">Skill Swap Proposals ({pendingSwaps.length})</TabsTrigger>
         </TabsList>
+
+        {/* Teaching Schedule Calendar Tab */}
+        <TabsContent value="calendar" className="mt-4">
+          <SessionCalendar
+            sessions={mentorSessions}
+            defaultRoleFilter="MENTOR"
+            userRoleTitle="Instructor Schedule"
+          />
+        </TabsContent>
 
         {/* Incoming Requests */}
         <TabsContent value="requests">

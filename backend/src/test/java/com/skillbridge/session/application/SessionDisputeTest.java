@@ -297,6 +297,101 @@ public class SessionDisputeTest {
         @Override public Page<SwapRequest> findAll(Pageable pageable) { return Page.empty(); }
     }
 
+    @Test
+    void testResolvingAlreadyResolvedDisputeIsIdempotent() {
+        // Arrange: Create and resolve a dispute
+        Dispute dispute = new Dispute();
+        dispute.setId(UUID.randomUUID());
+        dispute.setSessionId(sessionId);
+        dispute.setStatus(DisputeStatus.PENDING);
+        dispute.setReason("Session not completed");
+        disputeRepository.save(dispute);
+
+        DisputeResolutionRequest request = new DisputeResolutionRequest();
+        request.setResolution(DisputeResolution.RELEASE_TO_MENTOR);
+        request.setNote("Points released");
+
+        // Act: Resolve the dispute first time
+        DisputeResponse response1 = adminDisputeService.resolveDispute(dispute.getId(), request);
+        assertTrue(response1 != null && response1.getStatus().equals(DisputeStatus.RESOLVED.toString()),
+                "First resolution should succeed");
+
+        // Arrange: Modify request to try different resolution
+        request.setResolution(DisputeResolution.REFUND_LEARNER);
+        request.setNote("Changed to refund");
+
+        // Act: Attempt to resolve again - should return same as first resolution (idempotent)
+        DisputeResponse response2 = adminDisputeService.resolveDispute(dispute.getId(), request);
+
+        // Assert: Second call returns same resolution as first
+        assertTrue(response2.getStatus().equals(DisputeStatus.RESOLVED.toString()),
+                "Second resolution should be idempotent");
+        assertEquals(DisputeResolution.RELEASE_TO_MENTOR.toString(), response2.getResolution().toString(),
+                "Resolution should remain unchanged after second call (idempotent)");
+    }
+
+    @Test
+    void testResolvingDisputeOnCancelledSessionThrowsError() {
+        // Arrange: Create dispute with cancelled session
+        SwapSession cancelledSession = new SwapSession();
+        cancelledSession.setId(sessionId);
+        cancelledSession.setSwapRequestId(swapRequestId);
+        cancelledSession.setStatus(SwapSessionStatus.CANCELLED);
+        cancelledSession.setRequesterId(requesterId);
+        cancelledSession.setResponderId(responderId);
+        sessionRepository.save(cancelledSession);
+
+        Dispute dispute = new Dispute();
+        dispute.setId(UUID.randomUUID());
+        dispute.setSessionId(sessionId);
+        dispute.setStatus(DisputeStatus.PENDING);
+        dispute.setReason("Cancelled session dispute");
+        disputeRepository.save(dispute);
+
+        DisputeResolutionRequest request = new DisputeResolutionRequest();
+        request.setResolution(DisputeResolution.RELEASE_TO_MENTOR);
+        request.setNote("Should fail");
+
+        // Act & Assert: Should throw exception for cancelled session
+        assertThrows(Exception.class, () -> {
+            adminDisputeService.resolveDispute(dispute.getId(), request);
+        }, "Should not allow resolving dispute on cancelled session");
+    }
+
+    @Test
+    void testRefundResolutionCancelsSwap() {
+        // Arrange: Create dispute with points held
+        Dispute dispute = new Dispute();
+        dispute.setId(UUID.randomUUID());
+        dispute.setSessionId(sessionId);
+        dispute.setStatus(DisputeStatus.PENDING);
+        dispute.setReason("Learner requested refund");
+        disputeRepository.save(dispute);
+
+        DisputeResolutionRequest request = new DisputeResolutionRequest();
+        request.setResolution(DisputeResolution.REFUND_LEARNER);
+        request.setNote("Refund processed");
+
+        // Act: Resolve with refund
+        adminDisputeService.resolveDispute(dispute.getId(), request);
+
+        // Assert: Swap request should be cancelled
+        SwapRequest updatedRequest = requestRepository.findById(swapRequestId).orElse(null);
+        assertTrue(updatedRequest != null && updatedRequest.getStatus() == SwapRequestStatus.CANCELLED,
+                "Swap request should be cancelled after refund resolution");
+        assertTrue(!updatedRequest.getPointsHeld(),
+                "Points should no longer be held");
+
+        // Assert: Session should be cancelled
+        SwapSession updatedSession = sessionRepository.findById(sessionId).orElse(null);
+        assertTrue(updatedSession != null && updatedSession.getStatus() == SwapSessionStatus.CANCELLED,
+                "Session should be cancelled after refund resolution");
+
+        // Assert: Wallet refund should be called
+        assertTrue(walletService.refunded,
+                "Wallet refund should have been called");
+    }
+
     private static class FakeWalletService extends WalletService {
         boolean released = false;
         boolean refunded = false;
@@ -316,4 +411,5 @@ public class SessionDisputeTest {
         }
     }
 }
+
 

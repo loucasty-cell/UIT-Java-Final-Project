@@ -2,117 +2,171 @@ name: Frontend CI/CD
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
     paths:
       - 'src/**'
+      - 'public/**'
       - 'package.json'
+      - 'package-lock.json'
       - 'vite.config.ts'
+      - 'tsconfig.json'
       - '.github/workflows/frontend.yml'
   pull_request:
-    branches: [main, develop]
+    branches: [main]
     paths:
       - 'src/**'
+      - 'public/**'
       - 'package.json'
+      - 'package-lock.json'
       - 'vite.config.ts'
+      - 'tsconfig.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '22.19.0'
   VITE_API_BASE_URL_DEV: 'http://localhost:9095'
 
 jobs:
   lint:
     name: Lint & Format Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
       
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies (with retry)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 7
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: npm ci --prefer-offline --no-audit --no-fund
       
       - name: Run ESLint
         run: npm run lint --if-present
+        timeout-minutes: 5
       
       - name: Check TypeScript
         run: npm run type-check --if-present
+        timeout-minutes: 5
 
   build:
     name: Build Frontend
     runs-on: ubuntu-latest
     needs: lint
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
       
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies (with retry)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 7
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: npm ci --prefer-offline --no-audit --no-fund
       
       - name: Build
         run: npm run build
         env:
           VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL_DEV }}
+        timeout-minutes: 7
       
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
-          path: .output/
+          path: dist/
           retention-days: 5
 
   test:
     name: Test Frontend
     runs-on: ubuntu-latest
     needs: lint
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
       
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies (with retry)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 7
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: npm ci --prefer-offline --no-audit --no-fund
       
       - name: Run tests
         run: npm test --if-present
         continue-on-error: true
+        timeout-minutes: 5
 
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
       
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies (with retry)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 7
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: npm ci --prefer-offline --no-audit --no-fund
       
       - name: Audit dependencies
         run: npm audit --audit-level=moderate
         continue-on-error: true
+        timeout-minutes: 5
 
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: [build, test]
-    if: github.ref == 'refs/heads/develop'
+    if: false
     environment:
       name: staging
       url: https://staging.skillbridge.dev
@@ -127,8 +181,6 @@ jobs:
       - name: Deploy to Staging
         run: |
           echo "Deploying frontend to staging environment..."
-          # Add your staging deployment command here
-          # Example: aws s3 sync .output/public/ s3://staging-skillbridge/
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -152,8 +204,6 @@ jobs:
       - name: Deploy to Production
         run: |
           echo "Deploying frontend to production environment..."
-          # Add your production deployment command here
-          # Example: aws s3 sync .output/public/ s3://skillbridge/
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

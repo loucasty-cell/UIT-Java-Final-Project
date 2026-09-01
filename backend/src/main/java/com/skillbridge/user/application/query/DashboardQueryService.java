@@ -69,7 +69,7 @@ public class DashboardQueryService {
 
         // Step 2: Source live wallet balances from the read-only wallet query service
         WalletResponse wallet = walletQueryService.getWallet(ownerId);
-        log.debug("Wallet loaded: userId={}, balance={}", ownerId, wallet != null ? wallet.getBalance() : 0);
+        log.debug("Wallet loaded: userId={}, balance={}", ownerId, wallet != null ? wallet.getAvailablePoints() : 0);
 
         // Step 3: Take the most recent immutable ledger entries for the activity feed
         List<PointTransactionResponse> recentActivity = loadRecentActivity(ownerId, DashboardConstants.RECENT_ACTIVITY_LIMIT);

@@ -6,11 +6,13 @@ import com.skillbridge.swap.domain.model.SwapRequestStatus;
 import com.skillbridge.swap.infrastructure.persistence.SwapRequestRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @Component
@@ -23,11 +25,12 @@ public class ProposalExpiryScheduler {
     private final SwapRequestRepository requestRepository;
     private final SwapService swapService;
 
-    // Runs daily at 2:00 AM to cancel stale proposals older than 7 days
-    @Scheduled(cron = "0 0 2 * * *")
+    // Runs daily at 2:00 AM UTC to cancel stale proposals older than 7 days (ShedLock)
+    @Scheduled(cron = "0 0 2 * * *", zone = "UTC")
+    @SchedulerLock(name = "proposalExpiry", lockAtMostFor = "PT10M", lockAtLeastFor = "PT30S")
     @Transactional
     public void processExpiredProposals() {
-        OffsetDateTime threshold = OffsetDateTime.now().minusDays(EXPIRY_DAYS);
+        OffsetDateTime threshold = OffsetDateTime.now(ZoneOffset.UTC).minusDays(EXPIRY_DAYS);
         List<SwapRequest> staleProposals = requestRepository.findByStatusAndCreatedAtBefore(
                 SwapRequestStatus.PENDING,
                 threshold

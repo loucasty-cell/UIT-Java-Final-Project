@@ -119,6 +119,7 @@ public class AdminDisputeService {
         }
 
         log.info("Dispute resolved successfully: disputeId={}", disputeId);
+        return adminMapper.toResponse(saved);
     }
 
     private void validateResolutionRequest(Dispute dispute, DisputeResolutionRequest request) {

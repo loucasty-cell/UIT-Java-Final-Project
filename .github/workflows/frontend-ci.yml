@@ -2,7 +2,7 @@ name: Frontend CI/CD
 
 on:
   push:
-    branches: [ main, dev, "feature/**" ]
+    branches: [main]
     paths:
       - "src/**"
       - "public/**"
@@ -12,7 +12,7 @@ on:
       - "tsconfig.json"
       - ".github/workflows/frontend-ci.yml"
   pull_request:
-    branches: [ main, dev ]
+    branches: [main]
     paths:
       - "src/**"
       - "public/**"
@@ -21,75 +21,114 @@ on:
       - "vite.config.ts"
       - "tsconfig.json"
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint-and-typecheck:
     name: Lint & Type Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22.19.0
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22.19.0"
           cache: "npm"
+          cache-dependency-path: '**/package-lock.json'
       
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies (with retry)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 7
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: npm ci --prefer-offline --no-audit --no-fund
       
       - name: Run ESLint
         run: npm run lint
         continue-on-error: false
+        timeout-minutes: 5
       
       - name: Run TypeScript type check
         run: npm run type-check
+        timeout-minutes: 5
 
   test:
     name: Unit & Component Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22.19.0
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22.19.0"
           cache: "npm"
+          cache-dependency-path: '**/package-lock.json'
       
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies (with retry)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 7
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: npm ci --prefer-offline --no-audit --no-fund
       
       - name: Run Vitest tests
         run: npm run test:ci
         env:
           CI: true
+        timeout-minutes: 5
 
   build:
     name: Build Production Bundle
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [lint-and-typecheck, test]
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22.19.0
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22.19.0"
           cache: "npm"
+          cache-dependency-path: '**/package-lock.json'
       
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies (with retry)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 7
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: npm ci --prefer-offline --no-audit --no-fund
       
       - name: Build production bundle
         run: npm run build
         env:
           NODE_ENV: production
+          VITE_API_BASE_URL: http://localhost:9095
+        timeout-minutes: 7
       
       - name: Check build size
         run: |

@@ -2,14 +2,22 @@ name: CI
 
 on:
   push:
-    branches: [main, frontend-prototype, dev]
+    branches: [main]
   pull_request:
-    branches: [main, frontend-prototype, dev]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   backend:
     name: Build & Verify Backend
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     services:
       postgres:
@@ -31,12 +39,14 @@ jobs:
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: postgres
       FLYWAY_ENABLED: "true"
-      JWT_SECRET: very_secret_default_key_that_should_be_changed_in_prod_and_is_at_least_256_bits_long
+      JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci_test_secret_that_is_at_least_32_chars_long_for_hs256' }}
       SERVER_PORT: 9095
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up JDK 25
         uses: actions/setup-java@v4
@@ -53,35 +63,42 @@ jobs:
         shell: bash
         run: cd backend && ./mvnw -B test
 
-      - name: Package Backend Artifact
+      - name: Package Backend Artifact (single JAR with embedded frontend)
         shell: bash
         run: cd backend && ./mvnw -B package -DskipTests
 
   frontend:
     name: Build & Verify Frontend
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [20.x]
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-      - name: Setup Node.js ${{ matrix.node-version }}
+      - name: Setup Node.js 22.19.0
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: '22.19.0'
           cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies (with retry)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 7
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Check TypeScript types
         run: npx tsc --noEmit
+        timeout-minutes: 5
 
       - name: Build Frontend project
         run: npm run build
         env:
           VITE_API_BASE_URL: http://localhost:9095
+        timeout-minutes: 5

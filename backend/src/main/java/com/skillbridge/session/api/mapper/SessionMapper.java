@@ -77,9 +77,7 @@ public class SessionMapper {
         // Enriched mentor data
         if (swapResponse.getResponder() != null) {
             response.setMentorId(swapResponse.getResponder().getId());
-            response.setMentorName(swapResponse.getResponder().getDisplayName() != null 
-                ? swapResponse.getResponder().getDisplayName() 
-                : swapResponse.getResponder().getName());
+            response.setMentorName(swapResponse.getResponder().getDisplayName());
         } else if (session.getResponderId() != null) {
             response.setMentorId(session.getResponderId());
         }
@@ -87,9 +85,7 @@ public class SessionMapper {
         // Enriched learner data
         if (swapResponse.getRequester() != null) {
             response.setLearnerId(swapResponse.getRequester().getId());
-            response.setLearnerName(swapResponse.getRequester().getDisplayName() != null 
-                ? swapResponse.getRequester().getDisplayName() 
-                : swapResponse.getRequester().getName());
+            response.setLearnerName(swapResponse.getRequester().getDisplayName());
         } else if (session.getRequesterId() != null) {
             response.setLearnerId(session.getRequesterId());
         }

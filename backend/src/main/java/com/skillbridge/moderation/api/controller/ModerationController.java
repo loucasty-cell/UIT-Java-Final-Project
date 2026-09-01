@@ -9,7 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,7 +23,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping({"/api/moderation", "/api/v1/moderation"})
-@CrossOrigin(origins = "http://localhost:8081")
 @RequiredArgsConstructor
 public class ModerationController {
 
@@ -37,6 +36,7 @@ public class ModerationController {
     }
 
     @GetMapping("/reports")
+    @PreAuthorize("hasAnyAuthority('ADMIN','ROLE_ADMIN')")
     public ResponseEntity<List<ModerationReportResponse>> getReports(
             @RequestParam(required = false) ReportStatus status
     ) {
@@ -44,6 +44,7 @@ public class ModerationController {
     }
 
     @PostMapping("/reports/{reportId}/resolve")
+    @PreAuthorize("hasAnyAuthority('ADMIN','ROLE_ADMIN')")
     public ResponseEntity<ModerationReportResponse> resolveReport(
             @PathVariable UUID reportId,
             @Valid @RequestBody ResolveReportRequest request

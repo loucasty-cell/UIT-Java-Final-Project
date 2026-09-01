@@ -35,7 +35,19 @@ function MetricCard({
   value: string | number;
   subtext?: string;
 }) {
-
+  return (
+    <div className="rounded-lg border p-4 bg-card hover:shadow-md transition">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">{label}</p>
+          <p className="text-3xl font-bold mt-2 text-foreground">{value}</p>
+          {subtext && <p className="text-xs text-muted-foreground mt-1">{subtext}</p>}
+        </div>
+        <div className="text-muted-foreground opacity-40">{icon}</div>
+      </div>
+    </div>
+  );
+}
 
 function ReviewCard({ review }: { review: StudentReview }) {
   return (
@@ -86,20 +98,6 @@ export function InstructorDashboard({
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-  return (
-    <div className="rounded-lg border p-4 bg-card hover:shadow-md transition">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">{label}</p>
-          <p className="text-3xl font-bold mt-2 text-foreground">{value}</p>
-          {subtext && <p className="text-xs text-muted-foreground mt-1">{subtext}</p>}
-        </div>
-        <div className="text-muted-foreground opacity-40">{icon}</div>
-      </div>
     </div>
   );
 }

@@ -17,8 +17,11 @@ import { Route as InstructorRouteImport } from './routes/instructor'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MentorApplicationRouteImport } from './routes/mentor-application'
 import { Route as MentorsRouteImport } from './routes/mentors'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as SessionsRouteImport } from './routes/sessions'
+import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as WatchlistRouteImport } from './routes/watchlist'
+import { Route as MeProfileRouteImport } from './routes/me.profile'
 import { Route as SkillSkillIdRouteImport } from './routes/skill.$skillId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -61,14 +64,29 @@ const MentorsRoute = MentorsRouteImport.update({
   path: '/mentors',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SessionsRoute = SessionsRouteImport.update({
   id: '/sessions',
   path: '/sessions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WalletRoute = WalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WatchlistRoute = WatchlistRouteImport.update({
   id: '/watchlist',
   path: '/watchlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MeProfileRoute = MeProfileRouteImport.update({
+  id: '/me/profile',
+  path: '/me/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SkillSkillIdRoute = SkillSkillIdRouteImport.update({
@@ -86,8 +104,11 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/mentor-application': typeof MentorApplicationRoute
   '/mentors': typeof MentorsRoute
+  '/profile': typeof ProfileRoute
   '/sessions': typeof SessionsRoute
+  '/wallet': typeof WalletRoute
   '/watchlist': typeof WatchlistRoute
+  '/me/profile': typeof MeProfileRoute
   '/skill/$skillId': typeof SkillSkillIdRoute
 }
 export interface FileRoutesByTo {
@@ -99,8 +120,11 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/mentor-application': typeof MentorApplicationRoute
   '/mentors': typeof MentorsRoute
+  '/profile': typeof ProfileRoute
   '/sessions': typeof SessionsRoute
+  '/wallet': typeof WalletRoute
   '/watchlist': typeof WatchlistRoute
+  '/me/profile': typeof MeProfileRoute
   '/skill/$skillId': typeof SkillSkillIdRoute
 }
 export interface FileRoutesById {
@@ -113,8 +137,11 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/mentor-application': typeof MentorApplicationRoute
   '/mentors': typeof MentorsRoute
+  '/profile': typeof ProfileRoute
   '/sessions': typeof SessionsRoute
+  '/wallet': typeof WalletRoute
   '/watchlist': typeof WatchlistRoute
+  '/me/profile': typeof MeProfileRoute
   '/skill/$skillId': typeof SkillSkillIdRoute
 }
 export interface FileRouteTypes {
@@ -128,8 +155,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/mentor-application'
     | '/mentors'
+    | '/profile'
     | '/sessions'
+    | '/wallet'
     | '/watchlist'
+    | '/me/profile'
     | '/skill/$skillId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -141,8 +171,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/mentor-application'
     | '/mentors'
+    | '/profile'
     | '/sessions'
+    | '/wallet'
     | '/watchlist'
+    | '/me/profile'
     | '/skill/$skillId'
   id:
     | '__root__'
@@ -154,8 +187,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/mentor-application'
     | '/mentors'
+    | '/profile'
     | '/sessions'
+    | '/wallet'
     | '/watchlist'
+    | '/me/profile'
     | '/skill/$skillId'
   fileRoutesById: FileRoutesById
 }
@@ -168,8 +204,11 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MentorApplicationRoute: typeof MentorApplicationRoute
   MentorsRoute: typeof MentorsRoute
+  ProfileRoute: typeof ProfileRoute
   SessionsRoute: typeof SessionsRoute
+  WalletRoute: typeof WalletRoute
   WatchlistRoute: typeof WatchlistRoute
+  MeProfileRoute: typeof MeProfileRoute
   SkillSkillIdRoute: typeof SkillSkillIdRoute
 }
 
@@ -231,6 +270,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MentorsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sessions': {
       id: '/sessions'
       path: '/sessions'
@@ -238,11 +284,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SessionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/wallet': {
+      id: '/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof WalletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/watchlist': {
       id: '/watchlist'
       path: '/watchlist'
       fullPath: '/watchlist'
       preLoaderRoute: typeof WatchlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/me/profile': {
+      id: '/me/profile'
+      path: '/me/profile'
+      fullPath: '/me/profile'
+      preLoaderRoute: typeof MeProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/skill/$skillId': {
@@ -264,8 +324,11 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MentorApplicationRoute: MentorApplicationRoute,
   MentorsRoute: MentorsRoute,
+  ProfileRoute: ProfileRoute,
   SessionsRoute: SessionsRoute,
+  WalletRoute: WalletRoute,
   WatchlistRoute: WatchlistRoute,
+  MeProfileRoute: MeProfileRoute,
   SkillSkillIdRoute: SkillSkillIdRoute,
 }
 export const routeTree = rootRouteImport

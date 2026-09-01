@@ -27,11 +27,11 @@
 ```mermaid
 graph TB
     subgraph Frontend["🖥️ Frontend Layer (Port 3000)"]
-        RC["React Components"]
-        RH["React Hooks"]
-        SVC["Service Layer"]
-        API["API Client"]
-        TM["Token Manager"]
+RC["React Components"]
+RH["React Hooks"]
+SVC["Service Layer"]
+API["API Client"]
+TM["Token Manager"]
         
         RC --> RH
         RH --> SVC
@@ -40,14 +40,14 @@ graph TB
     end
     
     subgraph Backend["☕ Backend Layer (Port 9095)"]
-        CORS["CORS Filter"]
-        JWT["JWT Filter"]
-        EXC["Exception Handler"]
-        CTR["@RestController"]
-        CMD["@Service Command"]
-        QRY["@Service Query"]
-        REP["@Repository"]
-        ENT["@Entity"]
+CORS["CORS Filter"]
+JWT["JWT Filter"]
+EXC["Exception Handler"]
+CTR["@RestController"]
+CMD["@Service Command"]
+QRY["@Service Query"]
+REP["@Repository"]
+ENT["@Entity"]
         
         JWT --> CORS
         CORS --> CTR
@@ -59,10 +59,10 @@ graph TB
     end
     
     subgraph Database["🗄️ Database Layer (Port 5432)"]
-        POOL["HikariCP Connection Pool"]
-        FLYWAY["Flyway Migrations"]
-        PG["PostgreSQL 16"]
-        TABLES["35+ Tables"]
+POOL["HikariCP Connection Pool"]
+FLYWAY["Flyway Migrations"]
+PG["PostgreSQL 16"]
+TABLES["35+ Tables"]
         
         POOL --> PG
         FLYWAY --> PG
@@ -72,9 +72,9 @@ graph TB
     API --> JWT
     ENT --> POOL
     
-    style Frontend fill:#e1f5ff
-    style Backend fill:#fff3e0
-    style Database fill:#f3e5f5
+    style Frontend fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#38bdf8
+    style Backend fill:#1e1b4b,stroke:#a78bfa,stroke-width:2px,color:#a78bfa
+    style Database fill:#1f2937,stroke:#c084fc,stroke-width:2px,color:#c084fc
 ```
 
 **Architecture Layers:**
@@ -110,38 +110,69 @@ graph TB
 This diagram shows how a GET request flows through all layers:
 
 ```mermaid
-sequenceDiagram
-    participant RC as React Component
-    participant SVC as Service Layer
-    participant API as apiClient
-    participant JWT as JWT Filter
-    participant CTR as Controller
-    participant SRV as Service
-    participant REP as Repository
-    participant DB as PostgreSQL
+graph TD
+    Start(["User initiates: walletService.getBalance"]) -->A["React Component:<br/>useEffect hook"]
+    A -->B["Service Layer:<br/>walletService.getBalance"]
+    B -->C["API Client:<br/>GET /api/v1/me/wallet"]
+    C -->D["Token Manager:<br/>getAccessToken from localStorage"]
+    D -->E["API Client:<br/>Add Authorization header<br/>Bearer token"]
     
-    RC->>SVC: walletService.getBalance()
-    SVC->>API: apiClient("/api/v1/me/wallet")
-    API->>API: getAccessToken() from localStorage
-    API->>API: Add Authorization header<br/>Bearer {token}
-    API->>JWT: GET /api/v1/me/wallet
-    JWT->>JWT: Validate JWT signature
-    JWT->>JWT: Extract userId from claims
-    JWT->>CTR: Forward to @GetMapping handler
-    CTR->>CTR: SecurityUtils.getCurrentUserId()
-    CTR->>SRV: walletQueryService.getBalance(userId)
-    SRV->>SRV: @Transactional(readOnly=true)
-    SRV->>REP: walletRepository.findByUserId(userId)
-    REP->>DB: SELECT * FROM wallets<br/>WHERE user_id = ?
-    DB-->>REP: Wallet entity
-    REP-->>SRV: Wallet entity
-    SRV->>SRV: walletMapper.toBalanceResponse(wallet)
-    SRV-->>CTR: WalletBalanceResponse DTO
-    CTR-->>JWT: ResponseEntity(200 OK)
-    JWT-->>API: JSON response body
-    API->>API: response.json()
-    API-->>SVC: Typed WalletBalanceResponse
-    SVC-->>RC: Balance data + Update state
+    E -->JWT["JWT Filter:<br/>Receive GET request"]
+    JWT -->JWTVal{"Validate JWT<br/>signature?"}
+    JWTVal -->|Invalid| JWTErr["Return 401 Unauthorized"]
+    JWTVal -->|Valid| JWTExt["Extract userId from JWT claims"]
+CTR["Controller:<br/>@GetMapping /me/wallet<br/>@PathVariable userId"]
+CTRSec["SecurityUtils.getCurrentUserId<br/>from SecurityContext"]
+    
+    JWTExt --> CTR
+    CTR --> CTRSec
+    
+    CTRSec -->SRV["WalletQueryService:<br/>getBalance userId"]
+    SRV -->TXN["Transaction BEGIN<br/>@Transactional readOnly=true"]
+    TXN -->REP["WalletRepository:<br/>findByUserId userId"]
+    
+    REP --> SQL[("PostgreSQL:<br/>SELECT * FROM wallets<br/>WHERE user_id = ?")]
+    SQL -->WalletData["Return Wallet entity<br/>available_points<br/>held_points"]
+    
+    WalletData -->MAP["Mapper:<br/>walletMapper.toBalanceResponse"]
+    MAP -->DTO["WalletBalanceResponse DTO"]
+    DTO -->COMMIT["Transaction COMMIT"]
+    
+    COMMIT -->RESP["Controller:<br/>ResponseEntity 200 OK<br/>Content-Type: application/json"]
+    RESP -->JWTRESP["JWT Filter:<br/>Pass through response"]
+    JWTRESP -->APIRESP["API Client:<br/>Parse response.json"]
+    
+    APIRESP -->SVCRESP["Service Layer:<br/>Return typed DTO"]
+    SVCRESP --> End(["React Component:<br/>Update state + Re-render"])
+    
+    JWTErr --> ErrorEnd(["Request fails: 401"])
+    
+    style Start fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style A fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style B fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style C fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style D fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style E fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style JWT fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style JWTVal fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style JWTExt fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style JWTErr fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style CTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style CTRSec fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SRV fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style TXN fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style REP fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SQL fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style WalletData fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style MAP fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style DTO fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style COMMIT fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style RESP fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style JWTRESP fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style APIRESP fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SVCRESP fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style End fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ErrorEnd fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
 ```
 
 **Key Points:**
@@ -156,42 +187,100 @@ sequenceDiagram
 This diagram shows a more complex flow with data modifications and pessimistic locking:
 
 ```mermaid
-sequenceDiagram
-    participant RC as React Component
-    participant SVC as Service Layer
-    participant API as apiClient
-    participant JWT as JWT Filter
-    participant CTR as Controller
-    participant SRV as Service
-    participant REP as Repository
-    participant DB as PostgreSQL
+graph TD
+    Start(["User initiates: walletService.transferPoints"]) -->A["React Component:<br/>Form submission"]
+    A -->B["Service Layer:<br/>walletService.transferPoints<br/>recipientId, amount"]
+    B -->C["API Client:<br/>POST /api/v1/wallet/transfer"]
+    C -->GenIdempotency["Generate Idempotency-Key<br/>UUID v4"]
+    GenIdempotency -->AddAuth["Add Authorization header<br/>Bearer token"]
+    AddAuth -->ReqBody["Request Body:<br/>recipientId, amount<br/>Content-Type: application/json"]
     
-    RC->>SVC: walletService.transferPoints(data)
-    SVC->>API: POST /api/v1/wallet/transfer<br/>{recipientId, amount}
-    API->>API: Generate Idempotency-Key
-    API->>API: Add Authorization header
-    API->>JWT: POST request with body
-    JWT->>JWT: Validate token ✓
-    JWT->>CTR: @PostMapping handler
-    CTR->>CTR: @Valid TransferPointsRequest
-    CTR->>SRV: walletService.transferPoints(request)
-    SRV->>SRV: @Transactional BEGIN
-    SRV->>REP: Lock sender wallet FOR UPDATE
-    REP->>DB: SELECT * FROM wallets<br/>WHERE user_id=?<br/>FOR UPDATE NOWAIT
-    DB-->>REP: Locked wallet row
-    SRV->>SRV: Validate balance >= amount
-    SRV->>REP: Deduct from sender
-    REP->>DB: UPDATE wallets SET<br/>available_points -= ?
-    SRV->>REP: Add to recipient
-    REP->>DB: UPDATE wallets SET<br/>available_points += ?
-    SRV->>REP: Insert ledger entries
-    REP->>DB: INSERT INTO point_ledger (2 rows)
-    SRV->>SRV: @Transactional COMMIT
-    SRV-->>CTR: TransactionResponse DTO
-    CTR-->>JWT: ResponseEntity(200 OK)
-    JWT-->>API: JSON response
-    API-->>SVC: Success data
-    SVC-->>RC: Show success toast
+    ReqBody -->JWT["JWT Filter:<br/>Intercept POST request"]
+    JWT -->JWTVal{"Validate JWT<br/>signature?"}
+    JWTVal -->|Invalid| JWTErr["Return 401 Unauthorized"]
+    JWTVal -->|Valid| JWTExt["Extract userId from claims"]
+CTR["Controller:<br/>@PostMapping /wallet/transfer"]
+Valid["@Valid TransferPointsRequest<br/>Validate recipientId, amount"]
+ValidCheck{"DTO validation<br/>passed?"}
+    
+    JWTExt --> CTR
+    CTR --> Valid
+    Valid --> ValidCheck
+    ValidCheck -->|No| ValidationErr["Return 400 Bad Request"]
+    ValidCheck -->|Yes| SRV["WalletService:<br/>transferPoints request"]
+    
+    SRV -->TXNStart["Transaction BEGIN<br/>@Transactional<br/>Propagation.REQUIRED"]
+    TXNStart -->LockSender["WalletRepository:<br/>Lock sender wallet"]
+    LockSender --> SQLLock[("PostgreSQL:<br/>SELECT * FROM wallets<br/>WHERE user_id = ?<br/>FOR UPDATE NOWAIT")]
+    SQLLock -->LockCheck{"Wallet locked<br/>successfully?"}
+    LockCheck -->|Locked| LockedRow["Locked wallet row obtained"]
+    LockCheck -->|Locked by other| LockErr["Return 409 Conflict<br/>Wallet locked"]
+    
+    LockedRow -->BalanceCheck{"available_points<br/>&gt;= amount?"}
+    BalanceCheck -->|No| BalErr["Return 409 Conflict<br/>Insufficient balance"]
+    BalanceCheck -->|Yes| DeductSender["Update sender wallet"]
+    
+    DeductSender --> SQLDeduct[("PostgreSQL:<br/>UPDATE wallets<br/>SET available_points -= amount<br/>WHERE user_id = ?")]
+    SQLDeduct -->AddRecipient["Update recipient wallet"]
+    AddRecipient --> SQLAdd[("PostgreSQL:<br/>UPDATE wallets<br/>SET available_points += amount<br/>WHERE user_id = recipient_id")]
+    
+    SQLAdd -->InsertLedger["Insert ledger entries"]
+    InsertLedger --> SQLLedger1[("PostgreSQL:<br/>INSERT INTO point_ledger<br/>type=TRANSFER_OUT<br/>amount=-amount, sender_id")]
+    SQLLedger1 --> SQLLedger2[("PostgreSQL:<br/>INSERT INTO point_ledger<br/>type=TRANSFER_IN<br/>amount=+amount, recipient_id")]
+    
+    SQLLedger2 -->Commit["Transaction COMMIT<br/>All changes persisted"]
+    Commit -->CommitOK["Transaction committed<br/>ACID guarantees met"]
+    
+    CommitOK -->RESP["Controller:<br/>ResponseEntity 200 OK<br/>TransactionResponse DTO"]
+    RESP -->JWTRESP["JWT Filter:<br/>Pass through response"]
+    JWTRESP -->APIRESP["API Client:<br/>Parse response.json"]
+    APIRESP -->SVCRESP["Service Layer:<br/>Return success data"]
+    SVCRESP --> End(["React Component:<br/>Show success toast<br/>Update wallet state"])
+    
+    JWTErr --> ErrorEnd(["Request fails: 401"])
+    ValidationErr --> ErrorEnd
+    LockErr --> ErrorEnd
+    BalErr --> ErrorEnd
+    
+    style Start fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style A fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style B fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style C fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style GenIdempotency fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style AddAuth fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ReqBody fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style JWT fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style JWTVal fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style JWTExt fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style JWTErr fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style CTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style Valid fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style ValidCheck fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style ValidationErr fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style SRV fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style TXNStart fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style LockSender fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SQLLock fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style LockCheck fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style LockedRow fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style LockErr fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style BalanceCheck fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style BalErr fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style DeductSender fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SQLDeduct fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style AddRecipient fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SQLAdd fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style InsertLedger fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SQLLedger1 fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style SQLLedger2 fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style Commit fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style CommitOK fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style RESP fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style JWTRESP fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style APIRESP fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SVCRESP fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style End fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ErrorEnd fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
 ```
 
 **Key Points:**
@@ -206,53 +295,144 @@ sequenceDiagram
 This diagram shows how expired tokens are automatically refreshed:
 
 ```mermaid
-sequenceDiagram
-    participant RC as React Component
-    participant SVC as Service Layer
-    participant API as apiClient
-    participant JWT as JWT Filter
-    participant CTR as Controller
-    participant AUTH as AuthController
-    participant TK as TokenService
-    participant DB as PostgreSQL
+graph TD
+    Start(["User initiates API call"]) -->A["React Component:<br/>useEffect or event handler"]
+    A -->B["Service Layer:<br/>dashboardService.getDashboard"]
+    B -->C["API Client:<br/>GET /api/v1/me/dashboard"]
+    C -->GetToken["Token Manager:<br/>getAccessToken from localStorage"]
+    GetToken -->AddHeader["Add Authorization header<br/>Bearer token"]
     
-    RC->>SVC: Call any endpoint (expired token)
-    SVC->>API: apiClient("/api/v1/me/dashboard")
-    API->>JWT: GET with expired token
-    JWT->>JWT: Validate JWT: EXPIRED ✗
-    JWT-->>API: 401 Unauthorized
+    AddHeader -->JWT["JWT Filter:<br/>Intercept request"]
+    JWT -->CheckExp{"Token expired?"}
+    CheckExp -->|Not Expired| JWTVal["Validate JWT signature"]
+    CheckExp -->|Expired| ExpiredResp["Return 401 Unauthorized"]
     
-    API->>API: response.status === 401
-    API->>API: isRefreshing = true<br/>Queue other requests
-    API->>API: getRefreshToken() from localStorage
-    API->>AUTH: POST /api/v1/auth/refresh<br/>{refreshToken}
-    AUTH->>TK: refreshTokenService.refresh(token)
-    TK->>TK: @Transactional BEGIN
-    TK->>DB: SELECT * FROM refresh_tokens<br/>WHERE token_hash=?
-    DB-->>TK: RefreshToken entity
-    TK->>TK: Validate token family
-    TK->>TK: Check not revoked
-    TK->>TK: Generate new access token (12h)
-    TK->>TK: Rotate refresh token (new family)
-    TK->>DB: INSERT new refresh token
-    TK->>DB: DELETE old refresh token
-    TK->>TK: @Transactional COMMIT
-    TK-->>AUTH: AuthResponse{accessToken, refreshToken}
-    AUTH-->>API: 200 OK
+    JWTVal -->JWTValidCheck{"Signature valid?"}
+    JWTValidCheck -->|Invalid| InvalidResp["Return 401 Unauthorized"]
+    JWTValidCheck -->|Valid| Forward["Forward to Controller"]
     
-    API->>API: setAccessToken(newToken)
-    API->>API: setRefreshToken(newToken)
-    API->>API: isRefreshing = false
-    API->>API: Process queued requests
+    Forward -->CTR["Controller:<br/>Process request normally"]
+    CTR -->NormalResp["Return 200 OK + data"]
+    NormalResp --> SuccessEnd(["Component:<br/>Render data"])
     
-    API->>JWT: Retry GET /api/v1/me/dashboard<br/>Authorization: Bearer {newToken}
-    JWT->>JWT: Validate new token ✓
-    JWT->>CTR: Forward to handler
-    CTR->>CTR: Process request
-    CTR-->>API: 200 OK + data
+    ExpiredResp -->APIIntercept["API Interceptor:<br/>Detect 401 status"]
+    InvalidResp --> APIIntercept
+    APIIntercept -->IsRefreshing{"Already<br/>refreshing?"}
+    IsRefreshing -->|Yes| QueueReq["Queue request in<br/>pending queue"]
+    IsRefreshing -->|No| SetRefreshing["Set isRefreshing = true"]
     
-    API-->>SVC: Dashboard data
-    SVC-->>RC: Render successfully
+    QueueReq -->WaitRefresh["Wait for refresh to complete"]
+    SetRefreshing -->GetRefreshToken["Token Manager:<br/>getRefreshToken from localStorage"]
+    GetRefreshToken -->CheckRefresh{"Refresh token<br/>exists?"}
+    CheckRefresh -->|No| RedirectLogin["Redirect to /login"]
+    CheckRefresh -->|Yes| RefreshReq["POST /api/v1/auth/refresh"]
+AuthCTR["AuthController:<br/>@PostMapping /auth/refresh"]
+TokenSVC["RefreshTokenService:<br/>refresh refreshToken"]
+    
+    RefreshReq --> AuthCTR
+    AuthCTR --> TokenSVC
+    
+    TokenSVC -->TXNStart["Transaction BEGIN<br/>@Transactional"]
+    TXNStart --> QueryToken[("PostgreSQL:<br/>SELECT * FROM refresh_tokens<br/>WHERE token_hash = SHA256?")]
+    QueryToken -->TokenFound{"Token found?"}
+    TokenFound -->|No| InvalidToken["Return 401 Invalid token"]
+    TokenFound -->|Yes| TokenEntity["Load RefreshToken entity"]
+    
+    TokenEntity -->ValidateFamily{"Token family<br/>valid & not<br/>revoked?"}
+    ValidateFamily -->|No| RevokeAll["Transaction ROLLBACK<br/>Revoke entire family"]
+    ValidateFamily -->|Yes| CheckExpiry{"Refresh token<br/>expired?"}
+    
+    RevokeAll -->ReplayAttack["Return 401 Token<br/>replay detected"]
+    CheckExpiry -->|Yes| RefreshExp["Return 401 Refresh<br/>token expired"]
+    CheckExpiry -->|No| GenAccess["Generate new access token<br/>HS256 12-hour expiry"]
+    
+    GenAccess -->GenRefresh["Generate new refresh token<br/>Create new family_id"]
+    GenRefresh --> InsertNew[("PostgreSQL:<br/>INSERT INTO refresh_tokens")]
+    InsertNew --> DeleteOld[("PostgreSQL:<br/>DELETE old refresh_tokens")]
+    
+    DeleteOld -->TXNCommit["Transaction COMMIT"]
+    TXNCommit -->AuthResp["AuthController returns<br/>AuthResponse 200 OK"]
+    AuthResp -->RefreshResp["API Interceptor<br/>receives new tokens"]
+    
+    RefreshResp -->SaveAccess["setAccessToken newToken"]
+    SaveAccess -->SaveRefresh["setRefreshToken newToken"]
+    SaveRefresh -->ResetRefreshing["isRefreshing = false"]
+    ResetRefreshing -->ProcessQueue["Process queued requests"]
+    
+    ProcessQueue -->RetryQueued["Retry all queued requests"]
+    RetryQueued -->JWTRetry["JWT Filter validates<br/>new token"]
+    JWTRetry -->ValidateNew{"New token<br/>valid?"}
+    ValidateNew -->|Yes| ForwardRetry["Forward to Controller"]
+    ValidateNew -->|No| RetryFail["Return 401"]
+    
+    ForwardRetry --> FinalEnd(["Component:<br/>Render data successfully"])
+    
+    WaitRefresh -->RefreshDone{"Refresh<br/>completed?"}
+    RefreshDone -->|Yes| RetryQueued
+    
+    RedirectLogin --> LoginEnd(["Redirect to /login"])
+    InvalidToken --> InvalidEnd(["Request fails: 401"])
+    ReplayAttack --> ReplayEnd(["Request fails: 401"])
+    RefreshExp --> ExpEnd(["Request fails: 401"])
+    RetryFail --> RetryFailEnd(["Request fails: 401"])
+    
+    style Start fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style A fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style B fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style C fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style GetToken fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style AddHeader fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style JWT fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style CheckExp fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style ExpiredResp fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style JWTValidCheck fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style InvalidResp fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style Forward fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style CTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style NormalResp fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SuccessEnd fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style APIIntercept fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style IsRefreshing fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style QueueReq fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SetRefreshing fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style GetRefreshToken fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style CheckRefresh fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style RedirectLogin fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style RefreshReq fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style AuthCTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style TokenSVC fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style TXNStart fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style QueryToken fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style TokenFound fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style InvalidToken fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style TokenEntity fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style ValidateFamily fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style RevokeAll fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style CheckExpiry fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style RefreshExp fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style GenAccess fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style GenRefresh fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style InsertNew fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style DeleteOld fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style TXNCommit fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style AuthResp fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style RefreshResp fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SaveAccess fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SaveRefresh fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ResetRefreshing fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ProcessQueue fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style RetryQueued fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style JWTRetry fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style ValidateNew fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style RetryFail fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style ForwardRetry fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style FinalEnd fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style RefreshDone fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style LoginEnd fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style InvalidEnd fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style ReplayEnd fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style ExpEnd fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style RetryFailEnd fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
 ```
 
 **Key Points:**
@@ -272,26 +452,26 @@ The frontend uses a centralized service layer pattern where React components don
 ```mermaid
 graph TB
     subgraph Pages["React Pages"]
-        LP["LoginPage"]
-        DP["DashboardPage"]
-        WP["WalletPage"]
-        SP["SessionsPage"]
-        EP["ExplorePage"]
+LP["LoginPage"]
+DP["DashboardPage"]
+WP["WalletPage"]
+SP["SessionsPage"]
+EP["ExplorePage"]
     end
     
     subgraph Services["Service Layer"]
-        AS["authService"]
-        DS["dashboardService"]
-        WS["walletService"]
-        SSS["sessionsService"]
-        SKS["skillsService"]
-        MES["mentorsService"]
+AS["authService"]
+DS["dashboardService"]
+WS["walletService"]
+SSS["sessionsService"]
+SKS["skillsService"]
+MES["mentorsService"]
     end
     
     subgraph Client["API Client Layer"]
-        AC["apiClient<T>()"]
-        TM["Token Manager"]
-        EH["Error Handler"]
+AC["apiClient<T>()"]
+TM["Token Manager"]
+EH["Error Handler"]
     end
     
     LP --> AS
@@ -311,9 +491,9 @@ graph TB
     AC --> TM
     AC --> EH
     
-    style Pages fill:#e1f5ff
-    style Services fill:#fff3e0
-    style Client fill:#f3e5f5
+    style Pages fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#38bdf8
+    style Services fill:#1e1b4b,stroke:#a78bfa,stroke-width:2px,color:#a78bfa
+    style Client fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#38bdf8
 ```
 
 **Service-to-Endpoint Mapping:**
@@ -347,26 +527,26 @@ The backend services follow a layered architecture where controllers route reque
 ```mermaid
 graph TB
     subgraph Controllers["@RestController"]
-        SC["SwapController"]
-        SSC["SessionController"]
-        WC["WalletController"]
-        ADC["AdminDisputeController"]
+SC["SwapController"]
+SSC["SessionController"]
+WC["WalletController"]
+ADC["AdminDisputeController"]
     end
     
     subgraph Services["@Service (Command & Query)"]
-        SS["SwapService"]
-        SES["SessionService"]
-        WS["WalletService"]
-        NS["NotificationService"]
-        MS["MilestoneService"]
-        ADS["AdminDisputeService"]
+SS["SwapService"]
+SES["SessionService"]
+WS["WalletService"]
+NS["NotificationService"]
+MS["MilestoneService"]
+ADS["AdminDisputeService"]
     end
     
     subgraph Repos["@Repository"]
-        SWR["SwapRepository"]
-        SR["SessionRepository"]
-        WR["WalletRepository"]
-        DR["DisputeRepository"]
+SWR["SwapRepository"]
+SR["SessionRepository"]
+WR["WalletRepository"]
+DR["DisputeRepository"]
     end
     
     SC --> SS
@@ -386,9 +566,9 @@ graph TB
     WS --> WR
     ADS --> DR
     
-    style Controllers fill:#e3f2fd
-    style Services fill:#fff3e0
-    style Repos fill:#f3e5f5
+    style Controllers fill:#0c4a6e,stroke:#38bdf8,stroke-width:2px,color:#38bdf8
+    style Services fill:#1e1b4b,stroke:#a78bfa,stroke-width:2px,color:#a78bfa
+    style Repos fill:#1f2937,stroke:#c084fc,stroke-width:2px,color:#c084fc
 ```
 
 **Key Service Interactions:**
@@ -489,14 +669,80 @@ JSON Response
 ## JWT Authentication Flow
 
 ```mermaid
-flowchart TD
-    A["User submits email+password"] --> B["POST /api/v1/auth/login"]
-    B --> C["AuthService validates credentials"]
-    C --> D{"Match?"}
-    D -->|No| E["401 Unauthorized"]
-    D -->|Yes| F["Generate JWT access token<br/>(12 hours, HS256)"]
-    F --> G["Generate refresh token<br/>(7 days, hashed)"]
-
+graph TD
+    Start(["User submits credentials"]) -->A["LoginPage:<br/>Form submission"]
+    A -->B["authService.login email, password"]
+    B -->C["API Client:<br/>POST /api/v1/auth/login"]
+    C -->AddHeader["Add Content-Type header"]
+    
+CTR["AuthController:<br/>@PostMapping /auth/login"]
+    AddHeader --> CTR
+Valid["@Valid LoginRequest<br/>Validate DTO"]
+ValidCheck{"Validation<br/>passed?"}
+    
+    CTR --> Valid
+    Valid --> ValidCheck
+    ValidCheck -->|No| Err400["Return 400 Bad Request"]
+    ValidCheck -->|Yes| SRV["AuthService:<br/>authenticate request"]
+    
+    SRV --> QueryUser[("PostgreSQL:<br/>SELECT * FROM users<br/>WHERE email = ?")]
+    QueryUser -->UserFound{"User<br/>found?"}
+    UserFound -->|No| Err401["Return 401 Unauthorized"]
+    UserFound -->|Yes| CheckPwd["BCrypt.matches inputPassword<br/>storedHash"]
+    
+    CheckPwd -->PwdMatch{"Password<br/>match?"}
+    PwdMatch -->|No| Err401
+    PwdMatch -->|Yes| GenAccess["Generate JWT access token<br/>HS256, 12-hour expiry<br/>claims: userId, email, roles"]
+    
+    GenAccess -->GenRefresh["Generate refresh token<br/>Create family_id UUID<br/>Hash token SHA-256"]
+    GenRefresh -->TXN["Transaction BEGIN<br/>@Transactional"]
+    TXN --> SaveRefresh[("PostgreSQL:<br/>INSERT INTO refresh_tokens<br/>family_id, token_hash<br/>user_id, expires_at=7d")]
+    
+    SaveRefresh -->Commit["Transaction COMMIT"]
+    Commit -->BuildResp["Build AuthResponse DTO<br/>accessToken, refreshToken"]
+    BuildResp -->AuthResp["AuthController returns<br/>ResponseEntity 200 OK"]
+    
+    AuthResp -->APIResp["API Client:<br/>Parse response.json"]
+    APIResp -->SaveAccess["setAccessToken in localStorage"]
+    SaveAccess -->SaveRefresh2["setRefreshToken in localStorage"]
+    SaveRefresh2 -->SvcResp["authService returns<br/>AuthResponse DTO"]
+    
+    SvcResp -->Navigate["LoginPage:<br/>Navigate to dashboard"]
+    Navigate --> End(["Browser:<br/>Load DashboardPage"])
+    
+    Err400 --> ErrorEnd(["Request fails: 400"])
+    Err401 --> ErrorEnd
+    
+    style Start fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style A fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style B fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style C fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style AddHeader fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style CTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style Valid fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style ValidCheck fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style Err400 fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style SRV fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style QueryUser fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style UserFound fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style Err401 fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style CheckPwd fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style PwdMatch fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style GenAccess fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style GenRefresh fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style TXN fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SaveRefresh fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style Commit fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style BuildResp fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style AuthResp fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style APIResp fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SaveAccess fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SaveRefresh2 fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SvcResp fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style Navigate fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style End fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ErrorEnd fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+```
 
 ---
 
@@ -505,51 +751,107 @@ flowchart TD
 ### Journey 1: New User Registration & Onboarding
 
 ```mermaid
-sequenceDiagram
-    participant Browser as Browser
-    participant RC as RegisterPage
-    participant AS as authService
-    participant API as apiClient
-    participant CTR as AuthController
-    participant SRVR as AuthService
-    participant UR as UserRepository
-    participant WR as WalletRepository
-    participant DB as PostgreSQL
+graph TD
+    Start(["User navigates to signup page"]) -->A["RegisterPage:<br/>Render registration form"]
+    A -->B["Browser:<br/>User enters email, password, name"]
+    B -->C["RegisterPage:<br/>Form validation on client"]
+    C -->ValidClient{"Valid<br/>locally?"}
+    ValidClient -->|No| ShowError1["Show validation errors"]
+    ShowError1 --> B
     
-    Browser->>RC: Navigate to signup
-    RC->>RC: Render form
-    Browser->>RC: Enter email, password, name
-    RC->>AS: authService.register(data)
+    ValidClient -->|Yes| D["authService.register data"]
+    D -->E["API Client:<br/>POST /api/v1/auth/register"]
+    E -->AddHeader1["Add Authorization header<br/>Content-Type: application/json"]
+    AddHeader1 -->ReqBody1["Request Body:<br/>email, password, name"]
     
-    AS->>API: POST /api/v1/auth/register
-    API->>CTR: @PostMapping with body
-    CTR->>CTR: @Valid RegisterRequest validation
-    CTR->>SRVR: authService.register(request)
+CTR["AuthController:<br/>@PostMapping /auth/register"]
+    ReqBody1 --> CTR
+Valid1["@Valid RegisterRequest<br/>Validate DTO"]
+ValidCheck1{"DTO validation<br/>passed?"}
     
-    SRVR->>SRVR: @Transactional BEGIN
-    SRVR->>SRVR: BCrypt.encode(password)
-    SRVR->>UR: userRepository.save(user)
-    UR->>DB: INSERT INTO users (email, password_hash, name)
-    DB-->>UR: user_id generated (UUID)
+    CTR --> Valid1
+    Valid1 --> ValidCheck1
+    ValidCheck1 -->|No| Err400["Return 400 Bad Request"]
+    ValidCheck1 -->|Yes| SRVR["AuthService:<br/>register request"]
     
-    SRVR->>WR: walletRepository.save(wallet)
-    WR->>DB: INSERT INTO wallets (user_id, available_points=30)
+    SRVR -->TXN1["Transaction BEGIN<br/>@Transactional"]
+    TXN1 -->CheckEmail{"Email already<br/>exists?"}
+    CheckEmail -->|Yes| Err409["Return 409 Conflict<br/>Email already registered"]
+    CheckEmail -->|No| HashPwd["BCrypt.encode password<br/>salt rounds = 12"]
     
-    SRVR->>DB: INSERT INTO point_ledger (bonus transaction)
+    HashPwd -->CreateUser["Create User entity<br/>email, passwordHash, name<br/>id = UUID.randomUUID"]
+    CreateUser --> SaveUser[("PostgreSQL:<br/>INSERT INTO users<br/>email, password_hash, name, id")]
+    SaveUser -->UserSaved["User persisted<br/>user_id = generated UUID"]
     
-    SRVR->>SRVR: Generate JWT access token (12h)
-    SRVR->>SRVR: Generate refresh token + hash
-    SRVR->>DB: INSERT INTO refresh_tokens
+    UserSaved -->CreateWallet["Create Wallet entity<br/>user_id, available_points = 30<br/>held_points = 0"]
+    CreateWallet --> SaveWallet[("PostgreSQL:<br/>INSERT INTO wallets<br/>user_id, available_points=30")]
+    SaveWallet -->WalletSaved["Wallet created<br/>with 30 bonus points"]
     
-    SRVR->>SRVR: @Transactional COMMIT
-    SRVR-->>CTR: AuthResponse{access, refresh}
-    CTR-->>API: 201 Created
+    WalletSaved --> InsertLedger1[("PostgreSQL:<br/>INSERT INTO point_ledger<br/>type=REGISTRATION_BONUS<br/>amount=30, user_id")]
+    InsertLedger1 -->LedgerRecorded["Bonus transaction recorded"]
     
-    API->>API: setAccessToken(token)
-    API->>API: setRefreshToken(token)
-    API-->>AS: AuthResponse
+    LedgerRecorded -->GenAccess["Generate JWT access token<br/>HS256, 12-hour expiry<br/>claims: userId, email, roles"]
+    GenAccess -->GenRefresh["Generate refresh token<br/>Create family_id UUID<br/>Hash token SHA-256"]
+    GenRefresh --> SaveRefresh[("PostgreSQL:<br/>INSERT INTO refresh_tokens<br/>family_id, token_hash<br/>user_id, expires_at=7d")]
     
-    AS-->>RC: Success + redirect to dashboard
+    SaveRefresh -->Commit1["Transaction COMMIT<br/>All changes persisted"]
+    Commit1 -->AuthResp["AuthService returns<br/>AuthResponse with tokens"]
+    AuthResp -->CtrlResp["AuthController:<br/>ResponseEntity 201 Created"]
+    
+    CtrlResp -->APIResp["API Client:<br/>Parse response.json"]
+    APIResp -->SetAccessToken["setAccessToken in localStorage"]
+    SetAccessToken -->SetRefreshToken["setRefreshToken in localStorage"]
+    SetRefreshToken -->SvcResp["authService receives<br/>AuthResponse DTO"]
+    
+    SvcResp -->Navigate["RegisterPage:<br/>Navigate to dashboard"]
+    Navigate --> End(["Browser:<br/>Load DashboardPage"])
+    
+    ShowError1 -->Retry["User retries"]
+    Retry --> B
+    Err400 --> ErrorEnd1(["Show error message"])
+    Err409 --> ErrorEnd1
+    
+    style Start fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style A fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style B fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style C fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ValidClient fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style ShowError1 fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style D fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style E fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style AddHeader1 fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ReqBody1 fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style CTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style Valid1 fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style ValidCheck1 fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style Err400 fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style SRVR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style TXN1 fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style CheckEmail fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style Err409 fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style HashPwd fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style CreateUser fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SaveUser fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style UserSaved fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style CreateWallet fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SaveWallet fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style WalletSaved fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style InsertLedger1 fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style LedgerRecorded fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style GenAccess fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style GenRefresh fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SaveRefresh fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style Commit1 fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style AuthResp fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style CtrlResp fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style APIResp fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SetAccessToken fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SetRefreshToken fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SvcResp fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style Navigate fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style End fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style Retry fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ErrorEnd1 fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
 ```
 
 **Key Points:**
@@ -565,53 +867,99 @@ sequenceDiagram
 ### Journey 2: User Login & Token Management
 
 ```mermaid
-sequenceDiagram
-    participant Browser as Browser
-    participant LP as LoginPage
-    participant AS as authService
-    participant API as apiClient
-    participant CTR as AuthController
-    participant SRVR as AuthService
-    participant UR as UserRepository
-    participant TR as TokenRepository
-    participant DB as PostgreSQL
+graph TD
+    Start(["User navigates to login page"]) -->A["LoginPage:<br/>Render login form"]
+    A -->B["Browser:<br/>User enters email + password"]
+    B -->C["LoginPage:<br/>Client-side form validation"]
+    C -->ValidForm{"Form valid?"}
+    ValidForm -->|No| ShowErr["Show validation errors"]
+    ShowErr --> B
     
-    Browser->>LP: Navigate to login
-    LP->>LP: Render login form
-    Browser->>LP: Enter email + password
-    LP->>AS: authService.login(email, password)
+    ValidForm -->|Yes| D["authService.login<br/>email, password"]
+    D -->E["API Client:<br/>POST /api/v1/auth/login"]
+    E -->ReqBody["Request Body:<br/>email, password<br/>Content-Type: application/json"]
     
-    AS->>API: POST /api/v1/auth/login
-    API->>CTR: @PostMapping /login
-    CTR->>CTR: @Valid LoginRequest
-    CTR->>SRVR: authService.authenticate(email, password)
+CTR["AuthController:<br/>@PostMapping /auth/login"]
+    ReqBody --> CTR
+Valid["@Valid LoginRequest DTO"]
+ValidCheck{"DTO valid?"}
     
-    SRVR->>UR: userRepository.findByEmail(email)
-    UR->>DB: SELECT * FROM users WHERE email = ?
-    DB-->>UR: User entity (or null)
+    CTR --> Valid
+    Valid --> ValidCheck
+    ValidCheck -->|No| Err400["Return 400 Bad Request"]
+    ValidCheck -->|Yes| SRVR["AuthService:<br/>authenticate email, password"]
     
-    SRVR->>SRVR: BCrypt.matches(password, hash)
-    SRVR->>SRVR: Password valid? ✓
+    SRVR --> FindUser[("PostgreSQL:<br/>SELECT * FROM users<br/>WHERE email = ?")]
+    FindUser -->UserExists{"User found?"}
+    UserExists -->|No| Err401a["Return 401 Unauthorized<br/>Invalid credentials"]
+    UserExists -->|Yes| LoadUser["Load User entity"]
     
-    SRVR->>SRVR: Generate JWT access token<br/>(HS256, 12-hour expiry)
-    SRVR->>SRVR: Include claims: userId, email, roles
+    LoadUser -->CompareHash["BCrypt.matches<br/>providedPassword, storedHash"]
+    CompareHash -->MatchCheck{"Password<br/>matches?"}
+    MatchCheck -->|No| Err401b["Return 401 Unauthorized<br/>Invalid credentials"]
+    MatchCheck -->|Yes| GenJWT["Generate JWT access token<br/>HS256, 12-hour expiry"]
     
-    SRVR->>SRVR: Generate refresh token<br/>(create new family)
-    SRVR->>SRVR: Hash refresh token (SHA-256)
-    SRVR->>TR: Insert refresh token family
-    TR->>DB: INSERT INTO refresh_tokens<br/>(family_id, token_hash, expiry=7d)
+    GenJWT -->AddClaims["Add claims to token<br/>userId, email, roles<br/>iat, exp, iss"]
+    AddClaims -->GenRefreshToken["Generate refresh token<br/>Create new family_id UUID<br/>Random secure bytes"]
+    GenRefreshToken -->HashRefresh["Hash refresh token<br/>SHA-256"]
     
-    SRVR-->>CTR: AuthResponse{accessToken, refreshToken}
-    CTR-->>API: 200 OK
+    HashRefresh --> SaveRefresh[("PostgreSQL:<br/>INSERT INTO refresh_tokens<br/>family_id, token_hash<br/>user_id, expires_at")]
+    SaveRefresh -->TokensCreated["Tokens created<br/>access token valid 12h<br/>refresh token valid 7d"]
     
-    API->>API: setAccessToken(accessToken)
-    API->>API: setRefreshToken(refreshToken)
-    API->>API: localStorage.setItem('token', accessToken)
-    API-->>AS: AuthResponse
+    TokensCreated -->BuildResp["Build AuthResponse DTO<br/>accessToken, refreshToken"]
+    BuildResp -->CtrlResp["AuthController:<br/>ResponseEntity 200 OK"]
     
-    AS-->>LP: Success
-    LP->>LP: Navigate to dashboard
-    Browser->>Browser: Load dashboard page
+    CtrlResp -->APIResp["API Client:<br/>Parse response.json"]
+    APIResp -->SaveAccess["setAccessToken accessToken<br/>in localStorage"]
+    SaveAccess -->SaveRefresh2["setRefreshToken refreshToken<br/>in localStorage"]
+    SaveRefresh2 -->SvcResp["authService receives<br/>AuthResponse DTO"]
+    
+    SvcResp -->Navigate["LoginPage:<br/>Navigate to dashboard"]
+    Navigate --> End(["Browser:<br/>Load DashboardPage"])
+    
+    ShowErr -->RetryLogin["User retries"]
+    RetryLogin --> B
+    Err400 -->ErrorEnd["Show error message"]
+    Err401a --> ErrorEnd
+    Err401b --> ErrorEnd
+    
+    style Start fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style A fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style B fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style C fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ValidForm fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style ShowErr fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style D fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style E fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ReqBody fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style CTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style Valid fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style ValidCheck fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style Err400 fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style SRVR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style FindUser fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style UserExists fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style Err401a fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style LoadUser fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style CompareHash fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style MatchCheck fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#000000
+    style Err401b fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style GenJWT fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style AddClaims fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style GenRefreshToken fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style HashRefresh fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SaveRefresh fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style TokensCreated fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style BuildResp fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style CtrlResp fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style APIResp fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SaveAccess fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SaveRefresh2 fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SvcResp fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style Navigate fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style End fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style RetryLogin fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ErrorEnd fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
 ```
 
 **Key Points:**
@@ -628,67 +976,132 @@ sequenceDiagram
 ### Journey 3: Browse Skills & Find Mentors
 
 ```mermaid
-sequenceDiagram
-    participant Browser as Browser
-    participant ExplorePage as ExplorePage
-    participant SkillService as skillsService
-    participant MentorService as mentorsService
-    participant API as apiClient
-    participant CTR as SkillController
-    participant SRVR as SkillQueryService
-    participant REP as SkillRepository
-    participant DB as PostgreSQL
+graph TD
+    Start(["User navigates to Explore page"]) -->A["ExplorePage:<br/>Component mounted"]
+    A -->B["useEffect hook triggers<br/>on page load"]
+    B -->C["skillsService.getAllSkills"]
     
-    Browser->>ExplorePage: Navigate to Explore
-    ExplorePage->>SkillService: skillsService.getAllSkills()
+    C -->E["API Client:<br/>GET /api/v1/skills"]
+    E -->APIREQ["Add Authorization header<br/>Bearer token"]
+CTR["SkillController:<br/>@GetMapping /skills"]
+    APIREQ --> CTR
+    CTR -->SRVR["SkillQueryService:<br/>getAll"]
+TXN["@Transactional readOnly=true"]
     
-    SkillService->>API: GET /api/v1/skills
-    API->>CTR: @GetMapping /skills
-    CTR->>SRVR: skillQueryService.getAll()
-    SRVR->>SRVR: @Transactional(readOnly=true)
-    SRVR->>REP: skillRepository.findAll()
-    REP->>DB: SELECT * FROM skills
-    DB-->>REP: List<Skill>
-    REP-->>SRVR: Skill entities
-    SRVR->>SRVR: Map to SkillResponse DTOs
-    SRVR-->>CTR: List<SkillResponse>
-    CTR-->>API: 200 OK
-    API-->>SkillService: List<SkillDTO>
-    SkillService-->>ExplorePage: Update skills state
-    ExplorePage->>ExplorePage: Render skills grid
+    SRVR --> TXN
     
-    Browser->>ExplorePage: Type in search box
-    ExplorePage->>SkillService: skillsService.searchSkills(query)
+    TXN -->REP["SkillRepository:<br/>findAll"]
+    REP --> SQL1[("PostgreSQL:<br/>SELECT * FROM skills")]
+    SQL1 -->SkillList["Skill entities returned<br/>List of all skills"]
     
-    SkillService->>API: GET /api/v1/skills/search?q=Java
-    API->>CTR: Route to search endpoint
-    CTR->>SRVR: skillQueryService.search("Java")
-    SRVR->>REP: Custom query: ILIKE search
-    REP->>DB: SELECT * FROM skills<br/>WHERE name ILIKE '%Java%'
-    DB-->>REP: Matching skills
-    REP-->>SRVR: Results
-    SRVR-->>CTR: SkillResponse list
-    CTR-->>API: 200 OK
-    API-->>SkillService: Filtered results
-    SkillService-->>ExplorePage: Update UI
+    SkillList -->MAP["Mapper:<br/>Map to SkillResponse DTOs<br/>id, name, category, level"]
+    MAP -->DTO["SkillResponse list created"]
+    DTO -->CTLRESP["SkillController:<br/>ResponseEntity 200 OK"]
     
-    Browser->>ExplorePage: Click on "Java" skill
-    ExplorePage->>MentorService: mentorsService.findMentorsBySkill(skillId)
+    CTLRESP -->APIRESP["API Client:<br/>Parse response.json"]
+    APIRESP -->SVCRESP["skillsService:<br/>Return typed List<Skill>"]
+    SVCRESP -->PageUpdate["ExplorePage:<br/>Update state with skills"]
+    PageUpdate -->Render["Render skills grid<br/>Display all skills as cards"]
     
-    MentorService->>API: GET /api/v1/users?skillId=xyz
-    API->>CTR: Route to user search
-    CTR->>SRVR: userQueryService.findBySkill(skillId)
-    SRVR->>REP: Find users with this skill
-    REP->>DB: SELECT u.* FROM users u<br/>JOIN user_skills us ON u.id = us.user_id<br/>WHERE us.skill_id = ?
-    DB-->>REP: User entities with skill
-    REP-->>SRVR: Users list
-    SRVR->>SRVR: Calculate mentor ratings
-    SRVR->>SRVR: Map to UserProfileResponse
-    SRVR-->>CTR: List<UserProfile>
-    CTR-->>API: 200 OK
-    API-->>MentorService: Mentor list
-    MentorService-->>ExplorePage: Update mentors list
-    ExplorePage->>ExplorePage: Render mentor cards
+    Render -->UserSearch["Browser:<br/>User types in search box"]
+    UserSearch -->TypeSearch["ExplorePage:<br/>onChange event triggered<br/>query = 'Java'"]
+    TypeSearch -->SearchCall["skillsService.searchSkills<br/>query parameter"]
+    
+    SearchCall -->SearchAPI["API Client:<br/>GET /api/v1/skills/search?q=Java"]
+    SearchAPI -->SearchReq["Add Authorization header"]
+    SearchReq -->SearchCTR["SkillController:<br/>@GetMapping /skills/search<br/>@RequestParam q"]
+    SearchCTR -->SearchSRV["SkillQueryService:<br/>search 'Java'"]
+    
+    SearchSRV -->SearchREP["SkillRepository:<br/>Custom query method"]
+    SearchREP --> SQLSEARCH[("PostgreSQL:<br/>SELECT * FROM skills<br/>WHERE name ILIKE '%Java%'<br/>OR description ILIKE '%Java%'")]
+    SQLSEARCH -->SearchResults["Matching skills returned"]
+    
+    SearchResults -->SearchMAP["Mapper:<br/>Convert to SkillResponse DTOs"]
+    SearchMAP -->SearchDTOS["List<SkillResponse> created"]
+    SearchDTOS -->SearchCTLRESP["SkillController:<br/>ResponseEntity 200 OK"]
+    
+    SearchCTLRESP -->SearchAPIRESP["API Client:<br/>Parse response.json"]
+    SearchAPIRESP -->SearchSVCRESP["skillsService:<br/>Return filtered list"]
+    SearchSVCRESP -->UpdateSearch["ExplorePage:<br/>Update skills state"]
+    UpdateSearch -->RenderSearch["Render filtered skills grid"]
+    
+    RenderSearch -->ClickSkill["Browser:<br/>User clicks Java skill card"]
+    ClickSkill -->MentorCall["mentorsService<br/>findMentorsBySkill<br/>skillId=xyz"]
+    
+    MentorCall -->MentorAPI["API Client:<br/>GET /api/v1/users?skillId=xyz"]
+    MentorAPI -->MentorReq["Add Authorization header"]
+    MentorReq -->MentorCTR["UserController:<br/>@GetMapping /users<br/>@RequestParam skillId"]
+    MentorCTR -->MentorSRV["UserQueryService:<br/>findBySkill skillId"]
+    
+    MentorSRV -->MentorREP["UserRepository:<br/>Custom JOIN query"]
+    MentorREP --> SQLJOIN[("PostgreSQL:<br/>SELECT u.* FROM users u<br/>JOIN user_skills us<br/>ON u.id = us.user_id<br/>WHERE us.skill_id = ?<br/>ORDER BY u.created_at")]
+    SQLJOIN -->MentorList["Users with skill returned<br/>List of mentors"]
+    
+    MentorList -->CalcRating["UserQueryService:<br/>Calculate mentor ratings<br/>AVG(reviews.rating)<br/>COUNT(sessions) completed"]
+    CalcRating -->MentorMAP["Mapper:<br/>Convert to UserProfileResponse<br/>userId, name, rating, level"]
+    MentorMAP -->MentorDTOS["List<UserProfile> created"]
+    MentorDTOS -->MentorCTLRESP["UserController:<br/>ResponseEntity 200 OK"]
+    
+    MentorCTLRESP -->MentorAPIRESP["API Client:<br/>Parse response.json"]
+    MentorAPIRESP -->MentorSVCRESP["mentorsService:<br/>Return mentor list"]
+    MentorSVCRESP -->UpdateMentors["ExplorePage:<br/>Update mentors state"]
+    UpdateMentors -->RenderMentors["Render mentor profile cards<br/>Show name, rating, level"]
+    RenderMentors --> End(["Browser:<br/>Display mentor cards<br/>User can click to view profile"])
+    
+    style Start fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style A fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style B fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style C fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style E fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style APIREQ fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style CTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SRVR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style TXN fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style REP fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SQL1 fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style SkillList fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style MAP fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style DTO fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style CTLRESP fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style APIRESP fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SVCRESP fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style PageUpdate fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style Render fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style UserSearch fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style TypeSearch fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SearchCall fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SearchAPI fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SearchReq fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SearchCTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SearchSRV fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SearchREP fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SQLSEARCH fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style SearchResults fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SearchMAP fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SearchDTOS fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SearchCTLRESP fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SearchAPIRESP fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SearchSVCRESP fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style UpdateSearch fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style RenderSearch fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ClickSkill fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style MentorCall fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style MentorAPI fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style MentorReq fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style MentorCTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style MentorSRV fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style MentorREP fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SQLJOIN fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style MentorList fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style CalcRating fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style MentorMAP fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style MentorDTOS fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style MentorCTLRESP fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style MentorAPIRESP fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style MentorSVCRESP fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style UpdateMentors fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style RenderMentors fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style End fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
 ```
 
 **Key Points:**
@@ -703,75 +1116,93 @@ sequenceDiagram
 ### Journey 4: Session Request & Booking with Escrow
 
 ```mermaid
-sequenceDiagram
-    participant Browser as Browser
-    participant MentorProfile as MentorProfile
-    participant SwapService as swapsService
-    participant WalletService as walletService
-    participant API as apiClient
-    participant CTR as SwapController
-    participant SRVR as SwapService
-    participant WS as WalletService
-    participant SWR as SwapRepository
-    participant WR as WalletRepository
-    participant DB as PostgreSQL
+graph TD
+    Start(["User views mentor profile"]) -->A["MentorProfile:<br/>Component rendered"]
+    A -->B["Browser:<br/>User clicks Request Session"]
+    B -->C["MentorProfile:<br/>Open booking modal"]
+    C -->D["Browser:<br/>Select skill, date, time"]
+    D -->ValidForm{"Form valid?"}
+    ValidForm -->|No| ShowErr["Show validation errors"]
+    ShowErr --> D
     
-    Browser->>MentorProfile: Click "Request Session"
-    MentorProfile->>MentorProfile: Open booking modal
-    Browser->>MentorProfile: Select skill, date, time
-    MentorProfile->>SwapService: swapsService.createRequest(mentorId, data)
+    ValidForm -->|Yes| F["swapsService.createRequest"]
+    F -->G["API Client:<br/>POST /api/v1/swap-requests"]
+    G -->GenIdempotency["Generate Idempotency-Key"]
+    GenIdempotency -->ReqBody["Request Body:<br/>mentorId, skillId, proposedDate"]
     
-    SwapService->>API: POST /api/v1/swap-requests<br/>{mentorId, skillId, proposedDate}
-    API->>API: Add Idempotency-Key header
-    API->>CTR: @PostMapping /swap-requests
-    CTR->>CTR: @Valid SwapRequestDTO
-    CTR->>SRVR: swapService.createRequest(request)
+CTR["SwapController:<br/>@PostMapping /swap-requests"]
+    ReqBody --> CTR
+Valid["@Valid SwapRequestDTO"]
+ValidCheck{"DTO valid?"}
     
-    SRVR->>SRVR: @Transactional BEGIN
-    SRVR->>SRVR: Get current userId
-    SRVR->>SRVR: Create SwapRequest entity
-    SRVR->>SRVR: status = PENDING
-    SRVR->>SWR: swapRepository.save(request)
-    SWR->>DB: INSERT INTO swap_requests<br/>(learner_id, mentor_id, status, skill_id...)
-    DB-->>SWR: Generated request_id
+    CTR --> Valid
+    Valid --> ValidCheck
+    ValidCheck -->|No| Err400["Return 400 Bad Request"]
+    ValidCheck -->|Yes| SRVR["SwapService:<br/>createRequest request"]
     
-    SRVR->>WS: walletService.holdPoints(mentorId, 50)
-    WS->>WS: @Transactional(REQUIRES_NEW)
-    WS->>WR: Lock mentor wallet FOR UPDATE
-    WR->>DB: SELECT * FROM wallets<br/>WHERE user_id=?<br/>FOR UPDATE NOWAIT
-    DB-->>WR: Locked wallet
-    WS->>WS: Verify available_points >= 50
-    WS->>WR: Create escrow entry
-    WR->>DB: INSERT INTO escrows<br/>(user_id, amount, request_id, status=HELD)
-    WS->>WR: Reduce wallet available_points
-    WR->>DB: UPDATE wallets SET available_points -= 50
-    WS->>WR: Record ledger entry
-    WR->>DB: INSERT INTO point_ledger (HOLD transaction)
-    WS->>SRVR: Escrow created
+    SRVR -->TXN1["Transaction BEGIN"]
+    TXN1 -->GetUserId["SecurityUtils.getCurrentUserId"]
+    GetUserId -->CreateSwap["Create SwapRequest entity<br/>status=PENDING"]
     
-    SRVR->>SRVR: @Transactional COMMIT
-    SRVR-->>CTR: SwapRequestResponse{requestId, status=PENDING}
-    CTR-->>API: 201 Created
-    API-->>SwapService: Request created
-    SwapService-->>MentorProfile: Show "Waiting for mentor..."
+    CreateSwap --> SaveSwap[("PostgreSQL:<br/>INSERT INTO swap_requests")]
+    SaveSwap -->SwapSaved["SwapRequest persisted"]
     
-    par Async Notification
-        SRVR->>SRVR: Call NotificationService (async)
-        Note over SRVR: Send email to mentor
-    end
+    SwapSaved -->CallWallet["walletService.holdPoints<br/>mentorId, 50 points"]
+    CallWallet -->TXN2["Transaction BEGIN<br/>@Transactional REQUIRES_NEW"]
     
-    Browser->>Browser: Wait for mentor acceptance
-    Browser->>SwapService: Poll GET /api/v1/swap-requests/{id}
-    SwapService->>API: GET request
-    API->>CTR: Route to detail endpoint
-    CTR->>SRVR: Get request status
-    SRVR->>SWR: swapRepository.findById(id)
-    SWR->>DB: SELECT * FROM swap_requests WHERE id=?
-    DB-->>SWR: PENDING status
-    SWR-->>SRVR: SwapRequest
-    SRVR-->>CTR: Response{status=PENDING}
-    CTR-->>API: 200 OK
-    API-->>SwapService: Still pending...
+    TXN2 -->LockWallet["Lock mentor wallet"]
+    LockWallet --> SQLLock[("PostgreSQL:<br/>SELECT * FROM wallets<br/>FOR UPDATE NOWAIT")]
+    SQLLock -->CheckBalance{"Balance &gt;= 50?"}
+    
+    CheckBalance -->|No| BalFail["Return error"]
+    CheckBalance -->|Yes| CreateEscrow["Create Escrow entity"]
+    
+    CreateEscrow --> SaveEscrow[("PostgreSQL:<br/>INSERT INTO escrows")]
+    SaveEscrow --> DeductWallet[("PostgreSQL:<br/>UPDATE wallets SET<br/>available_points -= 50")]
+    
+    DeductWallet --> InsertLedger[("PostgreSQL:<br/>INSERT INTO point_ledger")]
+    InsertLedger -->Commit2["Transaction COMMIT"]
+    Commit2 -->WalletResp["WalletService returns success"]
+    
+    WalletResp -->Commit1["Transaction COMMIT"]
+    Commit1 -->BuildResp["Build SwapRequestResponse"]
+    BuildResp -->CTLRESP["SwapController:<br/>ResponseEntity 201 Created"]
+    
+    CTLRESP -->APIRESP["API Client:<br/>Parse response.json"]
+    APIRESP -->SVCRESP["swapsService:<br/>Return response"]
+    SVCRESP -->ShowPending["MentorProfile:<br/>Show Waiting state"]
+    
+    ShowPending -->AsyncNotif["NotificationService<br/>Send email async"]
+    AsyncNotif -->PollStart["Browser:<br/>Poll for acceptance"]
+    PollStart -->PollAPI["API Client:<br/>GET /api/v1/swap-requests/:id"]
+    PollAPI -->PollCTR["SwapController"]
+    
+    PollCTR --> PollQry[("PostgreSQL:<br/>SELECT * FROM swap_requests")]
+    PollQry -->StatusCheck{"Status accepted?"}
+    StatusCheck -->|No| ShowWait["Return PENDING"]
+    StatusCheck -->|Yes| ShowAccepted["Return ACCEPTED"]
+    
+    ShowWait --> End1(["Browser: Still waiting"])
+    ShowAccepted --> End2(["Browser: Accepted!"])
+    
+    BalFail --> ErrorEnd(["Request fails"])
+    Err400 --> ErrorEnd
+    
+    style Start fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style F fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style G fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style CTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SRVR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SaveSwap fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style SQLLock fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style SaveEscrow fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style DeductWallet fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style InsertLedger fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style Commit1 fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style Commit2 fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style End1 fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style End2 fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ErrorEnd fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
 ```
 
 **Key Points:**
@@ -787,93 +1218,101 @@ sequenceDiagram
 ### Journey 5: Wallet & Point Transfer with Pessimistic Locking
 
 ```mermaid
-sequenceDiagram
-    participant Browser as Browser
-    participant WalletPage as WalletPage
-    participant WalletService as walletService
-    participant API as apiClient
-    participant CTR as WalletController
-    participant SRVR as WalletService
-    participant WR as WalletRepository
-    participant LR as LedgerRepository
-    participant DB as PostgreSQL
+graph TD
+    Start(["User navigates to Wallet page"]) -->A["WalletPage:<br/>Component mounted"]
+    A -->B["walletService.getBalance"]
+    B -->C["API Client:<br/>GET /api/v1/me/wallet"]
+CTR["WalletController:<br/>@GetMapping /wallet"]
+    C --> CTR
+    CTR -->SRVR["WalletQueryService<br/>getBalance userId"]
+TXN["@Transactional readOnly=true"]
     
-    Browser->>WalletPage: Navigate to Wallet
-    WalletPage->>WalletService: walletService.getBalance()
-    WalletService->>API: GET /api/v1/me/wallet
-    API->>CTR: @GetMapping /wallet
-    CTR->>SRVR: walletQueryService.getBalance(userId)
-    SRVR->>SRVR: @Transactional(readOnly=true)
-    SRVR->>WR: walletRepository.findByUserId(userId)
-    WR->>DB: SELECT * FROM wallets WHERE user_id=?
-    DB-->>WR: Wallet{available=500, reserved=100}
-    WR-->>SRVR: Wallet entity
-    SRVR->>SRVR: Map to BalanceResponse DTO
-    SRVR-->>CTR: BalanceResponse{available=500, reserved=100}
-    CTR-->>API: 200 OK
-    API-->>WalletService: Balance data
-    WalletService-->>WalletPage: Update state
-    WalletPage->>WalletPage: Render wallet card
+    SRVR --> TXN
     
-    Browser->>WalletPage: Click "Transfer Points"
-    WalletPage->>WalletPage: Open transfer modal
-    Browser->>WalletPage: Enter recipientId=xyz, amount=100
-    WalletPage->>WalletService: walletService.transferPoints(data)
+    TXN --> QRY[("PostgreSQL:<br/>SELECT * FROM wallets<br/>WHERE user_id = ?")]
+    QRY -->Entity["Wallet entity<br/>available=500, held=100"]
+    Entity -->MAP["Map to BalanceResponse DTO"]
+    MAP -->RESP["WalletController returns<br/>ResponseEntity 200 OK"]
     
-    WalletService->>API: POST /api/v1/wallet/transfer<br/>{recipientId, amount}
-    API->>API: Generate Idempotency-Key UUID
-    API->>API: Add Authorization: Bearer {token}
-    API->>CTR: @PostMapping /transfer
-    CTR->>CTR: @Valid TransferRequest
-    CTR->>SRVR: walletService.transferPoints(request)
+    RESP -->Page["WalletPage:<br/>Render wallet card"]
+    Page -->Click["Browser:<br/>User clicks Transfer Points"]
+    Click -->Modal["WalletPage:<br/>Open transfer modal"]
+    Modal -->Input["Browser:<br/>Enter recipient, amount=100"]
     
-    SRVR->>SRVR: @Transactional BEGIN
-    SRVR->>SRVR: Get current userId
-    SRVR->>SRVR: Validate amount > 0
-    SRVR->>SRVR: Validate recipientId exists
+    Input -->Validate{"Form valid?"}
+    Validate -->|No| ShowErr["Show errors"]
+    ShowErr --> Input
     
-    Note over SRVR,DB: PESSIMISTIC LOCKING
-    SRVR->>WR: Lock sender wallet FOR UPDATE
-    WR->>DB: SELECT * FROM wallets<br/>WHERE user_id=?<br/>FOR UPDATE NOWAIT
-    DB-->>WR: Locked wallet row
-    SRVR->>SRVR: Check available >= 100
-    SRVR->>SRVR: available=500, OK ✓
+    Validate -->|Yes| Transfer["walletService.transferPoints"]
+    Transfer -->POSTAPI["API Client:<br/>POST /api/v1/wallet/transfer"]
+    POSTAPI -->GenIdempotent["Generate Idempotency-Key"]
+    GenIdempotent -->ReqBody["Request Body:<br/>recipientId, amount=100"]
     
-    SRVR->>WR: Update sender wallet
-    WR->>DB: UPDATE wallets SET<br/>available_points -= 100<br/>WHERE user_id=?
+    ReqBody -->CTRTRANS["WalletController<br/>@PostMapping /transfer"]
+ValidTrans["@Valid TransferRequest"]
     
-    SRVR->>WR: Lock recipient wallet
-    WR->>DB: SELECT * FROM wallets<br/>WHERE user_id=?<br/>FOR UPDATE NOWAIT
-    DB-->>WR: Locked wallet row
+    CTRTRANS --> ValidTrans
+    ValidTrans --> SVRTRANS
     
-    SRVR->>WR: Update recipient wallet
-    WR->>DB: UPDATE wallets SET<br/>available_points += 100<br/>WHERE user_id=?
+    SVRTRANS -->TXNTRANS["Transaction BEGIN<br/>@Transactional"]
+    TXNTRANS -->GetSender["Get current userId"]
+    GetSender -->CheckAmount{"amount &gt; 0?"}
+    CheckAmount -->|No| ErrAmount["Return 400"]
+    CheckAmount -->|Yes| CheckRecipient{"recipient exists?"}
+    CheckRecipient -->|No| ErrRecipient["Return 400"]
     
-    SRVR->>LR: Record ledger entries
-    LR->>DB: INSERT INTO point_ledger<br/>(type=TRANSFER_OUT, amount=-100,<br/>sender_id, timestamp)
-    LR->>DB: INSERT INTO point_ledger<br/>(type=TRANSFER_IN, amount=+100,<br/>recipient_id, timestamp)
+    CheckRecipient -->|Yes| LockSender["Lock sender wallet"]
+    LockSender --> SQLLOCK1[("PostgreSQL:<br/>SELECT * FROM wallets<br/>WHERE user_id = sender<br/>FOR UPDATE NOWAIT")]
+    SQLLOCK1 -->CheckBal{"available &gt;= 100?"}
+    CheckBal -->|No| ErrBal["Return 409"]
+    CheckBal -->|Yes| DeductSender[("PostgreSQL:<br/>UPDATE wallets<br/>SET available_points -= 100")]
     
-    SRVR->>SRVR: @Transactional COMMIT
-    DB-->>SRVR: COMMIT successful
-    SRVR-->>CTR: TransactionResponse{txId, status=SUCCESS}
-    CTR-->>API: 200 OK
-    API-->>WalletService: Transaction confirmed
-    WalletService-->>WalletPage: Show success toast
+    DeductSender -->LockRecipient["Lock recipient wallet"]
+    LockRecipient --> SQLLOCK2[("PostgreSQL:<br/>SELECT * FROM wallets<br/>WHERE user_id = recipient<br/>FOR UPDATE NOWAIT")]
+    SQLLOCK2 --> CreditRecipient[("PostgreSQL:<br/>UPDATE wallets<br/>SET available_points += 100")]
     
-    Browser->>WalletPage: Click "View History"
-    WalletPage->>WalletService: walletService.getTransactions()
-    WalletService->>API: GET /api/v1/me/wallet/transactions
-    API->>CTR: @GetMapping /transactions
-    CTR->>SRVR: walletQueryService.getTransactions(userId)
-    SRVR->>LR: ledgerRepository.findByUserId(userId)
-    LR->>DB: SELECT * FROM point_ledger<br/>WHERE user_id=?<br/>ORDER BY timestamp DESC<br/>LIMIT 50
-    DB-->>LR: List<LedgerEntry>
-    LR-->>SRVR: Ledger entries
-    SRVR->>SRVR: Map to TransactionResponse DTOs
-    SRVR-->>CTR: List<Transaction>
-    CTR-->>API: 200 OK
-    API-->>WalletService: Transaction list
-    WalletService-->>WalletPage: Update transactions table
+    CreditRecipient --> LedgerOut[("PostgreSQL:<br/>INSERT INTO point_ledger<br/>type=TRANSFER_OUT<br/>amount=-100, sender_id")]
+    LedgerOut --> LedgerIn[("PostgreSQL:<br/>INSERT INTO point_ledger<br/>type=TRANSFER_IN<br/>amount=+100, recipient_id")]
+    
+    LedgerIn -->Commit["Transaction COMMIT<br/>All changes persisted"]
+    Commit -->BuildResp["Build TransactionResponse"]
+    BuildResp -->CTLRESP["WalletController<br/>ResponseEntity 200 OK"]
+    
+    CTLRESP -->APIRESP["API Client:<br/>Parse response"]
+    APIRESP -->SUCCESS["Show success toast<br/>Transfer complete"]
+    
+    SUCCESS -->ViewHist["Browser:<br/>Click View History"]
+    ViewHist -->HistAPI["API Client:<br/>GET /api/v1/me/wallet/transactions"]
+    HistAPI -->HistCTR["WalletController<br/>@GetMapping /transactions"]
+    HistCTR -->HistSRV["WalletQueryService<br/>getTransactions userId"]
+    
+    HistSRV --> HISTQRY[("PostgreSQL:<br/>SELECT * FROM point_ledger<br/>WHERE user_id = ?<br/>ORDER BY timestamp DESC<br/>LIMIT 50")]
+    HISTQRY -->HistEntities["Ledger entries returned"]
+    HistEntities -->HistMap["Map to TransactionResponse DTOs"]
+    HistMap -->HistResp["WalletController returns<br/>ResponseEntity 200 OK"]
+    
+    HistResp -->Page2["WalletPage:<br/>Update transactions table"]
+    Page2 --> End(["Browser: Display transaction history"])
+    
+    ErrAmount --> ErrorEnd(["Request fails: 400"])
+    ErrRecipient --> ErrorEnd
+    ErrBal --> ErrorEnd
+    
+    style Start fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style Transfer fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style POSTAPI fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style CTRTRANS fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SVRTRANS fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style TXNTRANS fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SQLLOCK1 fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style DeductSender fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style SQLLOCK2 fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style CreditRecipient fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style LedgerOut fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style LedgerIn fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style Commit fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style End fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ErrorEnd fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
 ```
 
 **Key Points:**
@@ -889,111 +1328,106 @@ sequenceDiagram
 ### Journey 6: Session Lifecycle - Start, Complete, and Confirmation
 
 ```mermaid
-sequenceDiagram
-    participant Browser as Browser
-    participant SessionPage as SessionPage
-    participant SessionService as sessionsService
-    participant WalletService as walletService
-    participant API as apiClient
-    participant CTR as SessionController
-    participant SRVR as SessionService
-    participant SR as SessionRepository
-    participant WR as WalletRepository
-    participant DB as PostgreSQL
+graph TD
+    Start(["Session scheduled, status=PENDING"]) -->A["Browser:<br/>Mentor views active sessions"]
+    A -->B["Get active sessions API call"]
+    B -->C["SessionPage displays<br/>list of scheduled sessions"]
     
-    Browser->>SessionPage: Navigate to active sessions
-    SessionPage->>SessionService: sessionsService.getActiveSessions()
-    SessionService->>API: GET /api/v1/sessions/active/me
-    API->>CTR: @GetMapping /active
-    CTR->>SRVR: sessionQueryService.getActiveSessions(userId)
-    SRVR->>SR: sessionRepository.findActiveByUserId(userId)
-    SR->>DB: SELECT * FROM swap_sessions<br/>WHERE status IN (SCHEDULED, IN_PROGRESS)
-    DB-->>SR: List<SwapSession>
-    SR-->>SRVR: Sessions
-    SRVR-->>CTR: List<SessionResponse>
-    CTR-->>API: 200 OK
-    API-->>SessionService: Active sessions
-    SessionService-->>SessionPage: Update sessions list
+MentorAction["Browser:<br/>Mentor clicks Start Session"]
+    C --> MentorAction
+StartAPI["API Client:<br/>POST /api/v1/sessions/:id/start"]
+    MentorAction --> StartAPI
+StartCTR["SessionController<br/>@PostMapping /:id/start"]
+    StartAPI --> StartCTR
+    StartCTR -->StartSRV["SessionService<br/>startSession sessionId"]
+    StartSRV -->TXN1["Transaction BEGIN<br/>@Transactional"]
     
-    Browser->>SessionPage: Mentor clicks "Start Session"
-    SessionPage->>SessionService: sessionsService.startSession(sessionId)
+    TXN1 --> Query1[("PostgreSQL:<br/>SELECT * FROM swap_sessions<br/>WHERE id = ?")]
+    Query1 -->VerifyMentor{"Current user<br/>is mentor?"}
+    VerifyMentor -->|No| Err403["Return 403 Forbidden"]
+    VerifyMentor -->|Yes| Update1[("PostgreSQL:<br/>UPDATE swap_sessions<br/>SET status=IN_PROGRESS<br/>start_time=NOW()")]
     
-    SessionService->>API: POST /api/v1/sessions/{id}/start
-    API->>CTR: @PostMapping /{id}/start
-    CTR->>SRVR: sessionService.startSession(sessionId, userId)
+    Update1 -->Commit1["Transaction COMMIT"]
+    Commit1 -->Resp1["SessionController returns<br/>SessionResponse<br/>status=IN_PROGRESS"]
+    Resp1 -->InProgress["SessionPage shows<br/>Session in progress"]
     
-    SRVR->>SRVR: @Transactional BEGIN
-    SRVR->>SR: sessionRepository.findById(sessionId)
-    SR->>DB: SELECT * FROM swap_sessions WHERE id=?
-    DB-->>SR: Session{status=SCHEDULED}
-    SRVR->>SRVR: Verify userId is mentor
-    SRVR->>SRVR: status = IN_PROGRESS
-    SRVR->>SRVR: start_time = now()
-    SRVR->>SR: sessionRepository.save(session)
-    SR->>DB: UPDATE swap_sessions SET<br/>status='IN_PROGRESS', start_time=?
-    SRVR->>SRVR: @Transactional COMMIT
-    SRVR-->>CTR: SessionResponse{status=IN_PROGRESS}
-    CTR-->>API: 200 OK
-    API-->>SessionService: Session started
-    SessionService-->>SessionPage: Show "Session in progress"
+    InProgress -->SessionRuns["⏱️ Session running<br/>1 hour duration"]
+    SessionRuns -->MentorComplete["Browser:<br/>Mentor clicks Complete Session"]
+    MentorComplete -->CompleteAPI["API Client:<br/>POST /api/v1/sessions/:id/complete"]
+    CompleteAPI -->CompleteCTR["SessionController<br/>@PostMapping /:id/complete"]
+    CompleteCTR -->CompleteSRV["SessionService<br/>completeSession sessionId"]
+    CompleteSRV -->TXN2["Transaction BEGIN"]
     
-    Note over Browser: 1 hour session runs...
+    TXN2 --> Query2[("PostgreSQL:<br/>SELECT * FROM swap_sessions<br/>WHERE id = ?")]
+    Query2 --> Update2[("PostgreSQL:<br/>UPDATE swap_sessions<br/>SET status=AWAITING_CONFIRMATION<br/>end_time=NOW()")]
     
-    Browser->>SessionPage: Mentor clicks "Complete Session"
-    SessionPage->>SessionService: sessionsService.completeSession(sessionId)
+    Update2 -->Commit2["Transaction COMMIT"]
+    Commit2 -->Resp2["SessionController returns<br/>SessionResponse<br/>status=AWAITING_CONFIRMATION"]
+    Resp2 -->Awaiting["SessionPage shows<br/>Awaiting confirmation"]
     
-    SessionService->>API: POST /api/v1/sessions/{id}/complete
-    API->>CTR: @PostMapping /{id}/complete
-    CTR->>SRVR: sessionService.completeSession(sessionId, userId)
+    Awaiting -->Notify["Async: Send notification<br/>to learner to confirm"]
+    Notify -->StudentAction["Browser:<br/>Student confirms completion"]
+    StudentAction -->ConfirmAPI["API Client:<br/>POST /api/v1/sessions/:id/<br/>completion-confirmations"]
+    ConfirmAPI -->ConfirmCTR["SessionController"]
+    ConfirmCTR -->ConfirmSRV["SessionService<br/>confirmCompletion sessionId"]
+    ConfirmSRV -->TXN3["Transaction BEGIN"]
     
-    SRVR->>SRVR: @Transactional BEGIN
-    SRVR->>SR: sessionRepository.findById(sessionId)
-    SR->>DB: SELECT * FROM swap_sessions WHERE id=?
-    DB-->>SR: Session{status=IN_PROGRESS}
-    SRVR->>SRVR: Verify mentor
-    SRVR->>SRVR: status = AWAITING_CONFIRMATION
-    SRVR->>SRVR: end_time = now()
-    SRVR->>SR: sessionRepository.save(session)
-    SR->>DB: UPDATE swap_sessions SET<br/>status='AWAITING_CONFIRMATION', end_time=?
-    SRVR->>SRVR: @Transactional COMMIT
-    SRVR-->>CTR: SessionResponse{status=AWAITING_CONFIRMATION}
-    CTR-->>API: 200 OK
+    TXN3 --> Query3[("PostgreSQL:<br/>SELECT * FROM swap_sessions<br/>WHERE id = ?")]
+    Query3 -->CheckBoth{"Both parties<br/>confirmed?"}
+    CheckBoth -->|No| StoreConfirm["Record learner confirmation<br/>status stays AWAITING_CONFIRMATION"]
+    CheckBoth -->|Yes| ReleaseEscrow["WalletService<br/>releasePoints mentorId"]
     
-    API->>API: Send notification to learner
-    API-->>SessionService: Session marked complete
-    SessionService-->>SessionPage: Waiting for learner confirmation...
+    ReleaseEscrow -->WalletTXN["Transaction REQUIRES_NEW<br/>Independent from session TXN"]
+    WalletTXN --> QueryWallet[("PostgreSQL:<br/>SELECT * FROM wallets<br/>WHERE user_id=mentor<br/>FOR UPDATE")]
+    QueryWallet --> UpdateWallet[("PostgreSQL:<br/>UPDATE wallets<br/>SET available_points += amount")]
+    UpdateWallet --> LedgerEntry[("PostgreSQL:<br/>INSERT INTO point_ledger<br/>type=RELEASE")]
     
-    Browser->>SessionPage: Learner clicks "Confirm Completion"
-    SessionPage->>SessionService: sessionsService.confirmCompletion(sessionId)
+    LedgerEntry -->WalletCommit["Transaction COMMIT"]
+    WalletCommit --> CompleteSession[("PostgreSQL:<br/>UPDATE swap_sessions<br/>SET status=COMPLETED")]
     
-    SessionService->>API: POST /api/v1/sessions/{id}/completion-confirmations<br/>{confirmed: true}
-    API->>CTR: @PostMapping /{id}/completion-confirmations
-    CTR->>SRVR: sessionService.confirmCompletion(sessionId, userId)
+    CompleteSession -->Commit3["Transaction COMMIT"]
+    Commit3 -->Resp3["SessionController returns<br/>SessionResponse<br/>status=COMPLETED"]
+    Resp3 -->Success["SessionPage shows<br/>Session completed"]
     
-    SRVR->>SRVR: @Transactional BEGIN
-    SRVR->>SR: sessionRepository.findById(sessionId)
-    SR->>DB: SELECT * FROM swap_sessions WHERE id=?
-    DB-->>SR: Session{status=AWAITING_CONFIRMATION}
-    SRVR->>SRVR: Both confirmed? (count=2)
+    Success -->NotifyBoth["Async: Send confirmation<br/>to both users"]
+    NotifyBoth --> End(["Session lifecycle complete<br/>Mentor earned points"])
     
-    SRVR->>WalletService: walletService.releasePoints(mentorId, 50)
-    WalletService->>WalletService: @Transactional(REQUIRES_NEW)
-    WalletService->>WR: Lock mentor wallet
-    WR->>DB: SELECT * FROM wallets<br/>WHERE user_id=? FOR UPDATE
-    WalletService->>WR: Release escrow to available
-    WR->>DB: UPDATE wallets SET available_points += 50
-    WalletService->>WR: Update ledger
-    WR->>DB: INSERT INTO point_ledger (RELEASE transaction)
-    WalletService->>SRVR: Escrow released
+    StoreConfirm -->PartialResp["Return partial confirmation"]
+    PartialResp --> WaitOther(["Waiting for mentor confirmation"])
     
-    SRVR->>SRVR: status = COMPLETED
-    SRVR->>SR: sessionRepository.save(session)
-    SR->>DB: UPDATE swap_sessions SET status='COMPLETED'
-    SRVR->>SRVR: @Transactional COMMIT
-    SRVR-->>CTR: SessionResponse{status=COMPLETED}
-    CTR-->>API: 200 OK
-    API-->>SessionService: Session completed
-    SessionService-->>SessionPage: Show completion success
+    Err403 --> ErrorEnd(["Request fails: 403 Forbidden"])
+    
+    style Start fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style MentorAction fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style StartAPI fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style CompleteAPI fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style StudentAction fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ConfirmAPI fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style StartCTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style CompleteCTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style ConfirmCTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style StartSRV fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style CompleteSRV fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style ConfirmSRV fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style TXN1 fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style TXN2 fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style TXN3 fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style Query1 fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style Update1 fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style Query2 fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style Update2 fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style Query3 fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style QueryWallet fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style UpdateWallet fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style LedgerEntry fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style CompleteSession fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style Commit1 fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style Commit2 fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style Commit3 fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style WalletCommit fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style End fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style WaitOther fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ErrorEnd fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
 ```
 
 **Key Points:**
@@ -1009,119 +1443,124 @@ sequenceDiagram
 ### Journey 7: Dispute Resolution - Admin Workflow
 
 ```mermaid
-sequenceDiagram
-    participant Browser as Browser
-    participant SessionPage as SessionPage
-    participant SessionService as sessionsService
-    participant API as apiClient
-    participant CTR as DisputeController
-    participant SRVR as AdminDisputeService
-    participant WS as WalletService
-    participant DR as DisputeRepository
-    participant SR as SessionRepository
-    participant DB as PostgreSQL
+graph TD
+    Start(["Session awaiting confirmation"]) -->A["⏱️ 18 hours elapsed"]
+    A -->B["Background job:<br/>Check for timed-out sessions"]
+    B --> Query1[("PostgreSQL:<br/>SELECT * FROM swap_sessions<br/>WHERE status=AWAITING_CONFIRMATION<br/>AND end_time < now-18h")]
+    Query1 -->TimedOut{"Sessions found<br/>that timed out?"}
+    TimedOut -->|Yes| Auto["Auto-create disputes<br/>INSERT INTO disputes<br/>reason=TIMEOUT"]
+    TimedOut -->|No| Manual["User manually opens dispute"]
     
-    Note over Browser: 18 hours after session marked complete...
-    Browser->>SessionPage: Session still unconfirmed
+    Manual -->MUser["Browser:<br/>User clicks Report Issue"]
+    MUser -->MModal["DisputePage:<br/>Open dispute modal"]
+    MModal -->MForm["User selects reason<br/>Mentor didn't show, etc"]
+    MForm -->MValidate{"Form valid?"}
+    MValidate -->|No| MErr["Show validation errors"]
+    MErr --> MForm
     
-    Note over SRVR: Background job detects timeout
-    SRVR->>SR: Find sessions older than 18h unconfirmed
-    SR->>DB: SELECT * FROM swap_sessions<br/>WHERE status='AWAITING_CONFIRMATION'<br/>AND end_time < now() - 18h
-    DB-->>SR: List of timed-out sessions
+    MValidate -->|Yes| MDispute["disputeService.openDispute"]
+MAPI["API Client:<br/>POST /api/v1/sessions/:id/dispute"]
+    MDispute --> MAPI
+    MAPI -->MCTR["DisputeController<br/>@PostMapping /:id/dispute"]
+    MCTR -->MSRV["AdminDisputeService<br/>openDispute request"]
     
-    SRVR->>SRVR: For each timed-out session:
-    SRVR->>DR: Create dispute
-    DR->>DB: INSERT INTO disputes<br/>(session_id, status=AUTO_OPENED,<br/>reason='18h_timeout')
+    MSRV -->MTXN["Transaction BEGIN"]
+    MTXN --> MQuery[("PostgreSQL:<br/>SELECT * FROM swap_sessions")]
+    MQuery --> MInsert[("PostgreSQL:<br/>INSERT INTO disputes<br/>session_id, learner_reason<br/>status=OPEN")]
+    MInsert -->MCommit["Transaction COMMIT"]
+    MCommit -->MResp["DisputeController returns<br/>DisputeResponse status=OPEN"]
     
-    Browser->>SessionPage: Manually open dispute
-    SessionPage->>SessionService: sessionsService.openDispute(sessionId)
-    SessionService->>API: POST /api/v1/sessions/{id}/dispute<br/>{reason: "Mentor didn't show"}
+    Auto -->AdminNotif["Admin receives notification<br/>New dispute to review"]
+    MResp --> AdminNotif
+    AdminNotif -->AdminLogin["Browser:<br/>Admin logs in to portal"]
     
-    API->>CTR: @PostMapping /{id}/dispute
-    CTR->>CTR: @Valid DisputeRequest
-    CTR->>SRVR: adminDisputeService.openDispute(request)
+    AdminLogin -->AdminNav["Navigate to Disputes Queue"]
+    AdminNav -->AdminList["API Client:<br/>GET /api/v1/admin/disputes?status=OPEN"]
+    AdminList -->AdminCTR["DisputeController<br/>@GetMapping /disputes"]
+    AdminCTR -->AdminQuerySRV["AdminQueryService<br/>getOpenDisputes"]
     
-    SRVR->>SRVR: @Transactional BEGIN
-    SRVR->>SR: sessionRepository.findById(sessionId)
-    SR->>DB: SELECT * FROM swap_sessions WHERE id=?
-    DB-->>SR: Session{status=AWAITING_CONFIRMATION}
+    AdminQuerySRV --> AdminQry[("PostgreSQL:<br/>SELECT * FROM disputes<br/>WHERE status=OPEN")]
+    AdminQry -->AdminQueue["Display disputes queue<br/>Show all open disputes"]
+    AdminQueue -->AdminClick["Admin clicks dispute<br/>to view details"]
     
-    SRVR->>DR: Create dispute
-    DR->>DB: INSERT INTO disputes<br/>(session_id, learner_reason, status=OPEN)
+    AdminClick -->DetailsAPI["API Client:<br/>GET /api/v1/admin/disputes/:id"]
+    DetailsAPI -->DetailsCTR["DisputeController<br/>@GetMapping /:id"]
+    DetailsCTR -->DetailsSRV["AdminQueryService<br/>getDisputeDetails"]
     
-    SRVR->>SRVR: @Transactional COMMIT
-    SRVR-->>CTR: DisputeResponse{disputeId, status=OPEN}
-    CTR-->>API: 201 Created
-    API-->>SessionService: Dispute opened
-    SessionService-->>SessionPage: Show "Dispute opened, awaiting admin review"
+    DetailsSRV --> DetailQry[("PostgreSQL:<br/>SELECT disputes JOIN sessions<br/>Get full context")]
+    DetailQry -->DetailDisplay["Show dispute details<br/>Session info, reason, notes"]
+    DetailDisplay -->AdminDecide["Admin reviews and decides"]
     
-    par Admin Notification
-        SRVR->>SRVR: Send email to admins
-        Note over SRVR: "New dispute #xyz needs review"
-    end
+    AdminDecide -->ResolutionForm{"Choose<br/>resolution"}
+    ResolutionForm -->|Refund Learner| RefundPath["resolution=REFUND_LEARNER"]
+    ResolutionForm -->|Release Mentor| ReleasePath["resolution=RELEASE_MENTOR"]
+    ResolutionForm -->|Other| OtherPath["resolution=OTHER"]
     
-    Note over Browser: Admin portal
-    Browser->>Browser: Admin logs in
-    Browser->>Browser: Navigate to Disputes Queue
-    Browser->>API: GET /api/v1/admin/disputes?status=OPEN
-    API->>CTR: @GetMapping /disputes
-    CTR->>SRVR: adminQueryService.getOpenDisputes()
-    SRVR->>DR: disputeRepository.findByStatus(OPEN)
-    DR->>DB: SELECT * FROM disputes WHERE status='OPEN'
-    DB-->>DR: List<Dispute>
-    DR-->>SRVR: Disputes
-    SRVR->>SRVR: Enrich with session details
-    SRVR-->>CTR: List<DisputeResponse>
-    CTR-->>API: 200 OK
-    API->>Browser: Display disputes queue
+    RefundPath -->ResolveAPI["API Client:<br/>PATCH /api/v1/admin/disputes/:id"]
+    ReleasePath --> ResolveAPI
+    OtherPath --> ResolveAPI
     
-    Browser->>Browser: Click dispute to review
-    Browser->>API: GET /api/v1/admin/disputes/{disputeId}
-    API->>CTR: @GetMapping /{disputeId}
-    CTR->>SRVR: Get dispute details
-    SRVR->>DR: disputeRepository.findById(disputeId)
-    DR->>DB: SELECT * FROM disputes WHERE id=?
-    DB-->>DR: Dispute with session details
-    DR-->>SRVR: Dispute
-    SRVR->>SRVR: Load mentor notes, learner reason
-    SRVR-->>CTR: Full DisputeResponse
-    CTR-->>API: 200 OK
-    API->>Browser: Show dispute details
+    ResolveAPI -->ResolveCTR["DisputeController<br/>@PatchMapping /:id"]
+    ResolveCTR -->ResolveSRV["AdminDisputeService<br/>resolve request"]
+    ResolveSRV -->ResolveTXN["Transaction BEGIN"]
     
-    Browser->>Browser: Admin selects resolution: "Refund learner"
-    Browser->>API: PATCH /api/v1/admin/disputes/{disputeId}<br/>{resolution: REFUND_LEARNER}
-    API->>CTR: @PatchMapping /{disputeId}
-    CTR->>CTR: @Valid ResolutionRequest
-    CTR->>SRVR: adminDisputeService.resolve(request)
+    ResolveTXN --> GetDispute[("PostgreSQL:<br/>SELECT * FROM disputes")]
+    GetDispute -->CheckResolution{"Resolution<br/>type?"}
     
-    SRVR->>SRVR: @Transactional BEGIN
-    SRVR->>DR: Load dispute
-    DR->>DB: SELECT * FROM disputes WHERE id=?
-    DB-->>DR: Dispute{resolution=null}
+    CheckResolution -->|Refund| RefundEscrow["WalletService<br/>refundEscrow learnerId"]
+    CheckResolution -->|Release| ReleaseEscrow["WalletService<br/>releaseEscrow mentorId"]
     
-    Note over SRVR,DB: REFUND ESCROW TO LEARNER
-    SRVR->>WS: walletService.refundEscrow(learnerId, 50)
-    WS->>WS: @Transactional(REQUIRES_NEW)
-    WS->>DB: SELECT * FROM wallets WHERE user_id=?<br/>FOR UPDATE
-    WS->>DB: UPDATE wallets SET available_points += 50
-    WS->>DB: INSERT INTO point_ledger (REFUND transaction)
-    WS->>SRVR: Refund complete
+    RefundEscrow -->RefundWalletTXN["Transaction REQUIRES_NEW"]
+    ReleaseEscrow -->ReleaseWalletTXN["Transaction REQUIRES_NEW"]
     
-    SRVR->>DR: Update dispute
-    DR->>DB: UPDATE disputes SET<br/>resolution='REFUND_LEARNER',<br/>resolved_by=admin_id,<br/>resolved_at=now()
+    RefundWalletTXN --> RefundLock[("PostgreSQL:<br/>SELECT * FROM wallets<br/>WHERE user_id=learner<br/>FOR UPDATE")]
+    ReleaseWalletTXN --> ReleaseLock[("PostgreSQL:<br/>SELECT * FROM wallets<br/>WHERE user_id=mentor<br/>FOR UPDATE")]
     
-    SRVR->>SR: sessionRepository.save(session)
-    SR->>DB: UPDATE swap_sessions SET status='DISPUTED_RESOLVED'
+    RefundLock --> RefundUpdate[("PostgreSQL:<br/>UPDATE wallets<br/>available_points += amount")]
+    ReleaseLock --> ReleaseUpdate[("PostgreSQL:<br/>UPDATE wallets<br/>available_points += amount")]
     
-    SRVR->>DB: INSERT INTO admin_audit_events<br/>(action='DISPUTE_RESOLVED',<br/>admin_id, dispute_id, resolution)
+    RefundUpdate --> RefundLedger[("PostgreSQL:<br/>INSERT INTO point_ledger<br/>type=DISPUTE_REFUND")]
+    ReleaseUpdate --> ReleaseLedger[("PostgreSQL:<br/>INSERT INTO point_ledger<br/>type=DISPUTE_RELEASE")]
     
-    SRVR->>SRVR: @Transactional COMMIT
-    SRVR-->>CTR: DisputeResponse{resolution=REFUND_LEARNER}
-    CTR-->>API: 200 OK
+    RefundLedger -->RefundWalletCommit["Transaction COMMIT"]
+    ReleaseLedger -->ReleaseWalletCommit["Transaction COMMIT"]
     
-    API->>API: Send email to learner: "Dispute resolved, 50 points refunded"
-    API->>API: Send email to mentor: "Dispute ruled against you"
-    API-->>Browser: Show resolution success
+    RefundWalletCommit --> UpdateDispute[("PostgreSQL:<br/>UPDATE disputes<br/>SET resolution=REFUND_LEARNER<br/>resolved_at=NOW()")]
+    ReleaseWalletCommit --> UpdateDispute
+    
+    UpdateDispute --> AuditLog[("PostgreSQL:<br/>INSERT INTO admin_audit_events<br/>action, admin_id, dispute_id")]
+    AuditLog -->ResolveTXNCommit["Transaction COMMIT"]
+    
+    ResolveTXNCommit -->ResolveResp["DisputeController returns<br/>DisputeResponse<br/>resolution=chosen"]
+    ResolveResp -->NotifyBoth["Send notifications<br/>Email learner & mentor"]
+    NotifyBoth --> End(["Dispute resolved"])
+    
+    MErr --> ErrorEnd(["Validation failed"])
+    
+    style Start fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style MAPI fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style AdminList fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style DetailsAPI fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ResolveAPI fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style MCTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style AdminCTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style DetailsCTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style ResolveCTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style MInsert fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style AdminQry fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style DetailQry fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style GetDispute fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style RefundLock fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style ReleaseLock fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style RefundUpdate fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style ReleaseUpdate fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style UpdateDispute fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style MCommit fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style RefundWalletCommit fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style ReleaseWalletCommit fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style ResolveTXNCommit fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style End fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ErrorEnd fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
 ```
 
 **Key Points:**
@@ -1137,111 +1576,114 @@ sequenceDiagram
 ### Journey 8: Skill Management - CRUD Operations
 
 ```mermaid
-sequenceDiagram
-    participant Browser as Browser
-    participant SkillsPage as SkillsPage
-    participant SkillService as skillsService
-    participant API as apiClient
-    participant CTR as SkillController
-    participant SRVR as SkillService
-    participant USR as UserSkillRepository
-    participant SR as SkillRepository
-    participant DB as PostgreSQL
+graph TD
+    Start(["User navigates to My Skills"]) -->A["SkillsPage:<br/>Component mounted"]
+    A -->B["skillsService.getMySkills"]
+    B -->GetAPI["API Client:<br/>GET /api/v1/me/skills"]
+GetCTR["SkillController<br/>@GetMapping /me/skills"]
+    GetAPI --> GetCTR
+    GetCTR -->GetSRV["SkillQueryService<br/>getUserSkills userId"]
+TXN["@Transactional readOnly=true"]
     
-    Browser->>SkillsPage: Navigate to "My Skills"
-    SkillsPage->>SkillService: skillsService.getMySkills()
+    GetSRV --> TXN
+    TXN --> Query[("PostgreSQL:<br/>SELECT * FROM user_skills<br/>WHERE user_id = ?")]
+    Query -->Skills["List of user skills returned"]
+    Skills -->Map["Mapper:<br/>Convert to SkillResponse DTOs"]
+    Map -->Resp["SkillController returns<br/>ResponseEntity 200 OK"]
     
-    SkillService->>API: GET /api/v1/me/skills
-    API->>CTR: @GetMapping /me/skills
-    CTR->>SRVR: skillQueryService.getUserSkills(userId)
-    SRVR->>SRVR: @Transactional(readOnly=true)
-    SRVR->>USR: userSkillRepository.findByUserId(userId)
-    USR->>DB: SELECT * FROM user_skills<br/>WHERE user_id = ?
-    DB-->>USR: List<UserSkill>
-    USR-->>SRVR: UserSkill entities
-    SRVR->>SRVR: Map to SkillResponse DTOs
-    SRVR-->>CTR: List<SkillResponse>
-    CTR-->>API: 200 OK
-    API-->>SkillService: Skills list
-    SkillService-->>SkillsPage: Update skills state
-    SkillsPage->>SkillsPage: Render skills cards
+    Resp -->Display["SkillsPage:<br/>Display skill cards"]
+    Display -->AddClick["Browser:<br/>Click Add Skill button"]
+    AddClick -->Modal["SkillsPage:<br/>Open add skill modal"]
+    Modal -->Form["User selects skill & proficiency"]
     
-    Browser->>SkillsPage: Click "Add Skill"
-    SkillsPage->>SkillsPage: Open add modal
-    Browser->>SkillsPage: Select "Java" + Proficiency "EXPERT"
-    SkillsPage->>SkillService: skillsService.addSkill(skillId, proficiency)
+    Form -->Validate{"Form valid?"}
+    Validate -->|No| ShowErr["Show validation errors"]
+    ShowErr --> Form
     
-    SkillService->>API: POST /api/v1/me/skills<br/>{skillId, proficiency}
-    API->>CTR: @PostMapping /me/skills
-    CTR->>CTR: @Valid AddSkillRequest
-    CTR->>SRVR: skillService.addUserSkill(userId, request)
+    Validate -->|Yes| AddSVC["skillsService.addSkill<br/>skillId, proficiency"]
+    AddSVC -->PostAPI["API Client:<br/>POST /api/v1/me/skills"]
+    PostAPI -->PostCTR["SkillController<br/>@PostMapping /me/skills"]
+PostValid["@Valid AddSkillRequest"]
     
-    SRVR->>SRVR: @Transactional BEGIN
-    SRVR->>SRVR: Validate skillId exists
-    SRVR->>USR: Check not already added
-    USR->>DB: SELECT * FROM user_skills<br/>WHERE user_id=? AND skill_id=?
-    DB-->>USR: null (doesn't exist)
+    PostCTR --> PostValid
+    PostValid --> PostSRV
     
-    SRVR->>USR: Create UserSkill entity
-    SRVR->>USR: userSkillRepository.save(userSkill)
-    USR->>DB: INSERT INTO user_skills<br/>(user_id, skill_id, proficiency_level)
-    DB-->>USR: user_skill_id generated
+    PostSRV -->AddTXN["Transaction BEGIN<br/>@Transactional"]
+    AddTXN --> CheckDuplicate[("PostgreSQL:<br/>SELECT * FROM user_skills<br/>WHERE user_id=? AND skill_id=?")]
+    CheckDuplicate -->DupCheck{"Already added?"}
+    DupCheck -->|Yes| DupErr["Return 409 Conflict"]
+    DupCheck -->|No| CreateEntity["Create UserSkill entity"]
     
-    SRVR->>DB: UPDATE users SET updated_at=now()
-    SRVR->>SRVR: @Transactional COMMIT
-    SRVR-->>CTR: SkillResponse{skillId, proficiency}
-    CTR-->>API: 201 Created
-    API-->>SkillService: Skill added
-    SkillService-->>SkillsPage: Add to list + show toast
+    CreateEntity --> Insert[("PostgreSQL:<br/>INSERT INTO user_skills")]
+    Insert --> UpdateUser[("PostgreSQL:<br/>UPDATE users SET updated_at=NOW()")]
+    UpdateUser -->AddCommit["Transaction COMMIT"]
+    AddCommit -->AddResp["SkillController returns<br/>ResponseEntity 201 Created"]
     
-    Browser->>SkillsPage: Click "Edit" on Java skill
-    SkillsPage->>SkillsPage: Open edit modal with current proficiency
-    Browser->>SkillsPage: Change proficiency to "INTERMEDIATE"
-    SkillsPage->>SkillService: skillsService.updateSkill(skillId, proficiency)
+    AddResp -->AddSuccess["SkillsPage:<br/>Add to list, show success"]
+    AddSuccess -->EditClick["Browser:<br/>Click Edit on skill"]
+    EditClick -->EditModal["SkillsPage:<br/>Open edit modal"]
+    EditModal -->EditForm["User changes proficiency"]
     
-    SkillService->>API: PATCH /api/v1/me/skills/{skillId}<br/>{proficiency}
-    API->>CTR: @PatchMapping /me/skills/{skillId}
-    CTR->>CTR: @Valid UpdateSkillRequest
-    CTR->>SRVR: skillService.updateUserSkill(userId, skillId, request)
+    EditForm -->EditValidate{"Form valid?"}
+    EditValidate -->|No| EditErr["Show validation errors"]
+    EditErr --> EditForm
     
-    SRVR->>SRVR: @Transactional BEGIN
-    SRVR->>USR: userSkillRepository.findByUserIdAndSkillId(userId, skillId)
-    USR->>DB: SELECT * FROM user_skills<br/>WHERE user_id=? AND skill_id=?
-    DB-->>USR: UserSkill{proficiency=EXPERT}
+    EditValidate -->|Yes| UpdateSVC["skillsService.updateSkill"]
+    UpdateSVC -->PatchAPI["API Client:<br/>PATCH /api/v1/me/skills/:skillId"]
+    PatchAPI -->PatchCTR["SkillController<br/>@PatchMapping /me/skills/:skillId"]
+PatchValid["@Valid UpdateSkillRequest"]
     
-    SRVR->>SRVR: Update proficiency field
-    SRVR->>SRVR: proficiency = INTERMEDIATE
-    SRVR->>USR: userSkillRepository.save(userSkill)
-    USR->>DB: UPDATE user_skills SET proficiency_level='INTERMEDIATE'
+    PatchCTR --> PatchValid
+    PatchValid --> PatchSRV
     
-    SRVR->>SRVR: @Transactional COMMIT
-    SRVR-->>CTR: SkillResponse{proficiency=INTERMEDIATE}
-    CTR-->>API: 200 OK
-    API-->>SkillService: Skill updated
-    SkillService-->>SkillsPage: Update in list
+    PatchSRV -->UpdateTXN["Transaction BEGIN"]
+    UpdateTXN --> FindSkill[("PostgreSQL:<br/>SELECT * FROM user_skills")]
+    FindSkill --> UpdateSkill[("PostgreSQL:<br/>UPDATE user_skills<br/>SET proficiency_level=?")]
+    UpdateSkill -->UpdateCommit["Transaction COMMIT"]
+    UpdateCommit -->UpdateResp["SkillController returns<br/>ResponseEntity 200 OK"]
     
-    Browser->>SkillsPage: Click "Delete" on Java skill
-    SkillsPage->>SkillsPage: Show confirmation modal
-    Browser->>SkillsPage: Confirm delete
-    SkillsPage->>SkillService: skillsService.removeSkill(skillId)
+    UpdateResp -->UpdateSuccess["SkillsPage:<br/>Update in list, show toast"]
+    UpdateSuccess -->DeleteClick["Browser:<br/>Click Delete on skill"]
+    DeleteClick -->DeleteConfirm["Browser:<br/>Confirm deletion"]
+    DeleteConfirm -->DeleteSVC["skillsService.removeUserSkill"]
     
-    SkillService->>API: DELETE /api/v1/me/skills/{skillId}
-    API->>CTR: @DeleteMapping /me/skills/{skillId}
-    CTR->>SRVR: skillService.removeUserSkill(userId, skillId)
+    DeleteSVC -->DeleteAPI["API Client:<br/>DELETE /api/v1/me/skills/:skillId"]
+    DeleteAPI -->DeleteCTR["SkillController<br/>@DeleteMapping /me/skills/:skillId"]
+    DeleteCTR -->DeleteSRV["SkillService<br/>removeUserSkill userId"]
     
-    SRVR->>SRVR: @Transactional BEGIN
-    SRVR->>USR: userSkillRepository.findByUserIdAndSkillId(userId, skillId)
-    USR->>DB: SELECT * FROM user_skills<br/>WHERE user_id=? AND skill_id=?
-    DB-->>USR: UserSkill entity
+    DeleteSRV -->DeleteTXN["Transaction BEGIN"]
+    DeleteTXN --> FindDelete[("PostgreSQL:<br/>SELECT * FROM user_skills")]
+    FindDelete --> DeleteRecord[("PostgreSQL:<br/>DELETE FROM user_skills")]
+    DeleteRecord -->DeleteCommit["Transaction COMMIT"]
+    DeleteCommit -->DeleteResp["SkillController returns<br/>ResponseEntity 204 No Content"]
     
-    SRVR->>USR: userSkillRepository.delete(userSkill)
-    USR->>DB: DELETE FROM user_skills<br/>WHERE user_id=? AND skill_id=?
+    DeleteResp -->DeleteSuccess["SkillsPage:<br/>Remove from list, show toast"]
+    DeleteSuccess --> End(["Skill management complete"])
     
-    SRVR->>SRVR: @Transactional COMMIT
-    SRVR-->>CTR: Empty response
-    CTR-->>API: 204 No Content
-    API-->>SkillService: Skill deleted
-    SkillService-->>SkillsPage: Remove from list + show toast
+    DupErr --> ErrorEnd(["Request fails: 409"])
+    
+    style Start fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style AddClick fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style PostAPI fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style EditClick fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style PatchAPI fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style DeleteClick fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style DeleteAPI fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style PostCTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style PatchCTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style DeleteCTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style CheckDuplicate fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style Insert fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style UpdateUser fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style FindSkill fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style UpdateSkill fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style FindDelete fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style DeleteRecord fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style AddCommit fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style UpdateCommit fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style DeleteCommit fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style End fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ErrorEnd fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
 ```
 
 **Key Points:**
@@ -1257,67 +1699,66 @@ sequenceDiagram
 The dashboard loads multiple independent data sources in parallel:
 
 ```mermaid
-sequenceDiagram
-    participant Browser as Browser
-    participant DashboardPage as DashboardPage
-    participant DashService as dashboardService
-    participant API as apiClient
-    participant CTR as DashboardController
-    participant SRVR as DashboardService
-    participant DB as PostgreSQL
+graph TD
+    Start(["User navigates to dashboard"]) -->A["DashboardPage:<br/>Component mounted"]
+    A -->B["Show loading skeleton"]
+    B -->C["useEffect triggers<br/>Promise.all pattern"]
     
-    Browser->>DashboardPage: Navigate to /dashboard
-    DashboardPage->>DashboardPage: Show loading skeleton
+    C -->C1["Call 1:<br/>dashboardService.getBalance"]
+    C -->C2["Call 2:<br/>dashboardService.getRecentSessions"]
+    C -->C3["Call 3:<br/>dashboardService.getPendingRequests"]
+    C -->C4["Call 4:<br/>dashboardService.getStats"]
     
-    Note over DashboardPage: Parallel requests start
+    C1 -->API1["API Client:<br/>GET /api/v1/me/wallet"]
+    API1 --> DB1[("PostgreSQL:<br/>SELECT * FROM wallets<br/>WHERE user_id = ?")]
+    DB1 -->Resp1["Return wallet data<br/>available=500"]
     
-    par Request 1: Get Wallet Balance
-        DashboardPage->>DashService: dashboardService.getBalance()
-        DashService->>API: GET /api/v1/me/wallet
-        API->>CTR: Route to WalletController
-        CTR->>SRVR: walletQueryService.getBalance(userId)
-        SRVR->>DB: SELECT * FROM wallets WHERE user_id=?
-        DB-->>SRVR: Wallet data
-        SRVR-->>API: 200 OK {available: 500}
-        API-->>DashService: Balance
-    and Request 2: Get Recent Sessions
-        DashboardPage->>DashService: dashboardService.getRecentSessions()
-        DashService->>API: GET /api/v1/sessions/me?limit=5
-        API->>CTR: Route to SessionController
-        CTR->>SRVR: sessionQueryService.getRecent(userId, 5)
-        SRVR->>DB: SELECT * FROM swap_sessions<br/>WHERE user_id IN (learner, mentor)<br/>ORDER BY created_at DESC LIMIT 5
-        DB-->>SRVR: Session list
-        SRVR-->>API: 200 OK [sessions...]
-        API-->>DashService: Sessions
-    and Request 3: Get Pending Requests
-        DashboardPage->>DashService: dashboardService.getPendingRequests()
-        DashService->>API: GET /api/v1/swap-requests/me?status=PENDING
-        API->>CTR: Route to SwapController
-        CTR->>SRVR: swapQueryService.getPending(userId)
-        SRVR->>DB: SELECT * FROM swap_requests<br/>WHERE mentor_id=? AND status='PENDING'
-        DB-->>SRVR: Pending swap requests
-        SRVR-->>API: 200 OK [requests...]
-        API-->>DashService: Pending requests
-    and Request 4: Get Statistics
-        DashboardPage->>DashService: dashboardService.getStats()
-        DashService->>API: GET /api/v1/me/statistics
-        API->>CTR: Route to DashboardController
-        CTR->>SRVR: dashboardService.getStats(userId)
-        SRVR->>DB: SELECT COUNT(*) as completed_sessions<br/>FROM swap_sessions<br/>WHERE status='COMPLETED'
-        DB-->>SRVR: Count data
-        SRVR->>DB: SELECT AVG(rating) as avg_rating<br/>FROM reviews WHERE mentor_id=?
-        DB-->>SRVR: Rating data
-        SRVR->>DB: SELECT SUM(amount) as total_earned<br/>FROM point_ledger<br/>WHERE type='TRANSFER_IN'
-        DB-->>SRVR: Earnings data
-        SRVR-->>API: 200 OK {sessions: 12, rating: 4.8, earned: 250}
-        API-->>DashService: Statistics
-    end
+    C2 -->API2["API Client:<br/>GET /api/v1/sessions/me?limit=5"]
+    API2 --> DB2[("PostgreSQL:<br/>SELECT * FROM swap_sessions<br/>ORDER BY created_at DESC<br/>LIMIT 5")]
+    DB2 -->Resp2["Return 5 recent sessions"]
     
-    Note over DashboardPage: All requests complete
-    DashboardPage->>DashboardPage: Combine all data
-    DashboardPage->>DashboardPage: Render dashboard sections
-    DashboardPage->>DashboardPage: Hide loading skeleton
-    Browser->>Browser: Dashboard fully loaded
+    C3 -->API3["API Client:<br/>GET /api/v1/swap-requests/me?status=PENDING"]
+    API3 --> DB3[("PostgreSQL:<br/>SELECT * FROM swap_requests<br/>WHERE mentor_id=? AND status=PENDING")]
+    DB3 -->Resp3["Return pending requests"]
+    
+    C4 -->API4["API Client:<br/>GET /api/v1/me/statistics"]
+    DB4A[("PostgreSQL:<br/>SELECT COUNT(*) FROM swap_sessions<br/>WHERE status=COMPLETED")]
+    API4 --> DB4A
+    DB4B[("SELECT AVG(rating)<br/>FROM reviews")]
+    DB4A --> DB4B
+    DB4C[("SELECT SUM(amount)<br/>FROM point_ledger")]
+    DB4B --> DB4C
+    DB4C -->Resp4["Return stats:<br/>sessions=12, rating=4.8, earned=250"]
+    
+    Resp1 -->Combine["Promise.all resolves<br/>All 4 requests complete"]
+    Resp2 --> Combine
+    Resp3 --> Combine
+    Resp4 --> Combine
+    
+    Combine -->Aggregate["DashboardPage:<br/>Aggregate all data<br/>Create dashboard state"]
+    Aggregate -->Render["Render dashboard sections<br/>Wallet card, sessions list<br/>pending requests, stats"]
+    Render -->HideSkeleton["Hide loading skeleton"]
+    HideSkeleton --> End(["Dashboard fully loaded"])
+    
+    style Start fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style A fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style C1 fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style C2 fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style C3 fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style C4 fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style API1 fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style API2 fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style API3 fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style API4 fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style DB1 fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style DB2 fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style DB3 fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style DB4A fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style DB4B fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style DB4C fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style Combine fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style Render fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style End fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
 ```
 
 **Key Points:**
@@ -1331,85 +1772,99 @@ sequenceDiagram
 
 ### Journey 10: Reviews & Ratings
 
+### Journey 10: Reviews & Ratings
+
 ```mermaid
-sequenceDiagram
-    participant Browser as Browser
-    participant ReviewPage as ReviewPage
-    participant ReviewService as reviewsService
-    participant API as apiClient
-    participant CTR as ReviewController
-    participant SRVR as ReviewService
-    participant RR as ReviewRepository
-    participant UR as UserRepository
-    participant DB as PostgreSQL
+graph TD
+    Start(["Session completed"]) -->A["ReviewPage:<br/>Component mounted"]
+    A -->B["Browser:<br/>Navigate to Rate & Review"]
+    B -->C["reviewsService.getSession<br/>sessionId"]
     
-    Note over Browser: After session completed
-    Browser->>ReviewPage: Navigate to "Rate & Review"
-    ReviewPage->>ReviewService: reviewsService.getSession(sessionId)
-    ReviewService->>API: GET /api/v1/sessions/{id}
-    API->>CTR: Route to SessionController
-    CTR->>SRVR: sessionQueryService.getById(sessionId, userId)
-    SRVR->>DB: SELECT * FROM swap_sessions WHERE id=?
-    DB-->>SRVR: Session details
-    SRVR-->>API: 200 OK {mentor_id, learner_id...}
-    API-->>ReviewService: Session data
-    ReviewService-->>ReviewPage: Display session & form
+GetAPI["API Client:<br/>GET /api/v1/sessions/:id"]
+    C --> GetAPI
+GetCTR["SessionController"]
+    GetAPI --> GetCTR
+    GetCTR --> GetQry[("PostgreSQL:<br/>SELECT * FROM swap_sessions<br/>WHERE id = ?")]
+    GetQry -->SessionData["Session details loaded<br/>mentor_id, learner_id"]
     
-    Browser->>ReviewPage: Fill review form (rating=5, comment="Great mentor!")
-    ReviewPage->>ReviewService: reviewsService.submitReview(data)
+    SessionData -->Display["ReviewPage:<br/>Display session info<br/>Show review form"]
+    Display -->Fill["Browser:<br/>User fills form<br/>rating=5, comment text"]
     
-    ReviewService->>API: POST /api/v1/reviews<br/>{sessionId, rating, comment}
-    API->>API: Add Idempotency-Key header
-    API->>CTR: @PostMapping /reviews
-    CTR->>CTR: @Valid ReviewRequest
-    CTR->>CTR: Validate rating 1-5
-    CTR->>SRVR: reviewService.submitReview(userId, request)
+    Fill -->Validate{"Form valid?"}
+    Validate -->|No| ShowErr["Show validation errors"]
+    ShowErr --> Fill
     
-    SRVR->>SRVR: @Transactional BEGIN
-    SRVR->>SRVR: Verify user participated in session
-    SRVR->>RR: Check not already reviewed
-    RR->>DB: SELECT * FROM reviews<br/>WHERE session_id=? AND reviewer_id=?
-    DB-->>RR: null (not reviewed yet)
+    Validate -->|Yes| Submit["reviewsService.submitReview"]
+    Submit -->PostAPI["API Client:<br/>POST /api/v1/reviews"]
+    PostAPI -->GenIdempotent["Generate Idempotency-Key"]
+    GenIdempotent -->ReqBody["Request Body:<br/>sessionId, rating, comment"]
     
-    SRVR->>RR: Create review
-    RR->>DB: INSERT INTO reviews<br/>(session_id, reviewer_id, reviewed_user_id,<br/>rating, comment)
-    DB-->>RR: review_id generated
+    ReqBody -->PostCTR["ReviewController<br/>@PostMapping /reviews"]
+Valid["@Valid ReviewRequest<br/>Validate rating 1-5"]
+ValidCheck{"Rating valid<br/>comment OK?"}
     
-    SRVR->>SRVR: Calculate updated average rating
-    SRVR->>DB: SELECT AVG(rating) as avg_rating, COUNT(*) as count<br/>FROM reviews WHERE reviewed_user_id=?
-    DB-->>SRVR: avg=4.8, count=12
+    PostCTR --> Valid
+    Valid --> ValidCheck
+    ValidCheck -->|No| Err400["Return 400 Bad Request"]
+    ValidCheck -->|Yes| PostSRV["ReviewService<br/>submitReview userId"]
     
-    SRVR->>UR: Update user average rating
-    UR->>DB: UPDATE users SET<br/>avg_rating=4.8,<br/>review_count=12<br/>WHERE id=?
+    PostSRV -->TXN["Transaction BEGIN<br/>@Transactional"]
+    TXN -->VerifyUser["Verify current user<br/>participated in session"]
+    VerifyUser --> CheckDuplicate[("PostgreSQL:<br/>SELECT * FROM reviews<br/>WHERE session_id=?<br/>AND reviewer_id=?")]
+    CheckDuplicate -->DupCheck{"Already reviewed<br/>by user?"}
+    DupCheck -->|Yes| DupErr["Return 409 Conflict"]
+    DupCheck -->|No| CreateReview["Create Review entity<br/>session_id, reviewer_id<br/>reviewed_user_id, rating, comment"]
     
-    SRVR->>DB: INSERT INTO point_ledger<br/>(type='REVIEW_BONUS', amount=2,<br/>user_id, session_id)
+    CreateReview --> InsertReview[("PostgreSQL:<br/>INSERT INTO reviews<br/>session_id, reviewer_id<br/>reviewed_user_id, rating, comment")]
+    InsertReview --> CalcAvg[("PostgreSQL:<br/>SELECT AVG(rating) as avg_rating<br/>COUNT(*) as count<br/>FROM reviews<br/>WHERE reviewed_user_id=?")]
+    CalcAvg -->NewAvg["Calculate new average rating<br/>avg=4.8, count=12"]
     
-    SRVR->>SRVR: @Transactional COMMIT
-    SRVR-->>CTR: ReviewResponse{reviewId, rating=5}
-    CTR-->>API: 201 Created
-    API-->>ReviewService: Review submitted
-    ReviewService-->>ReviewPage: Show success + award points
+    NewAvg --> UpdateUser[("PostgreSQL:<br/>UPDATE users<br/>SET avg_rating=4.8<br/>review_count=12")]
+    UpdateUser --> BonusPoints[("PostgreSQL:<br/>INSERT INTO point_ledger<br/>type=REVIEW_BONUS<br/>amount=2, user_id")]
     
-    par Async Update
-        SRVR->>SRVR: NotificationService.sendReviewNotification(reviewedUserId)
-        Note over SRVR: Email: "You received a 5-star review"
-    end
+    BonusPoints -->Commit["Transaction COMMIT"]
+    Commit -->PostResp["ReviewController returns<br/>ReviewResponse 201 Created"]
     
-    Browser->>ReviewPage: View mentor's profile
-    ReviewPage->>ReviewService: reviewsService.getMentorReviews(mentorId)
-    ReviewService->>API: GET /api/v1/users/{id}/reviews
-    API->>CTR: @GetMapping /{id}/reviews
-    CTR->>SRVR: reviewQueryService.getUserReviews(mentorId)
-    SRVR->>RR: reviewRepository.findByReviewedUserId(mentorId)
-    RR->>DB: SELECT * FROM reviews<br/>WHERE reviewed_user_id=?<br/>ORDER BY created_at DESC
-    DB-->>RR: List<Review>
-    RR-->>SRVR: Reviews
-    SRVR->>SRVR: Map to ReviewResponse DTOs
-    SRVR-->>CTR: List<ReviewResponse>
-    CTR-->>API: 200 OK
-    API-->>ReviewService: Reviews list
-    ReviewService-->>ReviewPage: Display reviews
-    ReviewPage->>ReviewPage: Show avg rating, review count
+    PostResp -->APIResp["API Client:<br/>Parse response.json"]
+    APIResp -->Success["ReviewPage:<br/>Show success message<br/>Award 2 bonus points"]
+    
+    Success -->AsyncNotif["Async:<br/>NotificationService<br/>Send email to reviewed user"]
+    AsyncNotif -->ViewProfile["Browser:<br/>View mentor's profile"]
+    
+    ViewProfile -->GetReviews["reviewsService.getMentorReviews<br/>mentorId"]
+    GetReviews -->ReviewsAPI["API Client:<br/>GET /api/v1/users/:id/reviews"]
+    ReviewsAPI -->ReviewsCTR["ReviewController<br/>@GetMapping /:id/reviews"]
+    ReviewsCTR --> ReviewsQry[("PostgreSQL:<br/>SELECT * FROM reviews<br/>WHERE reviewed_user_id=?<br/>ORDER BY created_at DESC")]
+    
+    ReviewsQry -->ReviewsList["Reviews list returned"]
+    ReviewsList -->Map["Mapper:<br/>Convert to ReviewResponse DTOs"]
+    Map -->ReviewsResp["ReviewController returns<br/>ResponseEntity 200 OK"]
+    
+    ReviewsResp -->ReviewsPage["ReviewPage:<br/>Display reviews<br/>Show avg rating, count"]
+    ReviewsPage --> End(["Profile page with reviews<br/>displayed"])
+    
+    ShowErr -->Retry["User retries"]
+    Retry --> Fill
+    Err400 --> ErrorEnd(["Request fails: 400"])
+    DupErr --> ErrorEnd
+    
+    style Start fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style Fill fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style PostAPI fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style GetAPI fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ReviewsAPI fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style PostCTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style PostSRV fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style ReviewsCTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style InsertReview fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style CalcAvg fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style UpdateUser fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style BonusPoints fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style ReviewsQry fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style GetQry fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style Commit fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style End fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style ErrorEnd fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
 ```
 
 **Key Points:**
@@ -1431,21 +1886,21 @@ sequenceDiagram
 ```mermaid
 graph TB
     subgraph Frontend["Frontend Layer"]
-        Component["React Components"]
-        Service["Service Layer"]
-        ApiClient["API Client<br/>generic&lt;T&gt;"]
-        TokenMgr["Token Manager"]
+Component["React Components"]
+Service["Service Layer"]
+ApiClient["API Client<br/>generic&lt;T&gt;"]
+TokenMgr["Token Manager"]
     end
     
     subgraph Network["HTTP"]
-        Header["Auth: Bearer<br/>Idempotency-Key"]
+Header["Auth: Bearer<br/>Idempotency-Key"]
     end
     
     subgraph Backend["Backend Layer"]
-        CorsFilter["CORS Filter"]
-        JwtFilter["JWT Filter"]
-        Interceptor["Exception Handler"]
-        Controller["@RestController"]
+CorsFilter["CORS Filter"]
+JwtFilter["JWT Filter"]
+Interceptor["Exception Handler"]
+Controller["@RestController"]
     end
     
     Component --> Service
@@ -1457,8 +1912,8 @@ graph TB
     JwtFilter --> Interceptor
     Interceptor --> Controller
     
-    style Frontend fill:#e1f5ff
-    style Backend fill:#fff3e0
+    style Frontend fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#38bdf8
+    style Backend fill:#1e1b4b,stroke:#a78bfa,stroke-width:2px,color:#a78bfa
 ```
 
 **Request Flow:**
@@ -1508,25 +1963,77 @@ refresh_tokens table:
 ### Refresh Flow
 
 ```mermaid
-sequenceDiagram
-    participant Client
-    participant API as API Interceptor
-    participant AuthSVC as AuthService
-    participant DB
+graph TD
+    Start(["Client makes request<br/>with expired token"]) -->A["API Interceptor:<br/>Intercept request"]
+    A -->B["Decode JWT without verification"]
+    B -->CheckExp{"Token expired?"}
+    CheckExp -->|No| Forward["Forward to handler<br/>Request succeeds"]
+    CheckExp -->|Yes| SetRefreshing["Set isRefreshing = true"]
     
-    Client->>API: Request with expired token
-    API->>API: Decode JWT, check expiry
-    API->>API: Token expired? ✗
-    API->>AuthSVC: POST /auth/refresh
-    AuthSVC->>DB: SELECT * FROM refresh_tokens
-    DB-->>AuthSVC: Token entity
-    AuthSVC->>AuthSVC: Verify family, not revoked, not expired
-    AuthSVC->>AuthSVC: Generate new JWT (12h)
-    AuthSVC->>AuthSVC: Generate new refresh token
-    AuthSVC->>DB: INSERT new token, DELETE old
-    AuthSVC-->>API: {accessToken, refreshToken}
-    API->>API: Update localStorage
-    API->>Client: Retry original request
+    SetRefreshing -->GetRefreshToken["Token Manager:<br/>getRefreshToken from localStorage"]
+    GetRefreshToken -->CheckRefresh{"Refresh token<br/>exists?"}
+    CheckRefresh -->|No| RedirectLogin["Redirect to /login<br/>Clear tokens"]
+    CheckRefresh -->|Yes| RefreshReq["POST /api/v1/auth/refresh"]
+AuthCTR["AuthController<br/>@PostMapping /auth/refresh"]
+AuthSVC["RefreshTokenService:<br/>refresh refreshToken"]
+    
+    RefreshReq --> AuthCTR
+    AuthCTR --> AuthSVC
+    
+    AuthSVC -->TXN["Transaction BEGIN<br/>@Transactional"]
+    TXN --> QueryToken[("PostgreSQL:<br/>SELECT * FROM refresh_tokens<br/>WHERE token_hash = SHA256?")]
+    QueryToken -->TokenFound{"Token found?"}
+    TokenFound -->|No| InvalidToken["Return 401 Invalid token"]
+    TokenFound -->|Yes| TokenEntity["Load RefreshToken entity"]
+    
+    TokenEntity -->ValidateFamily{"Token family<br/>valid & not revoked?"}
+    ValidateFamily -->|No| ReplayAttack["Return 401<br/>Token replay detected<br/>Revoke entire family"]
+    ValidateFamily -->|Yes| CheckExpiry{"Refresh token<br/>expired?"}
+    
+    CheckExpiry -->|Yes| RefreshExp["Return 401<br/>Refresh token expired"]
+    CheckExpiry -->|No| GenAccess["Generate new access token<br/>HS256, 12-hour expiry"]
+    
+    GenAccess -->GenRefresh["Generate new refresh token<br/>Create new family_id"]
+    GenRefresh --> InsertNew[("PostgreSQL:<br/>INSERT INTO refresh_tokens<br/>new token, new family")]
+    InsertNew --> DeleteOld[("PostgreSQL:<br/>DELETE FROM refresh_tokens<br/>WHERE family_id = old")]
+    
+    DeleteOld -->Commit["Transaction COMMIT"]
+    Commit -->BuildResp["Build AuthResponse DTO<br/>accessToken, refreshToken"]
+    BuildResp -->AuthResp["AuthController returns<br/>ResponseEntity 200 OK"]
+    
+    AuthResp -->SaveTokens["API Interceptor<br/>setAccessToken newToken"]
+    SaveTokens -->SaveRefresh["setRefreshToken newToken<br/>to localStorage"]
+    SaveRefresh -->ResetRefreshing["isRefreshing = false"]
+    ResetRefreshing -->RetryRequest["Retry original request<br/>with new token"]
+    
+    RetryRequest -->ValidateNew{"New token<br/>valid?"}
+    ValidateNew -->|No| RetryFail["Return 401"]
+    ValidateNew -->|Yes| ForwardRetry["Forward to handler"]
+    ForwardRetry --> Success(["Request succeeds"])
+    
+    Forward --> End(["Request completes"])
+    RedirectLogin --> LoginEnd(["Redirect to /login"])
+    InvalidToken --> ErrorEnd(["Request fails: 401"])
+    ReplayAttack --> ErrorEnd
+    RefreshExp --> ErrorEnd
+    RetryFail --> ErrorEnd
+    
+    style Start fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style RefreshReq fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SaveTokens fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style SaveRefresh fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style RetryRequest fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style AuthCTR fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style AuthSVC fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style TXN fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style QueryToken fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style InsertNew fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style DeleteOld fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    style Commit fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style Success fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style End fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#ffffff
+    style LoginEnd fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
+    style ErrorEnd fill:#e11d48,stroke:#be123c,stroke-width:2px,color:#ffffff
 ```
 
 ---
@@ -1536,26 +2043,26 @@ sequenceDiagram
 ```mermaid
 graph TB
     subgraph Client["Frontend Error Handling"]
-        ReqError["Request fails"]
-        Check401{"Status 401?"}
-        CheckNet{"Network error?"}
-        ShowToast["Show error toast"]
-        RetryLogic["Retry with new token"]
-        Redirect["Redirect to /login"]
+ReqError["Request fails"]
+Check401{"Status 401?"}
+CheckNet{"Network error?"}
+ShowToast["Show error toast"]
+RetryLogic["Retry with new token"]
+Redirect["Redirect to /login"]
     end
     
     subgraph Backend["Backend Exception Handler"]
-        GlobalExc["GlobalExceptionHandler"]
-        ValidationExc["ValidationException"]
-        AuthExc["AuthenticationException"]
-        BusinessExc["BusinessException"]
+GlobalExc["GlobalExceptionHandler"]
+ValidationExc["ValidationException"]
+AuthExc["AuthenticationException"]
+BusinessExc["BusinessException"]
     end
     
     subgraph HTTP["HTTP Response"]
-        Status400["400 Bad Request"]
-        Status401["401 Unauthorized"]
-        Status409["409 Conflict"]
-        Status500["500 Internal Error"]
+Status400["400 Bad Request"]
+Status401["401 Unauthorized"]
+Status409["409 Conflict"]
+Status500["500 Internal Error"]
     end
     
     ReqError --> Check401
@@ -1573,8 +2080,8 @@ graph TB
     GlobalExc --> Status409
     GlobalExc --> Status500
     
-    style Client fill:#e1f5ff
-    style Backend fill:#fff3e0
+    style Client fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#38bdf8
+    style Backend fill:#1e1b4b,stroke:#a78bfa,stroke-width:2px,color:#a78bfa
 ```
 
 **Common Error Scenarios:**
@@ -1675,20 +2182,20 @@ WHERE user_id = $3;  -- learner
 ```mermaid
 graph TB
     subgraph "Command Services"
-        SS["SwapService"]
-        SES["SessionService"]
-        ADS["AdminDisputeService"]
+SS["SwapService"]
+SES["SessionService"]
+ADS["AdminDisputeService"]
     end
     
     subgraph "Utility Services"
-        WS["WalletService"]
-        NS["NotificationService"]
-        MS["MilestoneService"]
+WS["WalletService"]
+NS["NotificationService"]
+MS["MilestoneService"]
     end
     
-    SS -->|holdPoints<br/>@REQUIRES_NEW| WS
-    SES -->|releasePoints<br/>@REQUIRES_NEW| WS
-    ADS -->|refundEscrow<br/>@REQUIRES_NEW| WS
+    SS -->|holdPoints<br/>REQUIRES_NEW| WS
+    SES -->|releasePoints<br/>REQUIRES_NEW| WS
+    ADS -->|refundEscrow<br/>REQUIRES_NEW| WS
     
     SS -->|async email| NS
     SES -->|async email| NS
@@ -1697,12 +2204,12 @@ graph TB
     SS -->|track achievement| MS
     SES -->|track achievement| MS
     
-    style SS fill:#fff3e0
-    style SES fill:#fff3e0
-    style ADS fill:#fff3e0
-    style WS fill:#e8f5e9
-    style NS fill:#e8f5e9
-    style MS fill:#e8f5e9
+    style SS fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style SES fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style ADS fill:#d97706,stroke:#b45309,stroke-width:2px,color:#ffffff
+    style WS fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style NS fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
+    style MS fill:#059669,stroke:#047857,stroke-width:2px,color:#ffffff
 ```
 
 **Transactional Boundaries:**

@@ -12,7 +12,7 @@ target/
 *.rar
 hs_err_pid*
 replay_pid*
-storage/
+/storage/
 .mvn/wrapper/maven-wrapper.jar
 
 # Environment Variables

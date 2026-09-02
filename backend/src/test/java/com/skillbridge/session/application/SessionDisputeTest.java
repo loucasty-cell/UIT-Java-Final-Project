@@ -216,6 +216,9 @@ public class SessionDisputeTest {
         @Override public Optional<SwapSession> findBySwapRequestId(UUID swapRequestId) { return store.values().stream().filter(s -> s.getSwapRequestId().equals(swapRequestId)).findFirst(); }
         @Override public List<SwapSession> findByRequesterIdOrResponderIdOrderByCreatedAtDesc(UUID requesterId, UUID responderId) { return List.of(); }
         @Override public List<SwapSession> findActiveByUserId(UUID userId, List<SwapSessionStatus> statuses) { return List.of(); }
+        @Override public List<SwapSession> findAllByUserId(UUID userId) { return List.of(); }
+        @Override public List<SwapSession> findByUserIdAndStatus(UUID userId, SwapSessionStatus status) { return List.of(); }
+        @Override public List<SwapSession> findSessionsInDateRange(UUID userId, OffsetDateTime startDate, OffsetDateTime endDate) { return List.of(); }
         @Override public List<SwapSession> findSessionsEligibleForAutoRelease(List<SwapSessionStatus> statuses, OffsetDateTime now) { return List.of(); }
         @Override public List<SwapSession> findConflictingSessions(UUID userId, OffsetDateTime bufferStart, OffsetDateTime bufferEnd, List<SwapSessionStatus> statuses) { return List.of(); }
         @Override public long countCompletedSessionsByUserId(UUID userId) { return 0L; }
@@ -299,11 +302,12 @@ public class SessionDisputeTest {
 
     @Test
     void testResolvingAlreadyResolvedDisputeIsIdempotent() {
+        TestAuthContext.loginAs(adminId);
         // Arrange: Create and resolve a dispute
         Dispute dispute = new Dispute();
         dispute.setId(UUID.randomUUID());
         dispute.setSessionId(sessionId);
-        dispute.setStatus(DisputeStatus.PENDING);
+        dispute.setStatus(DisputeStatus.OPEN);
         dispute.setReason("Session not completed");
         disputeRepository.save(dispute);
 
@@ -313,8 +317,8 @@ public class SessionDisputeTest {
 
         // Act: Resolve the dispute first time
         DisputeResponse response1 = adminDisputeService.resolveDispute(dispute.getId(), request);
-        assertTrue(response1 != null && response1.getStatus().equals(DisputeStatus.RESOLVED.toString()),
-                "First resolution should succeed");
+        assertNotNull(response1);
+        assertEquals(DisputeStatus.RESOLVED, response1.getStatus(), "First resolution should succeed");
 
         // Arrange: Modify request to try different resolution
         request.setResolution(DisputeResolution.REFUND_LEARNER);
@@ -324,14 +328,15 @@ public class SessionDisputeTest {
         DisputeResponse response2 = adminDisputeService.resolveDispute(dispute.getId(), request);
 
         // Assert: Second call returns same resolution as first
-        assertTrue(response2.getStatus().equals(DisputeStatus.RESOLVED.toString()),
-                "Second resolution should be idempotent");
-        assertEquals(DisputeResolution.RELEASE_TO_MENTOR.toString(), response2.getResolution().toString(),
+        assertNotNull(response2);
+        assertEquals(DisputeStatus.RESOLVED, response2.getStatus(), "Second resolution should be idempotent");
+        assertEquals(DisputeResolution.RELEASE_TO_MENTOR, response2.getResolution(),
                 "Resolution should remain unchanged after second call (idempotent)");
     }
 
     @Test
     void testResolvingDisputeOnCancelledSessionThrowsError() {
+        TestAuthContext.loginAs(adminId);
         // Arrange: Create dispute with cancelled session
         SwapSession cancelledSession = new SwapSession();
         cancelledSession.setId(sessionId);
@@ -344,7 +349,7 @@ public class SessionDisputeTest {
         Dispute dispute = new Dispute();
         dispute.setId(UUID.randomUUID());
         dispute.setSessionId(sessionId);
-        dispute.setStatus(DisputeStatus.PENDING);
+        dispute.setStatus(DisputeStatus.OPEN);
         dispute.setReason("Cancelled session dispute");
         disputeRepository.save(dispute);
 
@@ -360,11 +365,12 @@ public class SessionDisputeTest {
 
     @Test
     void testRefundResolutionCancelsSwap() {
+        TestAuthContext.loginAs(adminId);
         // Arrange: Create dispute with points held
         Dispute dispute = new Dispute();
         dispute.setId(UUID.randomUUID());
         dispute.setSessionId(sessionId);
-        dispute.setStatus(DisputeStatus.PENDING);
+        dispute.setStatus(DisputeStatus.OPEN);
         dispute.setReason("Learner requested refund");
         disputeRepository.save(dispute);
 

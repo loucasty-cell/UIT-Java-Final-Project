@@ -10,7 +10,7 @@ import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -33,8 +33,8 @@ public class SkillEntityMappingTest {
         assertEquals(String.class, Skill.class.getDeclaredField("name").getType());
         assertEquals(String.class, Skill.class.getDeclaredField("category").getType());
         assertEquals(String.class, Skill.class.getDeclaredField("description").getType());
-        assertEquals(LocalDateTime.class, Skill.class.getDeclaredField("createdAt").getType());
-        assertEquals(LocalDateTime.class, Skill.class.getDeclaredField("updatedAt").getType());
+        assertEquals(OffsetDateTime.class, Skill.class.getDeclaredField("createdAt").getType());
+        assertEquals(OffsetDateTime.class, Skill.class.getDeclaredField("updatedAt").getType());
 
         assertNotNull(Skill.class.getDeclaredField("name").getAnnotation(NotBlank.class));
         assertNotNull(Skill.class.getDeclaredField("category").getAnnotation(NotBlank.class));

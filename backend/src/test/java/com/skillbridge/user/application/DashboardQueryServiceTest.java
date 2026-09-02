@@ -2,6 +2,7 @@ package com.skillbridge.user.application;
 
 import com.skillbridge.auth.domain.entity.User;
 import com.skillbridge.auth.infrastructure.persistence.UserRepository;
+import com.skillbridge.swap.domain.model.SwapSessionStatus;
 import com.skillbridge.swap.infrastructure.persistence.SwapSessionRepository;
 import com.skillbridge.user.api.dto.response.DashboardResponse;
 import com.skillbridge.user.api.dto.response.MyProfileResponse;
@@ -66,22 +67,26 @@ class DashboardQueryServiceTest {
         mockUser.setEmail("test@example.com");
         mockUser.setDisplayName("Test User");
 
+        UserActivityLog activityLog = new UserActivityLog();
+        activityLog.setUserId(userId);
+        activityLog.setActivityDate(LocalDate.now());
+        activityLog.setSessionsAttended(1);
+        activityLog.setHoursLearned(2.0);
+        activityLog.setLoginCount(1);
+
         when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
         when(userProfileQueryService.toProfileResponse(mockUser)).thenReturn(
                 MyProfileResponse.builder().id(userId).email("test@example.com").build()
         );
         when(userActivityLogRepository.findByUserIdOrderByActivityDateDesc(userId))
-                .thenReturn(Collections.singletonList(
-                        UserActivityLog.builder()
-                                .userId(userId)
-                                .activityDate(LocalDate.now())
-                                .sessionsAttended(1)
-                                .hoursLearned(2.0)
-                                .loginCount(1)
-                                .build()
-                ));
-        when(userSkillRepository.findByUserId(userId)).thenReturn(new ArrayList<>());
-        when(swapSessionRepository.findByParticipantId(eqUserId(userId), any())).thenReturn(new ArrayList<>());
+                .thenReturn(Collections.singletonList(activityLog));
+        when(userSkillRepository.findByUserIdOrderByCreatedAtDesc(userId)).thenReturn(new ArrayList<>());
+        when(swapSessionRepository.findByUserIdAndStatus(userId, SwapSessionStatus.COMPLETED)).thenReturn(new ArrayList<>());
+        when(userMapper.toDashboardResponse(any(), any(), any(), any(), any()))
+                .thenAnswer(inv -> DashboardResponse.builder()
+                        .engagement(inv.getArgument(4))
+                        .skillProgress(inv.getArgument(3))
+                        .build());
 
         DashboardResponse response = dashboardQueryService.getDashboard(userId);
 
@@ -101,17 +106,18 @@ class DashboardQueryServiceTest {
         when(userProfileQueryService.toProfileResponse(mockUser)).thenReturn(
                 MyProfileResponse.builder().id(userId).email("test@example.com").build()
         );
-        when(userSkillRepository.findByUserId(userId)).thenReturn(new ArrayList<>());
+        when(userSkillRepository.findByUserIdOrderByCreatedAtDesc(userId)).thenReturn(new ArrayList<>());
         when(userActivityLogRepository.findByUserIdOrderByActivityDateDesc(userId)).thenReturn(new ArrayList<>());
-        when(swapSessionRepository.findByParticipantId(eqUserId(userId), any())).thenReturn(new ArrayList<>());
+        when(swapSessionRepository.findByUserIdAndStatus(userId, SwapSessionStatus.COMPLETED)).thenReturn(new ArrayList<>());
+        when(userMapper.toDashboardResponse(any(), any(), any(), any(), any()))
+                .thenAnswer(inv -> DashboardResponse.builder()
+                        .engagement(inv.getArgument(4))
+                        .skillProgress(inv.getArgument(3))
+                        .build());
 
         DashboardResponse response = dashboardQueryService.getDashboard(userId);
 
         assertThat(response).isNotNull();
         assertThat(response.getSkillProgress()).isNotNull();
-    }
-
-    private static UUID eqUserId(UUID expected) {
-        return Mockito.argThat(uuid -> uuid != null && uuid.equals(expected));
     }
 }

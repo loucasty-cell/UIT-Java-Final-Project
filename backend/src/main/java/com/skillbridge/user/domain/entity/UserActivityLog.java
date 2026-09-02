@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -34,8 +35,8 @@ public class UserActivityLog {
     @Column(name = "sessions_attended", nullable = false)
     private Integer sessionsAttended = 0;
 
-    @Column(name = "hours_learned", nullable = false)
-    private Double hoursLearned = 0.0;
+    @Column(name = "hours_learned", nullable = false, precision = 10, scale = 2)
+    private BigDecimal hoursLearned = BigDecimal.ZERO;
 
     @Column(name = "points_earned", nullable = false)
     private Integer pointsEarned = 0;
@@ -54,7 +55,7 @@ public class UserActivityLog {
         }
         if (loginCount == null) loginCount = 0;
         if (sessionsAttended == null) sessionsAttended = 0;
-        if (hoursLearned == null) hoursLearned = 0.0;
+        if (hoursLearned == null) hoursLearned = BigDecimal.ZERO;
         if (pointsEarned == null) pointsEarned = 0;
         createdAt = now;
         updatedAt = now;

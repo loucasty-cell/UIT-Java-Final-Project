@@ -71,7 +71,7 @@ class DashboardQueryServiceTest {
         activityLog.setUserId(userId);
         activityLog.setActivityDate(LocalDate.now());
         activityLog.setSessionsAttended(1);
-        activityLog.setHoursLearned(2.0);
+        activityLog.setHoursLearned(new java.math.BigDecimal("2.25"));
         activityLog.setLoginCount(1);
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
@@ -93,6 +93,8 @@ class DashboardQueryServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.getEngagement()).isNotNull();
         assertThat(response.getEngagement().getCurrentStreak()).isGreaterThanOrEqualTo(0);
+        assertThat(response.getEngagement().getHoursThisWeek()).isEqualTo(2.25);
+        assertThat(response.getEngagement().getHoursThisMonth()).isEqualTo(2.25);
     }
 
     @Test

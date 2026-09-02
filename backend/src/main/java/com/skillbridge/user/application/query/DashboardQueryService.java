@@ -156,13 +156,13 @@ public class DashboardQueryService {
         // Calculate hours this week
         double hoursThisWeek = activities.stream()
                 .filter(a -> !a.getActivityDate().isBefore(weekAgo))
-                .mapToDouble(UserActivityLog::getHoursLearned)
+                .mapToDouble(activity -> activity.getHoursLearned().doubleValue())
                 .sum();
 
         // Calculate hours this month
         double hoursThisMonth = activities.stream()
                 .filter(a -> !a.getActivityDate().isBefore(monthStart))
-                .mapToDouble(UserActivityLog::getHoursLearned)
+                .mapToDouble(activity -> activity.getHoursLearned().doubleValue())
                 .sum();
 
         OffsetDateTime lastActive = activities.get(0).getActivityDate().atStartOfDay().atOffset(ZoneOffset.UTC);

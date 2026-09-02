@@ -29,10 +29,55 @@ JAVA-PROJECT/
 
 ## 🚀 Quick Start
 
+### Run this folder on Windows
+
+From the project root, start the frontend:
+
+```powershell
+npm install
+npm run dev
+```
+
+Open **http://localhost:3000**. Keep the terminal open. If port 3000 is occupied,
+stop your previous frontend instance or use `npm run dev -- --port 3001`.
+
+In a second PowerShell terminal, start the Java API:
+
+```powershell
+cd backend
+.\mvnw.cmd "-Dfrontend.skip=true" spring-boot:run
+```
+
+The API requires a running PostgreSQL database named `skillbridge` and a private
+`backend/.env` containing `JWT_SECRET` (at least 32 characters).
+On a new checkout, copy `backend/.env.example`
+to `backend/.env`, fill in the database settings, and generate a fresh secret.
+Keep `.env` private. Quote Maven `-D` arguments in PowerShell as shown above.
+
+API: **http://localhost:9095**. Health check: **http://localhost:9096/actuator/health**.
+`-Dfrontend.skip=true` avoids reinstalling/building the frontend when running the
+API alongside Vite.
+
+The current route pages display demo data; starting the API does not automatically
+wire those pages to live data. The API services and auth utilities are available
+for that integration.
+
+To run the compiled frontend locally:
+
+```powershell
+npm run build
+npm start
+```
+
+Stop the dev server first, since both use port 3000 by default. The Node server
+and its runtime dependencies are in `.output/server`, with assets in
+`.output/public`; keep the entire `.output` folder together. This SSR frontend
+runs separately from Spring Boot and cannot be served by copying assets into a JAR.
+
 ### Prerequisites
 
 - **Java 25** (for backend): [Download from Adoptium](https://adoptium.net/)
-- **Node.js 20+** (for frontend): [Download from nodejs.org](https://nodejs.org/)
+- **Node.js 22.22.2+** (for frontend): [Download from nodejs.org](https://nodejs.org/)
 - **PostgreSQL 16+** or **Neon serverless** (for database)
 
 ### Backend Setup
@@ -134,10 +179,10 @@ After setup, verify everything works:
 
 ```bash
 # 1. Backend health check
-curl http://localhost:9095/actuator/health
+curl http://localhost:9096/actuator/health
 
 # 2. Backend API accessible
-curl http://localhost:9095/api/v1/auth/public/skills
+curl http://localhost:9095/api/skills
 
 # 3. Frontend runs
 npm run dev
@@ -160,7 +205,7 @@ cd backend
 
 ### Frontend Tests
 ```bash
-npm run build        # Type check via build
+npm run build        # Type check and build
 npx tsc --noEmit     # Type check without building
 ```
 
@@ -176,7 +221,7 @@ cd backend
 ### Frontend
 ```bash
 npm run build
-# Built files: dist/
+# Built server and assets: .output/
 ```
 
 ## 🔄 CI/CD Pipeline

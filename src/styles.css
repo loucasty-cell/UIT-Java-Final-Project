@@ -34,6 +34,10 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-bright: var(--brand-bright);
+  --color-brand-pale: var(--brand-pale);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -46,84 +50,80 @@
 
 :root {
   --radius: 1rem;
-  /* Coursera-inspired Light Mode with Dodger Blue (#1e90ff) & Ice-Sky White */
-  --background: oklch(0.985 0.008 240); /* Crisp clean ice-sky white #F8FAFD */
-  --foreground: oklch(0.14 0.01 250); /* Darker, nearly black for crisp contrast */
-  --card: oklch(1.0 0 0); /* Pure crisp white cards */
-  --card-foreground: oklch(0.14 0.01 250); /* Deep midnight navy */
-  --popover: oklch(1.0 0 0);
-  --popover-foreground: oklch(0.14 0.01 250);
-  /* Dodger Blue primary (#1e90ff / hsl(210 100% 56%)) */
-  --primary: oklch(0.67 0.18 240); /* Vivid Dodger Blue #1e90ff */
-  --primary-foreground: oklch(0.99 0.005 240); /* Crisp pure white text on primary */
-  --secondary: oklch(0.94 0.03 240); /* Soft ice-dodger blue #EBF3FF - replaces chalk grey */
-  --secondary-foreground: oklch(0.20 0.02 250); /* Darker royal navy */
-  --muted: oklch(0.94 0.03 240); /* Soft ice-dodger blue background */
-  --muted-foreground: oklch(0.35 0.02 250); /* Darker steel-grey for better readability */
-  /* Soft Dodger Blue accent & highlights */
-  --accent: oklch(0.93 0.04 240); /* Gentle dodger sky tint #E1EEFF */
-  --accent-foreground: oklch(0.67 0.18 240); /* Dodger blue text */
-  --destructive: oklch(0.58 0.20 25); /* Crimson */
-  --destructive-foreground: oklch(0.99 0.005 240);
-  /* Success & Warning */
-  --success: oklch(0.62 0.16 155); /* Electric emerald */
-  --success-foreground: oklch(0.99 0.005 240);
-  --warning: oklch(0.82 0.14 80); /* Warm amber */
-  --warning-foreground: oklch(0.28 0.08 65);
-  /* Dodger Blue tinted borders & inputs - replaces grey borders */
-  --border: oklch(0.89 0.04 240); /* Soft dodger blue border #D2E4FF */
-  --input: oklch(0.89 0.04 240); /* Clean dodger sky input border */
-  --ring: oklch(0.67 0.18 240); /* Dodger blue focus ring #1e90ff */
-  --chart-1: oklch(0.67 0.18 240); /* Dodger Blue */
-  --chart-2: oklch(0.65 0.16 160); /* Emerald */
-  --chart-3: oklch(0.80 0.13 80); /* Amber */
-  --chart-4: oklch(0.65 0.18 290); /* Purple */
-  --chart-5: oklch(0.55 0.20 220); /* Deep Cyan */
-  /* Sidebar — Coursera Clean Ice-Sky */
-  --sidebar: oklch(0.985 0.008 240); /* Soft ice white */
-  --sidebar-foreground: oklch(0.14 0.01 250); /* Deep navy */
-  --sidebar-primary: oklch(0.67 0.18 240); /* Dodger blue */
-  --sidebar-primary-foreground: oklch(0.99 0.005 240);
-  --sidebar-accent: oklch(0.93 0.04 240); /* Light dodger blue hover */
-  --sidebar-accent-foreground: oklch(0.67 0.18 240);
-  --sidebar-border: oklch(0.89 0.04 240); /* Dodger sky divider */
-  --sidebar-ring: oklch(0.67 0.18 240);
+  --brand-navy: #0f2742;
+  --brand-blue: #155e9a;
+  --brand-bright: #3b82f6;
+  --brand-pale: #e8f3fa;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #155e9a;
+  --primary-foreground: #ffffff;
+  --secondary: #e8f3fa;
+  --secondary-foreground: #0f2742;
+  --muted: #e8f3fa;
+  --muted-foreground: #475569;
+  --accent: #e8f3fa;
+  --accent-foreground: #155e9a;
+  --destructive: oklch(0.65 0.18 25);
+  --destructive-foreground: #ffffff;
+  --success: oklch(0.63 0.13 163);
+  --success-foreground: #ffffff;
+  --warning: oklch(0.85 0.12 82);
+  --warning-foreground: oklch(0.35 0.08 60);
+  --border: #dbe9f2;
+  --input: #dbe9f2;
+  --ring: #3b82f6;
+  --chart-1: #155e9a;
+  --chart-2: oklch(0.82 0.13 165);
+  --chart-3: oklch(0.85 0.12 82);
+  --chart-4: #3b82f6;
+  --chart-5: #0f2742;
+  --sidebar: #0f2742;
+  --sidebar-foreground: #e8f3fa;
+  --sidebar-primary: #155e9a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e8f3fa;
+  --sidebar-accent-foreground: #0f2742;
+  --sidebar-border: rgb(232 243 250 / 18%);
+  --sidebar-ring: #3b82f6;
 }
 
 .dark {
-  /* Coursera Midnight Navy + Dodger Blue (#1e90ff) Dark Mode */
-  --background: oklch(0.12 0.03 250); /* Midnight Navy #080E1C */
-  --foreground: oklch(0.98 0 0); /* Pure white text for high contrast */
-  --card: oklch(0.16 0.04 250); /* Deep Navy Card #0E1830 */
-  --card-foreground: oklch(0.98 0 0);
-  --popover: oklch(0.16 0.04 250);
-  --popover-foreground: oklch(0.98 0 0);
-  /* Dodger Blue primary (#1e90ff) */
-  --primary: oklch(0.67 0.18 240); /* Glowing Dodger Blue #1e90ff */
-  --primary-foreground: oklch(0.99 0.005 240);
-  --secondary: oklch(0.22 0.05 245); /* Deep Sky Navy #142446 */
-  --secondary-foreground: oklch(0.95 0.01 240);
-  --muted: oklch(0.22 0.05 245);
-  --muted-foreground: oklch(0.85 0.02 240); /* Brighter muted text */
-  --accent: oklch(0.67 0.18 240); /* Dodger Blue accent */
-  --accent-foreground: oklch(0.99 0.005 240);
-  --destructive: oklch(0.65 0.18 25);
-  --destructive-foreground: oklch(0.99 0.005 240);
-  --success: oklch(0.70 0.15 160);
-  --success-foreground: oklch(0.12 0.03 250);
-  --warning: oklch(0.80 0.13 80);
-  --warning-foreground: oklch(0.15 0.04 60);
-  --border: oklch(0.26 0.05 245); /* Deep midnight blue border #1C335B */
-  --input: oklch(0.26 0.05 245);
-  --ring: oklch(0.67 0.18 240); /* Dodger Blue focus ring */
-  --sidebar: oklch(0.14 0.035 250); /* Midnight Navy sidebar */
-  --sidebar-foreground: oklch(0.95 0.01 240);
-  --sidebar-primary: oklch(0.67 0.18 240);
-  --sidebar-primary-foreground: oklch(0.99 0.005 240);
-  --sidebar-accent: oklch(0.22 0.05 245);
-  --sidebar-accent-foreground: oklch(0.67 0.18 240);
-  --sidebar-border: oklch(0.22 0.045 245);
-  --sidebar-ring: oklch(0.67 0.18 240);
+  --background: #0f172a;
+  --foreground: #f8fafc;
+  --card: #0f2742;
+  --card-foreground: #f8fafc;
+  --popover: #0f2742;
+  --popover-foreground: #f8fafc;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: rgb(232 243 250 / 12%);
+  --secondary-foreground: #e8f3fa;
+  --muted: rgb(232 243 250 / 12%);
+  --muted-foreground: #cbd5e1;
+  --accent: rgb(232 243 250 / 16%);
+  --accent-foreground: #e8f3fa;
+  --destructive: oklch(0.7 0.19 22);
+  --destructive-foreground: #ffffff;
+  --success: oklch(0.82 0.13 165);
+  --success-foreground: #0f172a;
+  --warning: oklch(0.85 0.12 82);
+  --warning-foreground: oklch(0.2 0.05 60);
+  --border: rgb(232 243 250 / 18%);
+  --input: rgb(232 243 250 / 22%);
+  --ring: #3b82f6;
+  --sidebar: #0f2742;
+  --sidebar-foreground: #e8f3fa;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgb(232 243 250 / 14%);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(232 243 250 / 16%);
+  --sidebar-ring: #3b82f6;
 }
 
 @layer base {
@@ -131,31 +131,22 @@
     border-color: var(--color-border);
   }
 
-  body, .bg-background, .bg-card, .bg-secondary, .bg-muted, .bg-primary, .bg-accent, .border-border, .text-foreground, .text-muted-foreground, .border, header, nav {
-    @apply transition-colors duration-300 ease-in-out;
-  }
-
   html {
-    font-size: 17px;
+    font-size: 16px;
   }
 
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     font-size: 1rem;
     line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Soft, minimal Lucide icons everywhere */
   svg.lucide {
     stroke-width: 1.5;
   }
 
-  /* Softer default shadow for cards */
   h1,
   h2,
   h3,

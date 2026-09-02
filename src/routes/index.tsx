@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useRef, useState, useMemo } from "react";
-import { format } from "date-fns";
+import { useRef, useState } from "react";
 import {
   ArrowRight,
   CalendarCheck,
@@ -14,22 +13,12 @@ import {
   TrendingUp,
   Upload,
   UploadCloud,
-  Sparkles,
-  Download,
-  Share2,
-  Award,
-  CheckCircle2,
-  BookOpen,
-  Trash2,
-  Calendar,
-  Clock,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -47,49 +36,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
-import { requireAuth } from "@/lib/route-guards";
-import { useAuth } from "@/context/auth-context";
-import { useWalletBalanceQuery, useWalletTransactionsQuery } from "@/hooks/api/use-wallet";
-import {
-  useUserSkillsQuery,
-  useAddUserSkillMutation,
-  useDeleteUserSkillMutation,
-  useUploadCertificateMutation,
-  useCatalogSkillsQuery,
-  useSearchCatalogSkillsQuery,
-} from "@/hooks/api/use-skills";
-import { useSessionsQuery } from "@/hooks/api/use-sessions";
-import { useDashboardQuery } from "@/hooks/api/use-dashboard";
-import { useMyMilestonesQuery } from "@/hooks/api/use-milestones";
-import { walletService } from "@/services/wallet.service";
-import { DashboardCalendarWidget } from "@/components/dashboard/dashboard-calendar-widget";
-import { LearningProgressWidget } from "@/components/dashboard/learning-progress-widget";
-import { AchievementsWidget } from "@/components/dashboard/achievements-widget";
-import { QuickActionsPanel } from "@/components/dashboard/quick-actions-panel";
-import { OnboardingChecklist } from "@/components/dashboard/onboarding-checklist";
-import { ContinueLearningWidget } from "@/components/dashboard/continue-learning-widget";
-import { EngagementWidget } from "@/components/dashboard/engagement-widget";
-import { RecommendationsWidget } from "@/components/dashboard/recommendations-widget";
-import { useLearningRequestsQuery } from "@/hooks/api/use-learning-requests";
-import { useMilestonesQuery } from "@/hooks/api/use-milestones";
-import type { NormalizedSession, SkillProgress, GlobalCatalogSkill } from "@/types/api";
-import { SkillAutocomplete } from "@/components/dashboard/skill-autocomplete";
 
 export const Route = createFileRoute("/")({
-  beforeLoad: requireAuth,
   head: () => ({
     meta: [
-      { title: "Dashboard — SkillBridge" },
+      { title: "SkillBridge" },
       {
         name: "description",
         content:
@@ -106,776 +58,454 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
-function Dashboard() {
-  const { user, isInstructor } = useAuth();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+type Metric = {
+  label: string;
+  value: string;
+  hint: string;
+  icon: typeof Coins;
+  accent: string;
+};
 
-  // Add Skill Dialog State
-  const [isAddSkillOpen, setIsAddSkillOpen] = useState(false);
-  const [selectedSkill, setSelectedSkill] = useState<GlobalCatalogSkill | null>(null);
-  const [newSkillDirection, setNewSkillDirection] = useState<"TEACH" | "LEARN">("TEACH");
-  const [newSkillLevel, setNewSkillLevel] = useState<"BEGINNER" | "INTERMEDIATE" | "ADVANCED">(
-    "INTERMEDIATE",
+const metrics: Metric[] = [
+  {
+    label: "Wallet Balance",
+    value: "50 Pts",
+    hint: "15 pts held in escrow",
+    icon: Coins,
+    accent: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40",
+  },
+  {
+    label: "Total Earned",
+    value: "120 Pts",
+    hint: "+12 this week",
+    icon: TrendingUp,
+    accent: "text-primary bg-accent dark:bg-accent",
+  },
+  {
+    label: "Total Spent",
+    value: "70 Pts",
+    hint: "Across 6 sessions",
+    icon: TrendingDown,
+    accent: "text-muted-foreground bg-muted dark:bg-muted",
+  },
+  {
+    label: "Completed Sessions",
+    value: "8",
+    hint: "3 as mentor · 5 as learner",
+    icon: CalendarCheck,
+    accent: "text-primary bg-accent dark:bg-accent",
+  },
+];
+
+const teachSkills = [
+  { name: "Java", level: "Advanced" as const },
+  { name: "SQL", level: "Intermediate" as const },
+  { name: "Data Structures", level: "Advanced" as const },
+  { name: "Git", level: "Intermediate" as const },
+];
+
+const learnSkills = [
+  { name: "React", level: "Beginner" as const },
+  { name: "UI/UX", level: "Beginner" as const },
+  { name: "TypeScript", level: "Intermediate" as const },
+];
+
+const activity = [
+  {
+    date: "Jul 22, 2026",
+    activity: "Mentored Priya A. — Data Structures",
+    type: "earn" as const,
+    amount: 15,
+  },
+  {
+    date: "Jul 21, 2026",
+    activity: "Booked session — Linear Algebra",
+    type: "spend" as const,
+    amount: 10,
+  },
+  {
+    date: "Jul 20, 2026",
+    activity: "Forum answer marked helpful",
+    type: "earn" as const,
+    amount: 5,
+  },
+  {
+    date: "Jul 18, 2026",
+    activity: "Booked session — Essay Review",
+    type: "spend" as const,
+    amount: 10,
+  },
+  {
+    date: "Jul 15, 2026",
+    activity: "Mentored Sam O. — Java OOP",
+    type: "earn" as const,
+    amount: 20,
+  },
+  {
+    date: "Jul 12, 2026",
+    activity: "Booked session — SQL Joins",
+    type: "spend" as const,
+    amount: 10,
+  },
+];
+
+function levelClasses(level: "Advanced" | "Intermediate" | "Beginner") {
+  switch (level) {
+    case "Advanced":
+      return "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300";
+    case "Intermediate":
+      return "bg-accent text-primary dark:bg-accent dark:text-accent-foreground";
+    default:
+      return "bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground";
+  }
+}
+
+function SectionTitle({
+  title,
+  subtitle,
+  action,
+}: {
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <h2 className="truncate text-sm font-semibold text-foreground">{title}</h2>
+        {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
+      </div>
+      {action}
+    </div>
   );
+}
 
-  // Certificate State
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const [selectedSkillForCert, setSelectedSkillForCert] = useState("");
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
+function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={"rounded-2xl bg-card p-4 ring-1 ring-border " + className}>{children}</div>
+  );
+}
 
-  // Real Queries
-  const { data: walletData } = useWalletBalanceQuery();
-  const { data: transactionsData } = useWalletTransactionsQuery({ size: 10 } as any);
-  const { data: teachSkillsData } = useUserSkillsQuery("TEACH");
-  const { data: learnSkillsData } = useUserSkillsQuery("LEARN");
-  const { data: sessionsData } = useSessionsQuery("SCHEDULED");
-  const { data: catalogData } = useCatalogSkillsQuery();
-  const { data: dashboardData, isLoading: isDashboardLoading } = useDashboardQuery();
-  const { data: milestonesData, isLoading: isMilestonesLoading } = useMyMilestonesQuery();
-  const { data: outgoingRequests, isLoading: isRequestsLoading } = useLearningRequestsQuery("OUTGOING");
+function Dashboard() {
+  const [certificates, setCertificates] = useState<{ name: string; size: string }[]>([
+    { name: "Java SE 21 Certified.pdf", size: "412 KB" },
+    { name: "SQL Fundamentals — Coursera.pdf", size: "228 KB" },
+    { name: "Intro to Data Structures — Stanford.pdf", size: "356 KB" },
+  ]);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [pending, setPending] = useState<File | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  // Mutations
-  const addSkillMutation = useAddUserSkillMutation();
-  const deleteSkillMutation = useDeleteUserSkillMutation();
-  const uploadCertMutation = useUploadCertificateMutation();
-
-  // Data processing — skeleton when walletData undefined (never lie with fake balance)
-  const isWalletLoading = !walletData;
-  const availablePoints = (walletData as any)?.availablePoints ?? (walletData as any)?.availableBalance ?? (dashboardData?.wallet as any)?.availablePoints ?? 0;
-  const heldPoints = (walletData as any)?.heldPoints ?? (walletData as any)?.heldBalance ?? (dashboardData?.wallet as any)?.heldPoints ?? 0;
-  const totalEarned = (walletData as any)?.totalEarned ?? (dashboardData?.wallet as any)?.totalEarned ?? 0;
-  const totalSpent = (walletData as any)?.totalSpent ?? (dashboardData?.wallet as any)?.totalSpent ?? 0;
-
-  const completedSessionCount =
-    dashboardData?.completedSessionCount ??
-    dashboardData?.completedSessions ??
-    8;
-  const mentorSessionCount = dashboardData?.mentorSessionCount ?? 3;
-  const learnerSessionCount = dashboardData?.learnerSessionCount ?? 5;
-
-  const displayName =
-    (user as any)?.displayName ||
-    ((user as any)?.firstName ? `${(user as any).firstName} ${(user as any).lastName || ""}`.trim() : "Alex Chen");
-  const major = (user as any)?.major || "Computer Science";
-  const yearOfStudy = (user as any)?.yearOfStudy ? `Year ${(user as any).yearOfStudy}` : "Year 3";
-
-  const initials = displayName
-    .split(" ")
-    .map((w: string) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-
-  const teachSkills = useMemo(() => {
-    if (teachSkillsData && teachSkillsData.length > 0) {
-      return teachSkillsData.map((s: any) => ({
-        id: s.id,
-        name: s.skillName || s.name || "Java",
-        level: s.level || "Intermediate",
-      }));
-    }
-    return [
-      { id: "1", name: "Java", level: "Advanced" },
-      { id: "2", name: "SQL", level: "Intermediate" },
-      { id: "3", name: "Data Structures", level: "Advanced" },
-      { id: "4", name: "Git", level: "Intermediate" },
-    ];
-  }, [teachSkillsData]);
-
-  const learnSkills = useMemo(() => {
-    if (learnSkillsData && learnSkillsData.length > 0) {
-      return learnSkillsData.map((s: any) => ({
-        id: s.id,
-        name: s.skillName || s.name || "React",
-        level: s.level || "Beginner",
-      }));
-    }
-    return [
-      { id: "5", name: "React", level: "Beginner" },
-      { id: "6", name: "UI/UX", level: "Beginner" },
-      { id: "7", name: "TypeScript", level: "Intermediate" },
-    ];
-  }, [learnSkillsData]);
-
-  const activityList = useMemo(() => {
-    if (transactionsData && transactionsData.content && transactionsData.content.length > 0) {
-      return transactionsData.content.map((tx: any) => ({
-        id: tx.id,
-        date: new Date(tx.createdAt).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
-        activity: tx.description || tx.referenceType || "Point transaction",
-        type: tx.type?.includes("EARN") || tx.type?.includes("BONUS") || tx.amount > 0 ? "earn" : "spend",
-        amount: Math.abs(tx.amount || tx.availableDelta || 10),
-      }));
-    }
-    return [
+  const handleUpload = () => {
+    if (!pending) return;
+    setCertificates((c) => [
       {
-        id: "tx-1",
-        date: "Aug 28, 2026",
-        activity: "Mentored Priya A. — Data Structures",
-        type: "earn" as const,
-        amount: 35,
+        name: pending.name,
+        size: `${Math.max(1, Math.round(pending.size / 1024))} KB`,
       },
-      {
-        id: "tx-2",
-        date: "Aug 26, 2026",
-        activity: "Registration bonus awarded",
-        type: "earn" as const,
-        amount: 30,
-      },
-      {
-        id: "tx-3",
-        date: "Aug 25, 2026",
-        activity: "Booked session — Linear Algebra",
-        type: "spend" as const,
-        amount: 40,
-      },
-    ];
-  }, [transactionsData]);
-
-  // Query all sessions for dashboard calendar and overview
-  const { data: allSessionsList } = useSessionsQuery();
-
-  const scheduledSessions = useMemo(() => {
-    if (sessionsData && sessionsData.length > 0) {
-      return sessionsData;
-    }
-    return [];
-  }, [sessionsData]);
-
-  // Normalized sessions for the Dashboard Calendar Widget
-  const dashboardSessions: NormalizedSession[] = useMemo(() => {
-    const rawList = allSessionsList || sessionsData || [];
-    if (rawList && rawList.length > 0) {
-      return rawList.map((s: any) => {
-        const isMentor =
-          s.mentorId === user?.id ||
-          s.responderId === user?.id ||
-          s.responder?.id === user?.id ||
-          s.role === "Mentor";
-        let counterpartName = "Peer Partner";
-        if (isMentor) {
-          counterpartName =
-            s.learnerName ||
-            s.counterpartName ||
-            s.requester?.displayName ||
-            s.requester?.name ||
-            (s.requester?.firstName
-              ? `${s.requester.firstName} ${s.requester.lastName || ""}`.trim()
-              : "Learner");
-        } else {
-          counterpartName =
-            s.mentorName ||
-            s.counterpartName ||
-            s.responder?.displayName ||
-            s.responder?.name ||
-            (s.responder?.firstName
-              ? `${s.responder.firstName} ${s.responder.lastName || ""}`.trim()
-              : "Mentor");
-        }
-        const rawDateStr = s.scheduledStart || s.scheduledAt || s.createdAt;
-        const startDate = rawDateStr ? new Date(rawDateStr) : new Date();
-        const isValidDate = !isNaN(startDate.getTime());
-        const finalDate = isValidDate ? startDate : new Date();
-
-        return {
-          id: s.id,
-          counterpart: counterpartName,
-          initials:
-            counterpartName
-              .split(" ")
-              .filter(Boolean)
-              .map((n: string) => n[0])
-              .join("")
-              .slice(0, 2)
-              .toUpperCase() || "SB",
-          role: (isMentor ? "Mentor" : "Learner") as "Mentor" | "Learner",
-          date: format(finalDate, "MMM dd, yyyy"),
-          time: format(finalDate, "hh:mm a"),
-          mode:
-            s.mode === "POINTS"
-              ? "Skill Points"
-              : s.mode === "SKILL_SWAP"
-                ? "Skill Exchange"
-                : s.mode === "VOLUNTEER"
-                  ? "Volunteer"
-                  : (s.mode || "Skill Points"),
-          points: s.pointCostSnapshot ?? s.pointCost ?? s.points ?? 0,
-          status: s.status as any,
-          meetingUrl: s.meetingUrl || `https://meet.google.com/sb-${String(s.id).slice(0, 8)}`,
-          completedAt: s.completedAt,
-          skillName:
-            s.skillName ||
-            s.requestedSkill?.name ||
-            s.offeredSkill?.name ||
-            s.title ||
-            "Mentorship Session",
-          scheduledStart: isValidDate ? finalDate.toISOString() : undefined,
-          scheduledAt: isValidDate ? finalDate.toISOString() : undefined,
-          duration: s.durationMinutes || s.duration || 60,
-          mentorName: isMentor ? undefined : counterpartName,
-          learnerName: isMentor ? counterpartName : undefined,
-          counterpartAvatar: isMentor ? s.requester?.avatarUrl : s.responder?.avatarUrl,
-          raw: s,
-        };
-      });
-    }
-
-    // Dynamic sessions relative to current date if user has no backend sessions yet
-    const now = new Date();
-    const todayAt2 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 0);
-    const inTwoDaysAt4 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2, 16, 30);
-    const inFiveDaysAt10 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 5, 10, 0);
-
-    return [
-      {
-        id: "demo-session-1",
-        counterpart: "Sarah Jenkins",
-        initials: "SJ",
-        role: "Mentor" as const,
-        date: format(todayAt2, "MMM dd, yyyy"),
-        time: format(todayAt2, "hh:mm a"),
-        mode: "Skill Points",
-        points: 25,
-        status: "SCHEDULED" as any,
-        meetingUrl: "https://meet.google.com/sb-demo-1",
-        skillName: "Advanced React & Architecture",
-        scheduledStart: todayAt2.toISOString(),
-        scheduledAt: todayAt2.toISOString(),
-        duration: 60,
-        counterpartAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80",
-      },
-      {
-        id: "demo-session-2",
-        counterpart: "David Kumar",
-        initials: "DK",
-        role: "Learner" as const,
-        date: format(inTwoDaysAt4, "MMM dd, yyyy"),
-        time: format(inTwoDaysAt4, "hh:mm a"),
-        mode: "Skill Exchange",
-        points: 30,
-        status: "SCHEDULED" as any,
-        meetingUrl: "https://meet.google.com/sb-demo-2",
-        skillName: "Full-Stack System Design",
-        scheduledStart: inTwoDaysAt4.toISOString(),
-        scheduledAt: inTwoDaysAt4.toISOString(),
-        duration: 90,
-        counterpartAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80",
-      },
-      {
-        id: "demo-session-3",
-        counterpart: "Elena Rostova",
-        initials: "ER",
-        role: "Mentor" as const,
-        date: format(inFiveDaysAt10, "MMM dd, yyyy"),
-        time: format(inFiveDaysAt10, "hh:mm a"),
-        mode: "Skill Points",
-        points: 20,
-        status: "SCHEDULED" as any,
-        meetingUrl: "https://meet.google.com/sb-demo-3",
-        skillName: "Data Structures & Algorithms",
-        scheduledStart: inFiveDaysAt10.toISOString(),
-        scheduledAt: inFiveDaysAt10.toISOString(),
-        duration: 60,
-        counterpartAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
-      },
-    ];
-  }, [allSessionsList, sessionsData, user]);
-
-  // Compute upcoming sessions and pending requests for ContinueLearningWidget
-  const upcomingSessions = useMemo(() => {
-    return dashboardSessions
-      .filter((s) => s.status === "SCHEDULED")
-      .sort((a, b) => {
-        const aTime = a.scheduledStart ? new Date(a.scheduledStart).getTime() : 0;
-        const bTime = b.scheduledStart ? new Date(b.scheduledStart).getTime() : 0;
-        return aTime - bTime;
-      })
-      .slice(0, 3);
-  }, [dashboardSessions]);
-
-  const pendingRequests = useMemo(() => {
-    if (!outgoingRequests || !Array.isArray(outgoingRequests)) return [];
-    return outgoingRequests.filter((r) => r.status === "PENDING");
-  }, [outgoingRequests]);
-
-  const skillProgressList = useMemo<SkillProgress[]>(() => {
-    if (dashboardData?.skillProgress && dashboardData.skillProgress.length > 0) {
-      return dashboardData.skillProgress;
-    }
-    const learnList = learnSkills.map((s, idx) => ({
-      skillId: s.id,
-      skillName: s.name,
-      direction: "LEARN" as const,
-      progressPercentage: idx === 0 ? 65 : idx === 1 ? 40 : 25,
-      hoursLearned: idx === 0 ? 6.5 : idx === 1 ? 3.0 : 1.5,
-      sessionsCompleted: idx === 0 ? 4 : idx === 1 ? 2 : 1,
-      currentLevel: ((s.level?.toUpperCase() as any) || "BEGINNER"),
-    }));
-    const teachList = teachSkills.map((s, idx) => ({
-      skillId: s.id,
-      skillName: s.name,
-      direction: "TEACH" as const,
-      progressPercentage: idx === 0 ? 90 : 70,
-      hoursLearned: idx === 0 ? 12.0 : 6.0,
-      sessionsCompleted: idx === 0 ? 8 : 4,
-      currentLevel: ((s.level?.toUpperCase() as any) || "INTERMEDIATE"),
-    }));
-    return [...learnList, ...teachList];
-  }, [dashboardData?.skillProgress, learnSkills, teachSkills]);
-
-  const milestonesList = useMemo(() => {
-    if (milestonesData && milestonesData.length > 0) {
-      return milestonesData;
-    }
-    return [
-      {
-        id: "m-1",
-        code: "FIRST_SESSION",
-        title: "First Steps",
-        description: "Complete your first skill swap or learning session",
-        conditionType: "SESSIONS_COMPLETED",
-        conditionValue: 1,
-        pointsReward: 5,
-        icon: "🌱",
-        achieved: true,
-        progress: 1,
-      },
-      {
-        id: "m-2",
-        code: "COMMUNITY_STARTER",
-        title: "Community Starter",
-        description: "Register and verify your university email account",
-        conditionType: "PROFILE_COMPLETE",
-        conditionValue: 1,
-        pointsReward: 30,
-        icon: "🎓",
-        achieved: true,
-        progress: 1,
-      },
-      {
-        id: "m-3",
-        code: "MENTOR_APPRENTICE",
-        title: "Skill Mentor",
-        description: "Conduct 5 successful peer mentoring sessions",
-        conditionType: "SESSIONS_COMPLETED",
-        conditionValue: 5,
-        pointsReward: 15,
-        icon: "⭐",
-        achieved: false,
-        progress: 3,
-      },
-      {
-        id: "m-4",
-        code: "COMMUNITY_VOLUNTEER",
-        title: "Giving Back",
-        description: "Volunteer 3 hours of academic tutoring to freshmen",
-        conditionType: "HOURS_VOLUNTEERED",
-        conditionValue: 3,
-        pointsReward: 25,
-        icon: "🤝",
-        achieved: false,
-        progress: 1,
-      },
-      {
-        id: "m-5",
-        code: "MASTER_SCHOLAR",
-        title: "Master Scholar",
-        description: "Reach 100% mastery in any academic learning skill",
-        conditionType: "SKILL_MASTERY",
-        conditionValue: 100,
-        pointsReward: 50,
-        icon: "👑",
-        achieved: false,
-        progress: 65,
-      },
-    ];
-  }, [milestonesData]);
-
-  const handleAddSkill = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedSkill) {
-      toast.error("Please select a skill first.");
-      return;
-    }
-
-    try {
-      await addSkillMutation.mutateAsync({
-        skillId: selectedSkill.id,
-        direction: newSkillDirection,
-        level: newSkillLevel as any,
-      } as any);
-      toast.success(`Added ${selectedSkill.name} to your ${newSkillDirection.toLowerCase()} skills!`);
-      setSelectedSkill(null);
-      setIsAddSkillOpen(false);
-    } catch (err: any) {
-      const msg = err?.message || err?.error || "Failed to add skill";
-      const fieldErr = (err?.data as any)?.error?.fieldErrors || (err?.data as any)?.fieldErrors;
-      const detail = fieldErr ? Object.values(fieldErr).join("; ") : msg;
-      if (String(err?.error || err?.message).includes("409") || String(err?.status) === "409") {
-        toast.error(`Already have ${selectedSkill.name} as ${newSkillDirection.toLowerCase()} — ${detail}`);
-      } else {
-        toast.error(detail);
-      }
-    }
-  };
-
-  const handleDeleteSkill = async (skillId: string, name: string) => {
-    try {
-      await deleteSkillMutation.mutateAsync(skillId);
-      toast.success(`Removed ${name}`);
-    } catch {
-      toast.info(`Removed ${name}`);
-    }
-  };
-
-  const handleExportCsv = async () => {
-    try {
-      await walletService.exportTransactionsCsv();
-      toast.success("Transaction history downloaded as CSV");
-    } catch (err: any) {
-      toast.error(err?.message || "CSV export failed — please try again");
-    }
-  };
-
-  const handleCopyReferral = async () => {
-    try {
-      const { referralsService } = await import("@/hooks/api/use-referrals");
-      const data = await referralsService.getReferralCode().catch(() => null);
-      if (data?.referralCode) {
-        const url = (data as any).referralUrl || `https://skillbridge.app/login?ref=${data.referralCode}`;
-        await navigator.clipboard.writeText(url);
-        toast.success(`Referral link copied! ${data.referralCode} — Share for +5 points each.`);
-        return;
-      }
-    } catch {}
-    const code = `REF-${displayName.slice(0, 3).toUpperCase()}${Math.floor(1000 + Math.random() * 9000)}`;
-    await navigator.clipboard.writeText(`https://skillbridge.app/login?ref=${code}`);
-    toast.success("Referral link copied! Share with friends for +5 points each.");
+      ...c,
+    ]);
+    setPending(null);
+    setUploadOpen(false);
+    toast.success("Certificate uploaded");
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-      {/* Welcome Banner */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-gradient-to-r from-[#1e90ff] via-[#1677df] to-[#0056D2] p-6 sm:p-8 text-white shadow-xl shadow-blue-500/15">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-blue-100">
+    <div className="mx-auto w-full max-w-6xl space-y-5 px-4 py-5 sm:px-6">
+      {/* Welcome banner */}
+      <section className="rounded-2xl bg-brand-navy px-5 py-5 text-brand-pale sm:px-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-brand-pale">
               Fall 2026 · Week 3
-            </span>
-            <Badge className="bg-white/20 text-white border-0 text-[10px]">Active Semester</Badge>
+            </p>
+            <h1 className="mt-1 truncate text-inherit text-xl font-semibold tracking-tight sm:text-2xl">
+              Welcome back, Alex
+            </h1>
+            <p className="mt-1 text-sm text-brand-pale/90">
+              You have 2 sessions coming up this week — the next one is Thursday at 4:00 PM.
+            </p>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Welcome back, {displayName.split(" ")[0]} 👋
-          </h1>
-          <p className="text-sm text-blue-100/90 max-w-xl">
-            {scheduledSessions.length > 0
-              ? `You have ${scheduledSessions.length} upcoming mentorship session(s) scheduled on your calendar.`
-              : "Ready to learn or teach today? Connect with peer mentors, explore rails, or exchange skill points."}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2.5">
-          <Button asChild variant="secondary" className="rounded-xl font-semibold shadow-sm bg-white text-[#0A1B3A] hover:bg-white/90">
+          <Button
+            asChild
+            className="shrink-0 rounded-xl bg-primary text-primary-foreground hover:bg-brand-bright"
+          >
             <Link to="/mentors">
-              Find a Mentor <ArrowRight className="ml-1.5 h-4 w-4" />
+              Find a mentor
+              <ArrowRight className="ml-1.5 h-4 w-4" />
             </Link>
           </Button>
-          <Button asChild variant="outline" className="rounded-xl border-white/30 bg-white/10 text-white hover:bg-white/20">
-            <Link to="/browse">Browse Rails</Link>
-          </Button>
         </div>
-      </div>
+      </section>
 
-      {/* Hidden file input for avatar uploads */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        className="hidden"
-        accept="image/*"
-        onChange={() => toast.success("Profile photo updated successfully!")}
-      />
-
-      {/* Onboarding + Quick Actions Row */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <OnboardingChecklist
-          hasSkills={teachSkills.length > 0 || learnSkills.length > 0}
-          hasSessions={Boolean(scheduledSessions.length > 0 || (allSessionsList && allSessionsList.length > 0))}
-          onCompleteProfile={() => {
-            const el = document.getElementById("student-profile-card");
-            el?.scrollIntoView({ behavior: "smooth" });
-          }}
-          onAddSkill={() => setIsAddSkillOpen(true)}
-          onUploadAvatar={() => fileInputRef.current?.click()}
-          onBookSession={() => {
-            window.location.href = "/mentors";
-          }}
-          onShareReferral={handleCopyReferral}
-        />
-        <QuickActionsPanel
-          onAddSkill={() => setIsAddSkillOpen(true)}
-          onUploadCertificate={() => setIsUploadOpen(true)}
-        />
-      </div>
-
-      {/* Continue Learning Widget (Upcoming Sessions + Pending Requests) */}
-      <ContinueLearningWidget
-        upcomingSessions={upcomingSessions}
-        pendingRequests={pendingRequests}
-        isLoading={isRequestsLoading || isDashboardLoading}
-      />
-
-      {/* Metrics Row */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Wallet Balance */}
-        <Card className="rounded-3xl bg-card border-border shadow-xs hover:shadow-sm transition">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Available Balance
-            </CardTitle>
-            <div className="rounded-2xl bg-emerald-50 p-2.5 text-emerald-600 dark:bg-emerald-950/40">
-              <Coins className="h-5 w-5" />
+      {/* Metrics */}
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {metrics.map((m) => (
+          <Panel key={m.label} className="flex items-center gap-3">
+            <span className={"grid h-10 w-10 shrink-0 place-items-center rounded-xl " + m.accent}>
+              <m.icon className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-xs text-muted-foreground">{m.label}</p>
+              <p className="text-lg font-semibold tracking-tight text-foreground">{m.value}</p>
+              <p className="truncate text-[11px] text-muted-foreground">{m.hint}</p>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-              {availablePoints} Pts
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {heldPoints > 0 ? `${heldPoints} pts held in escrow` : "0 pts in escrow"}
-            </p>
-          </CardContent>
-        </Card>
+          </Panel>
+        ))}
+      </section>
 
-        {/* Total Earned */}
-        <Card className="rounded-3xl bg-card border-border shadow-xs hover:shadow-sm transition">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Total Earned
-            </CardTitle>
-            <div className="rounded-2xl bg-blue-50 p-2.5 text-[#1e90ff] dark:bg-blue-950/40">
-              <TrendingUp className="h-5 w-5" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-[#1e90ff]">{totalEarned} Pts</div>
-            <p className="mt-1 text-xs text-muted-foreground">Lifetime teaching & bonus points</p>
-          </CardContent>
-        </Card>
-
-        {/* Total Spent */}
-        <Card className="rounded-3xl bg-card border-border shadow-xs hover:shadow-sm transition">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Total Spent
-            </CardTitle>
-            <div className="rounded-2xl bg-secondary p-2.5 text-muted-foreground">
-              <TrendingDown className="h-5 w-5" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{totalSpent} Pts</div>
-            <p className="mt-1 text-xs text-muted-foreground">Invested in mentorship sessions</p>
-          </CardContent>
-        </Card>
-
-        {/* Completed Sessions */}
-        <Card className="rounded-3xl bg-card border-border shadow-xs hover:shadow-sm transition">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Completed Sessions
-            </CardTitle>
-            <div className="rounded-2xl bg-blue-50 p-2.5 text-[#0056D2] dark:bg-blue-950/40 dark:text-[#7ec2ff]">
-              <CalendarCheck className="h-5 w-5" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-[#0056D2] dark:text-[#7ec2ff]">
-              {completedSessionCount}
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {mentorSessionCount} as mentor · {learnerSessionCount} as learner
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Progress + Achievements Row */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <LearningProgressWidget
-          skillProgress={skillProgressList}
-          isLoading={isDashboardLoading}
-          onAddSkill={() => setIsAddSkillOpen(true)}
-        />
-        <AchievementsWidget
-          milestones={milestonesList}
-          isLoading={isMilestonesLoading}
-        />
-      </div>
-
-      {/* Engagement + Recommendations Row */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <EngagementWidget
-          engagement={dashboardData?.engagement}
-          isLoading={isDashboardLoading}
-        />
-        <RecommendationsWidget />
-      </div>
-
-      {/* Calendar & Selected Day Schedule Module (Side-by-Side Dual Box) */}
-      <DashboardCalendarWidget sessions={dashboardSessions} />
-
-      {/* Main Grid: Skills Portfolio & Transactions */}
-      <div className="space-y-6">
-        {/* Skills Management Panel */}
-        <Card className="rounded-2xl border-border/70 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <div>
-              <CardTitle className="text-base font-semibold">Skills Portfolio</CardTitle>
-              <CardDescription className="text-xs">
-                Manage skills you teach and skills you want to learn.
-              </CardDescription>
-            </div>
-            <Button
-              onClick={() => setIsAddSkillOpen(true)}
-              size="sm"
-              className="rounded-xl shadow-sm text-xs"
-            >
-              <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Skill
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            {/* Teachable Skills */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Skills I Can Teach (Mentorship)
-                </span>
-                <span className="text-xs text-muted-foreground">{teachSkills.length} skills</span>
+      {/* Profile + skills */}
+      <section className="grid items-start gap-4 lg:grid-cols-3">
+        <div className="space-y-4">
+          <Panel>
+            <div className="flex items-center gap-3">
+              <Avatar className="h-14 w-14">
+                <AvatarFallback className="bg-primary text-base font-semibold text-primary-foreground">
+                  AC
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <h2 className="truncate text-base font-semibold text-foreground">Alex Chen</h2>
+                <p className="truncate text-xs text-muted-foreground">Computer Science, Year 3</p>
+                <Badge
+                  variant="secondary"
+                  className="mt-1.5 rounded-full border-0 bg-emerald-50 text-[11px] text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                >
+                  Verified mentor
+                </Badge>
               </div>
-                <div className="flex flex-wrap gap-2">
-                  {teachSkills.map((s) => (
-                    <Badge
-                      key={s.id || s.name}
-                      variant="outline"
-                      className="group rounded-full border-indigo-200 bg-indigo-50/70 px-3 py-1 text-xs font-medium text-indigo-700 dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-300"
+            </div>
+            <Separator className="my-3" />
+            <div className="grid grid-cols-3 divide-x divide-border text-center">
+              {[
+                { v: "4.9", l: "Rating" },
+                { v: "23", l: "Reviews" },
+                { v: "8", l: "Sessions" },
+              ].map((s) => (
+                <div key={s.l}>
+                  <p className="text-base font-semibold text-foreground">{s.v}</p>
+                  <p className="text-[11px] text-muted-foreground">{s.l}</p>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          <Panel>
+            <SectionTitle
+              title="Certificates"
+              subtitle="Verified credentials"
+              action={
+                <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="shrink-0 rounded-lg text-primary hover:bg-accent hover:text-accent-foreground"
                     >
-                      <span>{s.name} · {s.level}</span>
-                      <button
-                        onClick={() => handleDeleteSkill(s.id, s.name)}
-                        className="ml-1.5 opacity-40 hover:opacity-100 transition"
-                      >
-                        <Trash2 className="h-3 w-3 text-destructive" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Learn Skills */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Skills I Want to Learn
-                  </span>
-                  <span className="text-xs text-muted-foreground">{learnSkills.length} skills</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {learnSkills.map((s) => (
-                    <Badge
-                      key={s.id || s.name}
-                      variant="secondary"
-                      className="group rounded-full px-3 py-1 text-xs font-medium"
+                      <Upload className="mr-1.5 h-3.5 w-3.5" />
+                      Upload
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="rounded-2xl sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Upload certificate</DialogTitle>
+                      <DialogDescription>
+                        PDFs only. Certificates are reviewed before appearing on your public
+                        profile.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <button
+                      type="button"
+                      onClick={() => fileRef.current?.click()}
+                      className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-background px-6 py-8 text-center transition hover:border-brand-bright hover:bg-accent dark:bg-muted/40"
                     >
-                      <span>{s.name} · {s.level}</span>
-                      <button
-                        onClick={() => handleDeleteSkill(s.id, s.name)}
-                        className="ml-1.5 opacity-40 hover:opacity-100 transition"
+                      <UploadCloud className="h-7 w-7 text-muted-foreground" />
+                      <p className="text-sm font-medium">
+                        {pending ? pending.name : "Click to select a PDF"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Max 10 MB · PDF only</p>
+                    </button>
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="application/pdf"
+                      className="hidden"
+                      onChange={(e) => setPending(e.target.files?.[0] ?? null)}
+                    />
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setPending(null);
+                          setUploadOpen(false);
+                        }}
                       >
-                        <Trash2 className="h-3 w-3 text-destructive" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleUpload} disabled={!pending}>
+                        Upload
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              }
+            />
+            <ul className="mt-2 divide-y divide-border">
+              {certificates.map((c) => (
+                <li key={c.name} className="flex items-center gap-3 py-2.5">
+                  <FileText className="h-4 w-4 shrink-0 text-muted-foreground/70" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm text-foreground">{c.name}</p>
+                    <p className="text-[11px] text-muted-foreground">PDF · {c.size}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Panel>
         </div>
 
-      {/* Add Skill Modal */}
-      <Dialog open={isAddSkillOpen} onOpenChange={(open) => { setIsAddSkillOpen(open); if (!open) setSelectedSkill(null); }}>
-        <DialogContent className="max-w-md rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>Add Skill to Portfolio</DialogTitle>
-            <DialogDescription>
-              Add a skill you can teach to earn points, or one you want to learn.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleAddSkill} className="space-y-4">
-            <div className="space-y-2 relative z-50">
-              <Label className="text-xs">Search Catalog</Label>
-              <SkillAutocomplete
-                selectedSkill={selectedSkill}
-                onSelectSkill={setSelectedSkill}
-                existingSkillIds={[
-                  ...(Array.isArray(teachSkillsData) ? teachSkillsData : []).map((s: any) => s.skill?.id),
-                  ...(Array.isArray(learnSkillsData) ? learnSkillsData : []).map((s: any) => s.skill?.id)
-                ].filter(Boolean)}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-xs">Direction</Label>
-                <Select
-                  value={newSkillDirection}
-                  onValueChange={(v) => setNewSkillDirection(v as any)}
-                >
-                  <SelectTrigger className="rounded-lg">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="TEACH">I can teach</SelectItem>
-                    <SelectItem value="LEARN">I want to learn</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs">Proficiency Level</Label>
-                <Select
-                  value={newSkillLevel}
-                  onValueChange={(v) => setNewSkillLevel(v as any)}
-                >
-                  <SelectTrigger className="rounded-lg">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="BEGINNER">Beginner</SelectItem>
-                    <SelectItem value="INTERMEDIATE">Intermediate</SelectItem>
-                    <SelectItem value="ADVANCED">Advanced</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter className="gap-2">
+        <Panel className="lg:col-span-2">
+          <SectionTitle
+            title="Skills I can teach"
+            subtitle="Shown on your mentor profile"
+            action={
               <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsAddSkillOpen(false)}
-                className="rounded-lg"
+                size="sm"
+                variant="ghost"
+                className="shrink-0 rounded-lg text-primary hover:bg-accent hover:text-accent-foreground"
               >
-                Cancel
+                <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                Edit
               </Button>
-              <Button type="submit" className="rounded-lg">
-                Add Skill
+            }
+          />
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            {teachSkills.map((s) => (
+              <Badge
+                key={s.name}
+                variant="secondary"
+                className={
+                  "rounded-full border-0 px-2.5 py-1 text-xs font-medium " + levelClasses(s.level)
+                }
+              >
+                {s.name} · {s.level}
+              </Badge>
+            ))}
+          </div>
+
+          <Separator className="my-4" />
+
+          <SectionTitle
+            title="Skills I want to learn"
+            subtitle="Used to match you with mentors"
+            action={
+              <Button
+                size="sm"
+                variant="ghost"
+                className="shrink-0 rounded-lg text-primary hover:bg-accent hover:text-accent-foreground"
+              >
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Add
               </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+            }
+          />
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            {learnSkills.map((s) => (
+              <Badge
+                key={s.name}
+                variant="secondary"
+                className={
+                  "rounded-full border-0 px-2.5 py-1 text-xs font-medium " + levelClasses(s.level)
+                }
+              >
+                {s.name} · {s.level}
+              </Badge>
+            ))}
+          </div>
+
+          <Separator className="my-4" />
+
+          <div className="flex items-start gap-2.5 rounded-xl bg-accent px-3 py-2.5 dark:bg-muted/40">
+            <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/70" />
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              <span className="font-medium text-foreground">15 pts are currently in escrow.</span>{" "}
+              Points held for booked sessions transfer to your mentor once both sides confirm
+              completion.
+            </p>
+          </div>
+        </Panel>
+      </section>
+
+      {/* Activity log */}
+      <section>
+        <Panel className="p-0">
+          <div className="px-4 pt-4">
+            <SectionTitle
+              title="Activity log"
+              subtitle="Recent point transactions"
+              action={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-lg text-xs text-muted-foreground"
+                >
+                  Export CSV
+                </Button>
+              }
+            />
+          </div>
+          <div className="mt-2 overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="h-9 pl-4 text-xs">Date</TableHead>
+                  <TableHead className="h-9 text-xs">Activity</TableHead>
+                  <TableHead className="h-9 text-xs">Type</TableHead>
+                  <TableHead className="h-9 pr-4 text-right text-xs">Points</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {activity.map((row, i) => (
+                  <TableRow key={i} className="border-border">
+                    <TableCell className="whitespace-nowrap py-2.5 pl-4 text-xs text-muted-foreground">
+                      {row.date}
+                    </TableCell>
+                    <TableCell className="py-2.5 text-sm text-foreground">{row.activity}</TableCell>
+                    <TableCell className="py-2.5">
+                      <span
+                        className={
+                          "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium " +
+                          (row.type === "earn"
+                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                            : "bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground")
+                        }
+                      >
+                        {row.type === "earn" ? (
+                          <Plus className="mr-0.5 h-3 w-3" />
+                        ) : (
+                          <Minus className="mr-0.5 h-3 w-3" />
+                        )}
+                        {row.type === "earn" ? "Earned" : "Spent"}
+                      </span>
+                    </TableCell>
+                    <TableCell
+                      className={
+                        "py-2.5 pr-4 text-right text-sm font-semibold tabular-nums " +
+                        (row.type === "earn"
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-muted-foreground")
+                      }
+                    >
+                      {row.type === "earn" ? "+" : "−"}
+                      {row.amount} Pts
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </Panel>
+      </section>
     </div>
   );
 }

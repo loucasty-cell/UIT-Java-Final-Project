@@ -1,10 +1,9 @@
-import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
   createRootRouteWithContext,
   useRouter,
-  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -16,7 +15,6 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { TopNav } from "@/components/top-nav";
 import { Toaster } from "@/components/ui/sonner";
-import { AuthProvider } from "@/context/auth-context";
 
 function NotFoundComponent() {
   return (
@@ -30,7 +28,7 @@ function NotFoundComponent() {
         <div className="mt-6">
           <Link
             to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-brand-bright"
           >
             Go home
           </Link>
@@ -62,13 +60,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-brand-bright"
           >
             Try again
           </button>
           <a
             href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            className="inline-flex items-center justify-center rounded-md border border-input bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
             Go home
           </a>
@@ -83,7 +81,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Dashboard — SkillBridge" },
+      { title: "SkillBridge" },
       {
         name: "description",
         content:
@@ -104,20 +102,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "Your SkillBridge dashboard: wallet balance, skills, certificates, and point activity.",
       },
-      {
-        property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1a7f0752-4e3c-4353-bf14-d0cf9daa6d0b/id-preview-683fde90--16b85d25-9e36-4f57-9617-28d56f6294ae.lovable.app-1784706805847.png",
-      },
-      {
-        name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1a7f0752-4e3c-4353-bf14-d0cf9daa6d0b/id-preview-683fde90--16b85d25-9e36-4f57-9617-28d56f6294ae.lovable.app-1784706805847.png",
-      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
   }),
   shellComponent: RootShell,
@@ -128,11 +116,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <head>
         <HeadContent />
       </head>
-      <body suppressHydrationWarning className="transition-colors duration-300 ease-in-out">
+      <body>
         {children}
         <Scripts />
       </body>
@@ -140,51 +128,21 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-import { ThemeProvider } from "@/components/theme-provider";
-
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange={false}>
-        <AuthProvider>
-          <RootLayout />
-          <Toaster />
-        </AuthProvider>
-      </ThemeProvider>
+      <SidebarProvider>
+        <AppSidebar isAdmin />
+        <SidebarInset className="bg-background">
+          <TopNav />
+          <main className="flex-1">
+            <Outlet />
+          </main>
+        </SidebarInset>
+        <Toaster />
+      </SidebarProvider>
     </QueryClientProvider>
-  );
-}
-
-
-/**
- * Layout wrapper that hides sidebar/topnav on auth pages (/login).
- * Shows a loading skeleton while AuthProvider initializes.
- */
-function RootLayout() {
-  const pathname = useRouterState({ select: (r) => r.location.pathname });
-  const isAuthPage = pathname === "/login" || pathname === "/register";
-
-  // On auth pages, render without sidebar/topnav
-  if (isAuthPage) {
-    return (
-      <main className="min-h-screen">
-        <Outlet />
-      </main>
-    );
-  }
-
-  // On app pages, render full layout with sidebar
-  return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset className="bg-background">
-        <TopNav />
-        <main className="flex-1 overflow-x-hidden">
-          <Outlet />
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
   );
 }

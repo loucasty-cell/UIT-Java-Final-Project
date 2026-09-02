@@ -1,19 +1,13 @@
 import { useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
-import { Bell, Search, Coins, LogOut, User, Info, GraduationCap, Sparkles, Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
+import { Link } from "@tanstack/react-router";
+import { Bell, Search, Coins, LogOut, User, Info } from "lucide-react";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,22 +16,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useAuth } from "@/context/auth-context";
-import { useWalletBalanceQuery } from "@/hooks/api/use-wallet";
-import {
-  useMarkAllNotificationsReadMutation,
-  useNotificationsQuery,
-  useUnreadNotificationsCountQuery,
-} from "@/hooks/api/use-notifications";
-import { toast } from "sonner";
 
-type FallbackNotification = {
+type Notification = {
   id: string;
   title: string;
   detail: string;
@@ -45,7 +27,7 @@ type FallbackNotification = {
   tone: "success" | "info" | "warning";
 };
 
-const fallbackNotifications: FallbackNotification[] = [
+const notifications: Notification[] = [
   {
     id: "1",
     title: "Mentor accepted your request",
@@ -70,124 +52,27 @@ const fallbackNotifications: FallbackNotification[] = [
 ];
 
 export function TopNav() {
-  const { user, logout, isAuthenticated, isLearner, isInstructor, isAdmin } = useAuth();
-  const navigate = useNavigate();
-  const { data: walletData } = useWalletBalanceQuery();
-  const { data: notificationsData } = useNotificationsQuery();
-  const { data: unreadCountData } = useUnreadNotificationsCountQuery();
-  const markAllReadMutation = useMarkAllNotificationsReadMutation();
-  const { theme, setTheme, resolvedTheme } = useTheme();
-
-  const [localDismissed, setLocalDismissed] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // Active points and held points — never fake balance per forbackend.md:16
-  const availablePoints = walletData?.availablePoints ?? 0;
-  const heldPoints = walletData?.heldPoints ?? 0;
-
-  // Notifications
-  const items =
-    notificationsData && notificationsData.length > 0
-      ? notificationsData.map((n) => ({
-          id: n.id,
-          title: n.title,
-          detail: n.message || n.detail || "",
-          time: new Date(n.createdAt).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          tone: (n.tone as any) || "info",
-        }))
-      : fallbackNotifications;
-
-  const unreadCount = localDismissed
-    ? 0
-    : unreadCountData?.unreadCount ?? items.length;
-
-  const displayName =
-    (user as any)?.displayName ||
-    ((user as any)?.firstName ? `${(user as any).firstName} ${(user as any).lastName || ""}`.trim() : "Ava Ramirez");
-
-  const major = (user as any)?.major || "Computer Science";
-  const yearOfStudy = (user as any)?.yearOfStudy ? `Year ${(user as any).yearOfStudy}` : "Junior";
-
-  const initials = displayName
-    .split(" ")
-    .map((w: string) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase() || "AR";
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      toast.success("Logged out successfully");
-      navigate({ to: "/login" });
-    } catch {
-      toast.error("Logout failed");
-    }
-  };
-
-  const handleOpenNotifications = () => {
-    // Per api.md:323 — opening popover must NOT auto mark read; user must explicitly click "Mark all as read"
-    // We keep localDismissed for dot animation only if user explicitly dismissed via button
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate({ to: "/browse", search: { q: searchQuery.trim() } });
-    }
-  };
-
-  // Build role badges for the user dropdown
-  const roleBadges: { label: string; variant: "default" | "secondary" | "destructive" | "outline" }[] = [];
-  if (isAdmin) roleBadges.push({ label: "Admin", variant: "destructive" });
-  if (isInstructor) roleBadges.push({ label: "Instructor", variant: "default" });
-  if (isLearner && !isInstructor && !isAdmin) roleBadges.push({ label: "Learner", variant: "secondary" });
+  const [unread, setUnread] = useState(notifications.length);
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 bg-background/70 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/50 sm:px-8 border-b border-border">
-      <SidebarTrigger className="shrink-0 hover:bg-secondary" />
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 bg-background/70 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/50 sm:px-8">
+      <SidebarTrigger className="shrink-0 hover:bg-accent hover:text-accent-foreground" />
       <Separator orientation="vertical" className="h-5 bg-border" />
 
-      {/* Search — navigates to /browse on submit */}
-      <form onSubmit={handleSearch} className="relative flex-1 max-w-xl">
+      {/* Search */}
+      <div className="relative flex-1 max-w-xl">
         <Search
           className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
           strokeWidth={1.5}
         />
         <Input
           type="search"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search skills, mentors, or forum topics..."
-          className="h-11 rounded-xl border-border bg-card pl-10 pr-3 text-base shadow-none focus-visible:ring-[#1e90ff] focus-visible:border-[#1e90ff]"
+          className="h-11 rounded-xl border-border bg-card pl-10 pr-3 text-base shadow-none focus-visible:ring-brand-bright"
         />
-      </form>
+      </div>
 
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
-        {/* Become Instructor CTA — only for learner-only users */}
-        {isLearner && !isInstructor && !isAdmin && (
-          <TooltipProvider delayDuration={150}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link
-                  to="/mentor-application"
-                  preload="intent"
-                  className="group hidden items-center gap-1.5 rounded-full border border-[#1e90ff]/40 bg-secondary px-3 py-1.5 text-sm font-semibold text-[#1e90ff] shadow-sm transition hover:bg-secondary/80 sm:flex"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  <span>Teach</span>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p className="text-xs">Become an instructor and earn points by teaching!</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-
         {/* Wallet */}
         <TooltipProvider delayDuration={150}>
           <Tooltip>
@@ -197,34 +82,19 @@ export function TopNav() {
                 className="group flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
               >
                 <Coins className="h-4 w-4" />
-                <span>{availablePoints} Pts</span>
+                <span>50 Pts</span>
                 <Info className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="max-w-xs">
               <p className="text-xs leading-relaxed">
-                Your wallet balance: <span className="font-semibold">{availablePoints} available</span>.
-                {heldPoints > 0 && (
-                  <span>
-                    {" "}(<span className="font-semibold text-amber-500">{heldPoints} pts held in escrow</span> during active sessions).
-                  </span>
-                )}
+                Your wallet balance. Points are held in{" "}
+                <span className="font-semibold text-amber-500">escrow</span> during active sessions
+                and released once both parties confirm completion.
               </p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-
-        {/* Theme Toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative rounded-xl overflow-hidden"
-          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-          aria-label="Toggle theme"
-        >
-          <Sun className="h-5 w-5 rotate-0 scale-100 transition-all duration-300 dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all duration-300 dark:rotate-0 dark:scale-100" />
-        </Button>
 
         {/* Notifications */}
         <Popover>
@@ -236,7 +106,7 @@ export function TopNav() {
               aria-label="Notifications"
             >
               <Bell className="h-5 w-5" />
-              {unreadCount > 0 && (
+              {unread > 0 && (
                 <span className="absolute right-1.5 top-1.5 flex h-2 w-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
@@ -247,24 +117,25 @@ export function TopNav() {
           <PopoverContent
             align="end"
             className="w-[22rem] rounded-xl p-0"
+            onOpenAutoFocus={() => setUnread(0)}
           >
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <h4 className="text-sm font-semibold">Notifications</h4>
               <Badge variant="secondary" className="rounded-full">
-                {items.length} total
+                {notifications.length} new
               </Badge>
             </div>
             <ul className="max-h-80 divide-y divide-border overflow-y-auto">
-              {items.map((n) => (
+              {notifications.map((n) => (
                 <li key={n.id} className="flex gap-3 px-4 py-3 hover:bg-muted/50">
                   <span
                     className={
                       "mt-1 h-2 w-2 shrink-0 rounded-full " +
                       (n.tone === "success"
-                        ? "bg-emerald-500"
+                        ? "bg-success"
                         : n.tone === "warning"
-                          ? "bg-amber-500"
-                          : "bg-sky-500")
+                          ? "bg-warning"
+                          : "bg-primary")
                     }
                   />
                   <div className="min-w-0 flex-1">
@@ -276,16 +147,8 @@ export function TopNav() {
               ))}
             </ul>
             <div className="border-t border-border p-2">
-              <Button
-                variant="ghost"
-                className="w-full justify-center text-sm"
-                onClick={() => {
-                  if (isAuthenticated) markAllReadMutation.mutate();
-                  setLocalDismissed(true);
-                  toast.success("All marked as read");
-                }}
-              >
-                Mark all as read
+              <Button variant="ghost" className="w-full justify-center text-sm">
+                View all notifications
               </Button>
             </div>
           </PopoverContent>
@@ -300,54 +163,33 @@ export function TopNav() {
             >
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
-                  {initials}
+                  AR
                 </AvatarFallback>
               </Avatar>
               <div className="hidden text-left sm:block">
-                <p className="text-sm font-semibold leading-tight">{displayName}</p>
-                <p className="text-[11px] leading-tight text-muted-foreground">{major}</p>
+                <p className="text-sm font-semibold leading-tight">Ava Ramirez</p>
+                <p className="text-[11px] leading-tight text-muted-foreground">Computer Science</p>
               </div>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 rounded-xl">
             <DropdownMenuLabel>
-              <div className="flex flex-col gap-1.5">
-                <span className="text-sm font-semibold">{displayName}</span>
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold">Ava Ramirez</span>
                 <span className="text-xs font-normal text-muted-foreground">
-                  {major} · {yearOfStudy}
+                  Computer Science · Junior
                 </span>
-                {/* Role badges */}
-                <div className="flex flex-wrap gap-1">
-                  {roleBadges.map(({ label, variant }) => (
-                    <Badge key={label} variant={variant} className="rounded-full text-[10px] px-2 py-0">
-                      {label}
-                    </Badge>
-                  ))}
-                </div>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link to="/" preload="intent" className="cursor-pointer">
+              <Link to="/" className="cursor-pointer">
                 <User className="mr-2 h-4 w-4" />
-                Dashboard Profile
+                Profile
               </Link>
             </DropdownMenuItem>
-            {isLearner && !isInstructor && (
-              <>
-                <DropdownMenuItem asChild>
-                  <Link to="/mentor-application" preload="intent" className="cursor-pointer">
-                    <GraduationCap className="mr-2 h-4 w-4" />
-                    Become an Instructor
-                  </Link>
-                </DropdownMenuItem>
-              </>
-            )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="cursor-pointer text-destructive focus:text-destructive"
-              onClick={handleLogout}
-            >
+            <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive">
               <LogOut className="mr-2 h-4 w-4" />
               Log out
             </DropdownMenuItem>

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
@@ -12,13 +12,9 @@ import {
   Send,
   Sparkles,
   Star,
-  Clock,
-  CheckCircle2,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { getSessionCost, getSessionDurationOptions } from "@/lib/pricing";
-import type { SessionDuration, LearningRequestMode } from "@/types/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +24,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { AvailabilityCalendar } from "@/components/ui/availability-calendar";
 import {
   Select,
   SelectContent,
@@ -47,19 +42,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { requireAuth } from "@/lib/route-guards";
-import { useMentorDetailQuery, useMentorAvailabilityQuery, useMentorsSearchQuery } from "@/hooks/api/use-mentors";
-import { useUserSkillsQuery } from "@/hooks/api/use-skills";
-import { useSessionsQuery } from "@/hooks/api/use-sessions";
-import { useWalletBalanceQuery } from "@/hooks/api/use-wallet";
-import { useCreateLearningRequestMutation } from "@/hooks/api/use-learning-requests";
-import { checkConflict, combineDateAndTime, isFutureTime } from "@/lib/schedule-conflict";
 
 export const Route = createFileRoute("/mentors")({
-  beforeLoad: requireAuth,
   head: () => ({
     meta: [
-      { title: "Find Mentors — SkillBridge" },
+      { title: "SkillBridge" },
       {
         name: "description",
         content:
@@ -79,9 +66,9 @@ export const Route = createFileRoute("/mentors")({
 type Level = "Beginner" | "Intermediate" | "Advanced";
 type Mode = "points" | "exchange" | "volunteer";
 
-type Skill = { id?: string; name: string; level: Level };
+type Skill = { name: string; level: Level };
 
-type MentorDisplay = {
+type Mentor = {
   id: string;
   name: string;
   initials: string;
@@ -94,10 +81,17 @@ type MentorDisplay = {
   wants: Skill[];
 };
 
-// Fallback seed mentors for offline/local development
-const fallbackMentors: MentorDisplay[] = [
+// The logged-in user's teachable skills — used to compute exchange matches.
+const mySkills: Skill[] = [
+  { name: "Java", level: "Advanced" },
+  { name: "SQL", level: "Intermediate" },
+  { name: "Data Structures", level: "Advanced" },
+  { name: "Git", level: "Intermediate" },
+];
+
+const mentors: Mentor[] = [
   {
-    id: "m-priya",
+    id: "priya",
     name: "Priya Anand",
     initials: "PA",
     major: "Computer Science, Year 4",
@@ -106,17 +100,17 @@ const fallbackMentors: MentorDisplay[] = [
     cost: 50,
     modes: ["points", "exchange", "volunteer"],
     teach: [
-      { id: "s-react", name: "React", level: "Advanced" },
-      { id: "s-ts", name: "TypeScript", level: "Advanced" },
-      { id: "s-uiux", name: "UI/UX", level: "Intermediate" },
+      { name: "React", level: "Advanced" },
+      { name: "TypeScript", level: "Advanced" },
+      { name: "UI/UX", level: "Intermediate" },
     ],
     wants: [
-      { id: "s-java", name: "Java", level: "Intermediate" },
-      { id: "s-sysdesign", name: "System Design", level: "Beginner" },
+      { name: "Java", level: "Intermediate" },
+      { name: "System Design", level: "Beginner" },
     ],
   },
   {
-    id: "m-marcus",
+    id: "marcus",
     name: "Marcus Delgado",
     initials: "MD",
     major: "Mathematics, Year 3",
@@ -125,17 +119,17 @@ const fallbackMentors: MentorDisplay[] = [
     cost: 40,
     modes: ["points", "exchange"],
     teach: [
-      { id: "s-linalg", name: "Linear Algebra", level: "Advanced" },
-      { id: "s-calc", name: "Calculus", level: "Advanced" },
-      { id: "s-python", name: "Python", level: "Intermediate" },
+      { name: "Linear Algebra", level: "Advanced" },
+      { name: "Calculus", level: "Advanced" },
+      { name: "Python", level: "Intermediate" },
     ],
     wants: [
-      { id: "s-sql", name: "SQL", level: "Beginner" },
-      { id: "s-dsa", name: "Data Structures", level: "Intermediate" },
+      { name: "SQL", level: "Beginner" },
+      { name: "Data Structures", level: "Intermediate" },
     ],
   },
   {
-    id: "m-lena",
+    id: "lena",
     name: "Lena Karlsson",
     initials: "LK",
     major: "English Literature, Year 2",
@@ -144,13 +138,13 @@ const fallbackMentors: MentorDisplay[] = [
     cost: 30,
     modes: ["points", "volunteer"],
     teach: [
-      { id: "s-essay", name: "Essay Writing", level: "Advanced" },
-      { id: "s-acadeng", name: "Academic English", level: "Intermediate" },
+      { name: "Essay Writing", level: "Advanced" },
+      { name: "Academic English", level: "Intermediate" },
     ],
-    wants: [{ id: "s-pubspeak", name: "Public Speaking", level: "Beginner" }],
+    wants: [{ name: "Public Speaking", level: "Beginner" }],
   },
   {
-    id: "m-kenji",
+    id: "kenji",
     name: "Kenji Watanabe",
     initials: "KW",
     major: "Design, Year 3",
@@ -159,16 +153,16 @@ const fallbackMentors: MentorDisplay[] = [
     cost: 55,
     modes: ["points", "exchange"],
     teach: [
-      { id: "s-uiux", name: "UI/UX", level: "Advanced" },
-      { id: "s-figma", name: "Figma", level: "Advanced" },
+      { name: "UI/UX", level: "Advanced" },
+      { name: "Figma", level: "Advanced" },
     ],
     wants: [
-      { id: "s-git", name: "Git", level: "Beginner" },
-      { id: "s-react", name: "React", level: "Beginner" },
+      { name: "Git", level: "Beginner" },
+      { name: "React", level: "Beginner" },
     ],
   },
   {
-    id: "m-amara",
+    id: "amara",
     name: "Amara Okafor",
     initials: "AO",
     major: "Business, Year 4",
@@ -177,13 +171,13 @@ const fallbackMentors: MentorDisplay[] = [
     cost: 35,
     modes: ["points", "volunteer"],
     teach: [
-      { id: "s-pubspeak", name: "Public Speaking", level: "Advanced" },
-      { id: "s-marketing", name: "Marketing", level: "Intermediate" },
+      { name: "Public Speaking", level: "Advanced" },
+      { name: "Marketing", level: "Intermediate" },
     ],
-    wants: [{ id: "s-sql", name: "SQL", level: "Beginner" }],
+    wants: [{ name: "SQL", level: "Beginner" }],
   },
   {
-    id: "m-diego",
+    id: "diego",
     name: "Diego Ramirez",
     initials: "DR",
     major: "Electrical Engineering, Year 4",
@@ -192,44 +186,33 @@ const fallbackMentors: MentorDisplay[] = [
     cost: 45,
     modes: ["points", "exchange", "volunteer"],
     teach: [
-      { id: "s-circuits", name: "Circuits", level: "Advanced" },
-      { id: "s-matlab", name: "MATLAB", level: "Intermediate" },
+      { name: "Circuits", level: "Advanced" },
+      { name: "MATLAB", level: "Intermediate" },
     ],
     wants: [
-      { id: "s-java", name: "Java", level: "Beginner" },
-      { id: "s-git", name: "Git", level: "Beginner" },
+      { name: "Java", level: "Beginner" },
+      { name: "Git", level: "Beginner" },
     ],
   },
 ];
 
-const timeSlots = [
-  "09:00",
-  "10:00",
-  "11:00",
-  "13:00",
-  "14:00",
-  "15:00",
-  "16:00",
-  "17:00",
+const times = [
+  "9:00 AM",
+  "10:00 AM",
+  "11:00 AM",
+  "1:00 PM",
+  "2:00 PM",
+  "3:00 PM",
+  "4:00 PM",
+  "5:00 PM",
 ];
-
-const timeDisplayLabels: Record<string, string> = {
-  "09:00": "9:00 AM",
-  "10:00": "10:00 AM",
-  "11:00": "11:00 AM",
-  "13:00": "1:00 PM",
-  "14:00": "2:00 PM",
-  "15:00": "3:00 PM",
-  "16:00": "4:00 PM",
-  "17:00": "5:00 PM",
-};
 
 function levelClasses(level: Level) {
   switch (level) {
     case "Advanced":
       return "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60";
     case "Intermediate":
-      return "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-900/60";
+      return "border-brand-bright/30 bg-accent text-primary dark:border-brand-bright/50 dark:bg-accent dark:text-accent-foreground";
     default:
       return "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60";
   }
@@ -245,44 +228,11 @@ function MentorsPage() {
   const [query, setQuery] = useState("");
   const [level, setLevel] = useState<Level | "all">("all");
   const [mode, setMode] = useState<Mode | "all">("all");
-  const [selected, setSelected] = useState<MentorDisplay | null>(null);
-
-  // Fetch real mentors from API per api.md:174 search param is `search`
-  const { data: apiMentorsData, isLoading } = useMentorsSearchQuery({
-    search: query || undefined,
-  } as any);
-
-  const mentorsList: MentorDisplay[] = useMemo(() => {
-    const list: any[] = Array.isArray(apiMentorsData) ? apiMentorsData : (apiMentorsData as any)?.content || [];
-    if (list.length > 0) {
-      return list.map((m: any) => ({
-        id: m.mentorId || m.id,
-        name: m.name || m.displayName || "Peer Mentor",
-        initials: (m.name || m.displayName || "PM")
-          .split(" ")
-          .map((n: string) => n[0])
-          .join("")
-          .slice(0, 2)
-          .toUpperCase(),
-        major: m.major || "University Student",
-        rating: m.averageRating ?? 4.8,
-        reviews: m.reviewCount ?? 12,
-        cost: m.hourlyRatePoints ?? 35,
-        modes: ["points", "exchange", "volunteer"] as Mode[],
-        teach: (m.skills || []).map((s: any) => ({
-          id: s.id,
-          name: s.name,
-          level: (s.level || "Intermediate") as Level,
-        })),
-        wants: [],
-      }));
-    }
-    return fallbackMentors;
-  }, [apiMentorsData]);
+  const [selected, setSelected] = useState<Mentor | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return mentorsList.filter((m) => {
+    return mentors.filter((m) => {
       if (mode !== "all" && !m.modes.includes(mode)) return false;
       if (level !== "all" && !m.teach.some((s) => s.level === level)) return false;
       if (!q) return true;
@@ -292,16 +242,16 @@ function MentorsPage() {
         m.teach.some((s) => s.name.toLowerCase().includes(q))
       );
     });
-  }, [mentorsList, query, level, mode]);
+  }, [query, level, mode]);
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <div>
-        <p className="text-sm font-medium text-primary">Skill Exchange & Mentorship</p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Find a Mentor</h1>
+        <p className="text-sm font-medium text-primary">Skill Exchange</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Find a mentor</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Browse verified peer instructors, request 1-on-1 sessions, or propose a skill swap.
+          Browse peers by skill and book a session with points, an exchange, or as a volunteer.
         </p>
       </div>
 
@@ -351,13 +301,7 @@ function MentorsPage() {
       </div>
 
       {/* Grid */}
-      {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i} className="h-72 animate-pulse rounded-xl bg-muted/40" />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
+      {filtered.length === 0 ? (
         <Card className="rounded-xl border-dashed">
           <CardContent className="flex flex-col items-center justify-center gap-2 p-10 text-center">
             <Sparkles className="h-8 w-8 text-muted-foreground" />
@@ -373,19 +317,17 @@ function MentorsPage() {
         </div>
       )}
 
-      {selected && (
-        <RequestSessionDialog mentor={selected} onClose={() => setSelected(null)} />
-      )}
+      <RequestSessionDialog mentor={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }
 
-function MentorCard({ mentor, onRequest }: { mentor: MentorDisplay; onRequest: () => void }) {
+function MentorCard({ mentor, onRequest }: { mentor: Mentor; onRequest: () => void }) {
   return (
-    <Card className="group flex h-full flex-col rounded-xl border-border/70 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+    <Card className="flex h-full flex-col rounded-xl border-border/70 shadow-sm transition hover:shadow-md">
       <CardContent className="flex flex-1 flex-col gap-4 p-5">
         <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3">
-          <Avatar className="h-12 w-12 shrink-0 ring-2 ring-primary/20 transition group-hover:ring-primary">
+          <Avatar className="h-12 w-12 shrink-0 ring-2 ring-accent">
             <AvatarFallback className="bg-primary font-semibold text-primary-foreground">
               {mentor.initials}
             </AvatarFallback>
@@ -408,7 +350,7 @@ function MentorCard({ mentor, onRequest }: { mentor: MentorDisplay; onRequest: (
               <Badge
                 key={mo}
                 variant="outline"
-                className="rounded-full border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-300"
+                className="rounded-full border-brand-bright/30 bg-accent px-2 py-0.5 text-[11px] font-medium text-primary dark:border-brand-bright/50 dark:bg-accent dark:text-accent-foreground"
               >
                 <M.icon className="mr-1 h-3 w-3" />
                 {M.label}
@@ -419,7 +361,7 @@ function MentorCard({ mentor, onRequest }: { mentor: MentorDisplay; onRequest: (
 
         <div className="space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Can Teach
+            Can teach
           </p>
           <div className="flex flex-wrap gap-1.5">
             {mentor.teach.map((s) => (
@@ -437,30 +379,28 @@ function MentorCard({ mentor, onRequest }: { mentor: MentorDisplay; onRequest: (
           </div>
         </div>
 
-        {mentor.wants.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Wants to Learn
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {mentor.wants.map((s) => (
-                <Badge
-                  key={s.name}
-                  variant="secondary"
-                  className="rounded-full px-2.5 py-0.5 text-[11px] font-medium"
-                >
-                  {s.name}
-                </Badge>
-              ))}
-            </div>
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Wants to learn
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {mentor.wants.map((s) => (
+              <Badge
+                key={s.name}
+                variant="secondary"
+                className="rounded-full px-2.5 py-0.5 text-[11px] font-medium"
+              >
+                {s.name}
+              </Badge>
+            ))}
           </div>
-        )}
+        </div>
 
         <div className="mt-auto flex items-center justify-between border-t border-border/70 pt-4">
           <div className="text-xs text-muted-foreground">
             From <span className="font-semibold text-foreground">{mentor.cost} Pts</span> / session
           </div>
-          <Button size="sm" className="rounded-lg shadow-sm" onClick={onRequest}>
+          <Button size="sm" className="rounded-lg" onClick={onRequest}>
             Request Session
           </Button>
         </div>
@@ -469,225 +409,108 @@ function MentorCard({ mentor, onRequest }: { mentor: MentorDisplay; onRequest: (
   );
 }
 
-function RequestSessionDialog({
-  mentor,
-  onClose,
-}: {
-  mentor: MentorDisplay | null;
-  onClose: () => void;
-}) {
-  const navigate = useNavigate();
+function RequestSessionDialog({ mentor, onClose }: { mentor: Mentor | null; onClose: () => void }) {
   const [date, setDate] = useState<Date | undefined>();
   const [time, setTime] = useState<string | undefined>();
   const [tab, setTab] = useState<Mode>("points");
-  const [duration, setDuration] = useState<SessionDuration>(30); // PHASE 3: Add duration state
-  const [selectedSkillToLearn, setSelectedSkillToLearn] = useState<string>(
-    mentor?.teach[0]?.name || "",
-  );
-  const [exchangeSkillId, setExchangeSkillId] = useState<string | undefined>();
+  const [exchangeSkill, setExchangeSkill] = useState<string | undefined>();
   const [note, setNote] = useState("");
 
-  // Queries for real data
-  const { data: userTeachSkills } = useUserSkillsQuery("TEACH");
-  const { data: userSessions } = useSessionsQuery();
-  const { data: walletData } = useWalletBalanceQuery();
-  const createRequestMutation = useCreateLearningRequestMutation();
+  const open = !!mentor;
 
-  // Real mentor detail + availability — required for correct UUIDs and schedule validation per api.md:174,176
-  const mentorIdForDetail = mentor?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(mentor.id) ? mentor.id : "";
-  const { data: mentorDetail } = useMentorDetailQuery(mentorIdForDetail);
-  const fromIso = date ? new Date(date).toISOString().slice(0, 10) : undefined;
-  const toIso = date ? new Date(new Date(date).getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10) : undefined;
-  const { data: availabilityData } = useMentorAvailabilityQuery(mentorIdForDetail, fromIso, toIso);
+  // Reset local state when the mentor changes.
+  const key = mentor?.id ?? "none";
 
-  const userTeachableList = useMemo(() => {
-    if (userTeachSkills && userTeachSkills.length > 0) {
-      return userTeachSkills.map((us: any) => ({
-        id: us.id || us.skillId,
-        name: us.skillName || us.skill?.name || "Skill",
-      }));
-    }
-    return [
-      { id: "us-java", name: "Java" },
-      { id: "us-sql", name: "SQL" },
-      { id: "us-dsa", name: "Data Structures" },
-      { id: "us-git", name: "Git" },
-    ];
-  }, [userTeachSkills]);
-
-  const availableBalance = walletData?.availablePoints ?? 0;
-  // PHASE 3: Use duration-based pricing instead of mentor.cost
-  const cost = tab === "points" ? getSessionCost(duration) : 0;
-  const hasEnoughPoints = availableBalance >= cost;
-  const isFallbackMentor = !mentorIdForDetail;
-  const isUuid = (s?: string) => !!s && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+  const matchingSkills = useMemo(() => {
+    if (!mentor) return [] as string[];
+    const wantNames = new Set(mentor.wants.map((w) => w.name.toLowerCase()));
+    return mySkills.filter((s) => wantNames.has(s.name.toLowerCase())).map((s) => s.name);
+  }, [mentor]);
 
   const canSubmit =
     !!date &&
     !!time &&
-    !createRequestMutation.isPending &&
-    isFutureTime(combineDateAndTime(date!, time!)) &&
-    (tab === "volunteer" ||
-      (tab === "points" && hasEnoughPoints) ||
-      (tab === "exchange" && !!exchangeSkillId && isUuid(exchangeSkillId)));
+    (tab === "points" || tab === "volunteer" || (tab === "exchange" && !!exchangeSkill));
 
-  const handleSubmit = async () => {
-    if (!mentor || !date || !time) return;
-
-    const proposedStart = combineDateAndTime(date, time);
-    if (!isFutureTime(proposedStart)) {
-      toast.error("Please pick a future date and time");
-      return;
-    }
-
-    if (isFallbackMentor) {
-      toast.error("Demo mentor — backend not connected", {
-        description: "This preview card uses synthetic IDs. Connect Neon backend with real mentor UUIDs to book. Try searching real mentors when API is live.",
-      });
-      return;
-    }
-
-    // 1. Client-side conflict detection (learner side, 15-min buffer per schedule-conflict.ts)
-    const existingSessions = (userSessions || []).map((s: any) => ({
-      id: s.id,
-      scheduledStart: s.scheduledStart,
-      durationMinutes: s.durationMinutes || 60,
-      status: s.status,
-    }));
-
-    const conflict = checkConflict(proposedStart, duration, existingSessions, 15);
-    if (conflict.hasConflict) {
-      toast.error("Schedule Conflict Detected", {
-        description: conflict.message,
-      });
-      return;
-    }
-
-    // If backend provided real availability, enforce that the slot is inside it
-    if (availabilityData && Array.isArray((availabilityData as any).slots) && (availabilityData as any).slots.length > 0) {
-      // Simple check: require at least one availability window overlapping proposed slot date
-      const slotTexts = (availabilityData as any).slots.map((s: any) => `${s.dayOfWeek} ${s.startTime}-${s.endTime}`).join(", ");
-      // We don't hard-block here; we inform that mentor may be unavailable per backend availability
-      // Backend authoritative check runs on POST /learning-requests (api.md:188)
-    }
-
-    // 2. Map mode to API enum per api.md:64
-    const modeMapping: Record<Mode, LearningRequestMode> = {
-      points: "POINTS",
-      exchange: "SKILL_SWAP",
-      volunteer: "VOLUNTEER",
-    };
-
-    const targetSkill = mentor.teach.find((s) => s.name === selectedSkillToLearn) || mentor.teach[0];
-    // Resolve real UUIDs: teach.id must be catalog UUID per api.md:123; offering id from mentorDetail availableOfferings
-    const offerings: any[] = (mentorDetail as any)?.availableOfferings || (mentorDetail as any)?.offerings || [];
-    const matchingOffering = offerings.find((o: any) => o.skillId === targetSkill?.id || o.skillName === targetSkill?.name) || offerings[0];
-    const realOfferingId = matchingOffering?.id;
-    const realRequestedSkillId = targetSkill?.id && isUuid(targetSkill.id) ? targetSkill.id : matchingOffering?.skillId;
-
-    if (!realRequestedSkillId || !isUuid(realRequestedSkillId)) {
-      toast.error("Missing skill catalog ID", {
-        description: `Cannot book: "${targetSkill?.name}" has no catalog UUID. Please retry with a real mentor from search results.`,
-      });
-      return;
-    }
-    if (!realOfferingId) {
-      toast.error("Mentor has no active offering for this skill", {
-        description: "Ask the mentor to create an offering (POST /me/mentor-offerings) or try another skill. Volunteer also requires an offering per api.md:198.",
-      });
-      return;
-    }
-    if (tab === "exchange" && (!exchangeSkillId || !isUuid(exchangeSkillId))) {
-      toast.error("Select a valid teachable skill for skill swap");
-      return;
-    }
-
-    try {
-      await createRequestMutation.mutateAsync({
-        mentorId: mentor.id,
-        mentorOfferingId: realOfferingId as string,
-        requestedSkillId: realRequestedSkillId as string,
-        mode: modeMapping[tab],
-        offeredUserSkillId: tab === "exchange" ? exchangeSkillId : undefined,
-        scheduledStart: proposedStart.toISOString(),
-        durationMinutes: duration, // PHASE 3: Use selected duration
-        message: note.trim() || undefined,
-      });
-
-      onClose();
-      navigate({ to: "/sessions" });
-    } catch {
-      // Error handled by mutation toast (SCHEDULE_CONFLICT, INSUFFICIENT_POINTS, SKILL_SWAP_NOT_MATCHED)
-    }
+  const handleSubmit = () => {
+    if (!mentor || !canSubmit) return;
+    const modeLabel =
+      tab === "points"
+        ? `${mentor.cost} pts (escrow)`
+        : tab === "exchange"
+          ? `Exchange: ${exchangeSkill}`
+          : "Volunteer (free)";
+    toast.success(`Request sent to ${mentor.name}`, {
+      description: `${format(date!, "PPP")} at ${time} · ${modeLabel}`,
+    });
+    // Reset
+    setDate(undefined);
+    setTime(undefined);
+    setTab("points");
+    setExchangeSkill(undefined);
+    setNote("");
+    onClose();
   };
 
   return (
-    <Dialog open={!!mentor} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto rounded-xl sm:max-w-lg">
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent key={key} className="max-h-[90vh] overflow-y-auto rounded-xl sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Request Session with {mentor?.name ?? ""}</DialogTitle>
           <DialogDescription>
-            Choose a date & time, select your payment method, and add an optional message.
+            Choose a time, pick a payment mode, and add a note for your mentor.
           </DialogDescription>
         </DialogHeader>
 
-        {/* Skill to learn */}
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium">Topic / Skill to Learn</Label>
-          <Select
-            value={selectedSkillToLearn || mentor?.teach[0]?.name}
-            onValueChange={setSelectedSkillToLearn}
-          >
-            <SelectTrigger className="rounded-lg">
-              <SelectValue placeholder="Select topic" />
-            </SelectTrigger>
-            <SelectContent>
-              {mentor?.teach.map((s) => (
-                <SelectItem key={s.name} value={s.name}>
-                  {s.name} ({s.level})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Date + time */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Preferred date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start rounded-lg font-normal",
+                    !date && "text-muted-foreground",
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? format(date, "PPP") : "Pick a date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={setDate}
+                  disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+                  initialFocus
+                  className="pointer-events-auto p-3"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Time slot</Label>
+            <Select value={time} onValueChange={setTime}>
+              <SelectTrigger className="rounded-lg">
+                <SelectValue placeholder="Select a time" />
+              </SelectTrigger>
+              <SelectContent>
+                {times.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {t}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-
-        {/* Date & Time Selection using AvailabilityCalendar */}
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium">Select Available Slot</Label>
-          <AvailabilityCalendar
-            slots={(availabilityData as any)?.slots || []}
-            selectedDate={date}
-            selectedTime={time}
-            bookedDates={[]}
-            minDate={new Date()}
-            onSelectDateTime={(selectedDate, selectedTime) => {
-              setDate(selectedDate);
-              setTime(selectedTime);
-            }}
-          />
-        </div>
-
-         {/* PHASE 3: Duration selector */}
-         <div className="space-y-1.5">
-           <Label className="text-xs font-medium">Session Duration</Label>
-           <Select value={String(duration)} onValueChange={(v) => setDuration(Number(v) as SessionDuration)}>
-             <SelectTrigger className="rounded-lg">
-               <SelectValue />
-             </SelectTrigger>
-             <SelectContent>
-               {getSessionDurationOptions().map((opt) => (
-                 <SelectItem key={opt.value} value={String(opt.value)}>
-                   {opt.label} - {opt.cost} Points
-                 </SelectItem>
-               ))}
-             </SelectContent>
-           </Select>
-         </div>
-
 
         {/* Mode tabs */}
         <div className="space-y-1.5">
-          <Label className="text-xs font-medium">Session Arrangement Mode</Label>
+          <Label className="text-xs font-medium">Request mode</Label>
           <Tabs value={tab} onValueChange={(v) => setTab(v as Mode)}>
             <TabsList className="grid w-full grid-cols-3 rounded-lg">
               <TabsTrigger value="points" className="text-xs">
@@ -704,76 +527,66 @@ function RequestSessionDialog({
               </TabsTrigger>
             </TabsList>
 
-            {/* Points Mode Content */}
             <TabsContent value="points" className="mt-3">
-              <div
-                className={cn(
-                  "rounded-xl border p-3.5 transition-colors",
-                  hasEnoughPoints
-                    ? "border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30"
-                    : "border-destructive/30 bg-destructive/5 text-destructive",
-                )}
-              >
-                <div className="flex items-start gap-2.5">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/30">
+                <div className="flex items-start gap-2">
                   <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                   <div className="min-w-0 text-xs">
-                    <p className="font-semibold text-amber-900 dark:text-amber-100">
-                      {cost} Skill Points will be held in Escrow
+                    <p className="font-semibold text-amber-800 dark:text-amber-200">
+                      {mentor?.cost ?? 0} points will be locked in Escrow
                     </p>
-                    <p className="mt-0.5 text-amber-800/80 dark:text-amber-200/80">
-                      Points are safely locked until both you and {mentor?.name.split(" ")[0]} confirm completion.
+                    <p className="mt-0.5 text-amber-700/90 dark:text-amber-300/90">
+                      Points transfer to {mentor?.name.split(" ")[0]} only after the session is
+                      marked complete by both of you.
                     </p>
-                    <div className="mt-2 flex items-center justify-between border-t border-amber-200/60 pt-2 font-medium">
-                      <span>Your balance: {availableBalance} Pts</span>
-                      {!hasEnoughPoints && (
-                        <span className="font-bold text-destructive">
-                          Need {cost - availableBalance} more points
-                        </span>
-                      )}
-                    </div>
                   </div>
                 </div>
               </div>
             </TabsContent>
 
-            {/* Skill Exchange Mode Content */}
             <TabsContent value="exchange" className="mt-3">
-              <div className="space-y-3 rounded-xl border border-indigo-200 bg-indigo-50/70 p-3.5 dark:border-indigo-900/50 dark:bg-indigo-950/30">
-                <div className="flex items-center gap-1.5 text-xs text-indigo-900 dark:text-indigo-200">
-                  <Handshake className="h-4 w-4 text-indigo-600" />
-                  <span className="font-semibold">Skill Swap (0 Points Transferred)</span>
-                </div>
+              {matchingSkills.length > 0 ? (
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-indigo-950 dark:text-indigo-200">
-                    Which skill will you teach {mentor?.name.split(" ")[0]} in return?
+                  <Label className="text-xs font-medium">
+                    Select a skill you possess that {mentor?.name.split(" ")[0]} wants to learn
                   </Label>
-                  <Select value={exchangeSkillId} onValueChange={setExchangeSkillId}>
-                    <SelectTrigger className="rounded-lg bg-background">
-                      <SelectValue placeholder="Choose one of your teachable skills" />
+                  <Select value={exchangeSkill} onValueChange={setExchangeSkill}>
+                    <SelectTrigger className="rounded-lg">
+                      <SelectValue placeholder="Choose a skill to offer" />
                     </SelectTrigger>
                     <SelectContent>
-                      {userTeachableList.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name}
+                      {matchingSkills.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
+              ) : (
+                <Alert
+                  variant="default"
+                  className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200"
+                >
+                  <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <AlertTitle>No matching skill exchange found</AlertTitle>
+                  <AlertDescription className="text-amber-800/90 dark:text-amber-300/90">
+                    Please use Skill Points or Volunteer mode.
+                  </AlertDescription>
+                </Alert>
+              )}
             </TabsContent>
 
-            {/* Volunteer Mode Content */}
             <TabsContent value="volunteer" className="mt-3">
-              <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 dark:border-emerald-900/50 dark:bg-emerald-950/30">
+              <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900/50 dark:bg-emerald-950/30">
                 <div className="flex items-center gap-2 text-xs">
                   <HandHeart className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                  <span className="font-medium text-emerald-900 dark:text-emerald-200">
-                    Community Volunteer Session (Free)
+                  <span className="font-medium text-emerald-800 dark:text-emerald-200">
+                    Volunteer mode — no points exchanged
                   </span>
                 </div>
                 <Badge className="rounded-full bg-emerald-600 text-white hover:bg-emerald-600">
-                  Cost: 0 Pts
+                  Cost: FREE (0 Pts)
                 </Badge>
               </div>
             </TabsContent>
@@ -783,13 +596,13 @@ function RequestSessionDialog({
         {/* Note */}
         <div className="space-y-1.5">
           <Label htmlFor="note" className="text-xs font-medium">
-            Message / Goals for the Session
+            Message to mentor
           </Label>
           <Textarea
             id="note"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder={`Hi ${mentor?.name.split(" ")[0] ?? ""}, I'd like help preparing for…`}
+            placeholder={`Hi ${mentor?.name.split(" ")[0] ?? ""}, I'd love your help with…`}
             rows={3}
             className="rounded-lg"
           />
@@ -799,13 +612,9 @@ function RequestSessionDialog({
           <Button variant="outline" onClick={onClose} className="rounded-lg">
             Cancel
           </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={!canSubmit || createRequestMutation.isPending}
-            className="rounded-lg shadow-sm"
-          >
+          <Button onClick={handleSubmit} disabled={!canSubmit} className="rounded-lg">
             <Send className="mr-1.5 h-4 w-4" />
-            {createRequestMutation.isPending ? "Sending..." : "Send Request"}
+            Send Request
           </Button>
         </DialogFooter>
       </DialogContent>

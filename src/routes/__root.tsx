@@ -28,7 +28,7 @@ function NotFoundComponent() {
         <div className="mt-6">
           <Link
             to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-brand-bright"
           >
             Go home
           </Link>
@@ -60,13 +60,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-brand-bright"
           >
             Try again
           </button>
           <a
             href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            className="inline-flex items-center justify-center rounded-md border border-input bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
             Go home
           </a>
@@ -97,9 +97,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Dashboard — SkillBridge" },
-      { name: "twitter:description", content: "Your SkillBridge dashboard: wallet balance, skills, certificates, and point activity." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1a7f0752-4e3c-4353-bf14-d0cf9daa6d0b/id-preview-683fde90--16b85d25-9e36-4f57-9617-28d56f6294ae.lovable.app-1784706805847.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1a7f0752-4e3c-4353-bf14-d0cf9daa6d0b/id-preview-683fde90--16b85d25-9e36-4f57-9617-28d56f6294ae.lovable.app-1784706805847.png" },
+      {
+        name: "twitter:description",
+        content:
+          "Your SkillBridge dashboard: wallet balance, skills, certificates, and point activity.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1a7f0752-4e3c-4353-bf14-d0cf9daa6d0b/id-preview-683fde90--16b85d25-9e36-4f57-9617-28d56f6294ae.lovable.app-1784706805847.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1a7f0752-4e3c-4353-bf14-d0cf9daa6d0b/id-preview-683fde90--16b85d25-9e36-4f57-9617-28d56f6294ae.lovable.app-1784706805847.png",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

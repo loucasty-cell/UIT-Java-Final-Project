@@ -1,13 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-  LayoutDashboard,
-  Users,
-  MessagesSquare,
-  CalendarClock,
-  Shield,
-  GraduationCap,
-} from "lucide-react";
+import { LayoutDashboard, Users, MessagesSquare, CalendarClock, Shield } from "lucide-react";
 
+import { BrandLogo } from "@/components/brand-logo";
 import {
   Sidebar,
   SidebarContent,
@@ -30,7 +24,6 @@ const mainItems = [
   { title: "My Sessions", url: "/sessions", icon: CalendarClock },
 ];
 
-
 const adminItems = [{ title: "Admin Portal", url: "/admin", icon: Shield }];
 
 export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
@@ -38,26 +31,21 @@ export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (r) => r.location.pathname });
 
-  const isActive = (path: string) =>
-    path === "/" ? pathname === "/" : pathname.startsWith(path);
+  const isActive = (path: string) => (path === "/" ? pathname === "/" : pathname.startsWith(path));
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <Link to="/" className="flex items-center gap-2.5 px-2 py-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-sky-600 text-white">
-            <GraduationCap className="h-5 w-5" strokeWidth={1.5} />
-          </div>
-          {!collapsed && (
-            <div className="flex min-w-0 flex-col">
-              <span className="truncate text-sm font-semibold tracking-tight text-slate-900">
-                SkillBridge
-              </span>
-              <span className="truncate text-[11px] text-slate-500">
-                Learn. Teach. Earn.
-              </span>
-            </div>
-          )}
+        <Link
+          to="/"
+          aria-label="SkillBridge home"
+          className={
+            collapsed
+              ? "flex items-center justify-center px-0 py-3"
+              : "flex items-center rounded-xl bg-white px-2 py-3 shadow-sm"
+          }
+        >
+          <BrandLogo showText={!collapsed} className={collapsed ? "gap-0" : undefined} />
         </Link>
       </SidebarHeader>
 
@@ -68,11 +56,7 @@ export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
             <SidebarMenu>
               {mainItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.url)}
-                    tooltip={item.title}
-                  >
+                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
                     <Link to={item.url}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
@@ -91,11 +75,7 @@ export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
               <SidebarMenu>
                 {adminItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive(item.url)}
-                      tooltip={item.title}
-                    >
+                    <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
                       <Link to={item.url}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
@@ -112,10 +92,10 @@ export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
       <SidebarFooter>
         {!collapsed ? (
           <div className="flex items-center justify-between gap-2 px-3 py-2">
-            <span className="text-xs text-slate-500">Semester</span>
+            <span className="text-xs text-sidebar-foreground/75">Semester</span>
             <Badge
               variant="secondary"
-              className="rounded-full border-0 bg-sky-50 text-sky-700"
+              className="rounded-full border-0 bg-sidebar-accent text-sidebar-accent-foreground"
             >
               Fall 2026
             </Badge>

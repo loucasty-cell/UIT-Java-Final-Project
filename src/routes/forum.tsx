@@ -29,11 +29,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export const Route = createFileRoute("/forum")({
   head: () => ({
@@ -41,8 +37,7 @@ export const Route = createFileRoute("/forum")({
       { title: "Volunteer Forum — SkillBridge" },
       {
         name: "description",
-        content:
-          "Find free peer mentoring sessions and community learning threads on SkillBridge.",
+        content: "Find free peer mentoring sessions and community learning threads on SkillBridge.",
       },
       { property: "og:title", content: "Volunteer Forum — SkillBridge" },
       {
@@ -131,9 +126,7 @@ function ForumPage() {
   const toggleLike = (id: string) => {
     setLiked((l) => ({ ...l, [id]: !l[id] }));
     setPosts((ps) =>
-      ps.map((p) =>
-        p.id === id ? { ...p, likes: p.likes + (liked[id] ? -1 : 1) } : p,
-      ),
+      ps.map((p) => (p.id === id ? { ...p, likes: p.likes + (liked[id] ? -1 : 1) } : p)),
     );
   };
 
@@ -165,9 +158,7 @@ function ForumPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Volunteer Learning Community
-          </h1>
+          <h1 className="text-3xl font-bold tracking-tight">Volunteer Learning Community</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Find free peer mentoring sessions and community learning threads.
           </p>
@@ -214,7 +205,7 @@ function ForumPage() {
             <CardContent className="space-y-4">
               {TOP_MENTORS.map((m, i) => (
                 <div key={m.name} className="flex items-center gap-3">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-xs font-semibold text-primary">
                     {i + 1}
                   </div>
                   <Avatar className="h-9 w-9">
@@ -222,9 +213,7 @@ function ForumPage() {
                   </Avatar>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{m.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {m.major}
-                    </p>
+                    <p className="truncate text-xs text-muted-foreground">{m.major}</p>
                   </div>
                   <div className="flex items-center gap-1 text-xs font-medium text-amber-600">
                     <Star className="h-3.5 w-3.5 fill-current" />
@@ -252,18 +241,11 @@ function ForumPage() {
       </div>
 
       {/* Booking modal (pre-set to Volunteer mode) */}
-      <Dialog
-        open={!!bookingPost}
-        onOpenChange={(o) => !o && setBookingPost(null)}
-      >
+      <Dialog open={!!bookingPost} onOpenChange={(o) => !o && setBookingPost(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              Request Free Session with {bookingPost?.author}
-            </DialogTitle>
-            <DialogDescription>
-              Volunteer Mode — no points required.
-            </DialogDescription>
+            <DialogTitle>Request Free Session with {bookingPost?.author}</DialogTitle>
+            <DialogDescription>Volunteer Mode — no points required.</DialogDescription>
           </DialogHeader>
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm">
             <span className="font-semibold text-emerald-700 dark:text-emerald-400">
@@ -361,16 +343,10 @@ function PostCard({
               onClick={onLike}
               className={liked ? "text-rose-600" : ""}
             >
-              <Heart
-                className={`mr-1.5 h-4 w-4 ${liked ? "fill-current" : ""}`}
-              />
+              <Heart className={`mr-1.5 h-4 w-4 ${liked ? "fill-current" : ""}`} />
               {post.likes}
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setOpen((o) => !o)}
-            >
+            <Button variant="ghost" size="sm" onClick={() => setOpen((o) => !o)}>
               <MessageCircle className="mr-1.5 h-4 w-4" />
               {post.comments.length}
             </Button>
@@ -489,7 +465,10 @@ function CreatePostDialog({ onSubmit }: { onSubmit: (p: Post) => void }) {
               major: "Computer Science, Year 3",
               title,
               content: `${desc}${avail ? `\n\nAvailability: ${avail}` : ""}`,
-              tags: topics.split(",").map((t) => t.trim()).filter(Boolean),
+              tags: topics
+                .split(",")
+                .map((t) => t.trim())
+                .filter(Boolean),
               likes: 0,
               comments: [],
             })

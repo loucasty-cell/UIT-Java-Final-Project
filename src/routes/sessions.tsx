@@ -149,7 +149,7 @@ function statusBadge(status: Session["status"]) {
       );
     case "PENDING":
       return (
-        <Badge className="border-blue-500/30 bg-blue-500/15 text-blue-700 hover:bg-blue-500/15 dark:text-blue-400">
+        <Badge className="border-brand-bright/30 bg-accent text-primary hover:bg-accent dark:border-brand-bright/50 dark:text-brand-pale">
           PENDING
         </Badge>
       );
@@ -188,8 +188,8 @@ function SessionsPage() {
           ⏳ Auto-complete pending
         </AlertTitle>
         <AlertDescription className="text-amber-800/90 dark:text-amber-200/90">
-          Session on July 20 marked complete by mentor. Points will
-          auto-transfer in 18 hours if no dispute is raised.
+          Session on July 20 marked complete by mentor. Points will auto-transfer in 18 hours if no
+          dispute is raised.
         </AlertDescription>
       </Alert>
 
@@ -203,11 +203,7 @@ function SessionsPage() {
 
         <TabsContent value="active" className="mt-6 space-y-4">
           {ACTIVE.map((s) => (
-            <SessionCard
-              key={s.id}
-              session={s}
-              onComplete={() => setCompletingId(s.id)}
-            />
+            <SessionCard key={s.id} session={s} onComplete={() => setCompletingId(s.id)} />
           ))}
         </TabsContent>
         <TabsContent value="pending" className="mt-6 space-y-4">
@@ -227,21 +223,12 @@ function SessionsPage() {
         </TabsContent>
       </Tabs>
 
-      <CompletionDialog
-        session={active ?? null}
-        onClose={() => setCompletingId(null)}
-      />
+      <CompletionDialog session={active ?? null} onClose={() => setCompletingId(null)} />
     </div>
   );
 }
 
-function SessionCard({
-  session,
-  onComplete,
-}: {
-  session: Session;
-  onComplete?: () => void;
-}) {
+function SessionCard({ session, onComplete }: { session: Session; onComplete?: () => void }) {
   const isActive = session.status === "SCHEDULED";
   return (
     <Card className="rounded-xl">
@@ -252,9 +239,7 @@ function SessionCard({
               <AvatarFallback>{session.initials}</AvatarFallback>
             </Avatar>
             <div>
-              <CardTitle className="text-base">
-                Session with {session.counterpart}
-              </CardTitle>
+              <CardTitle className="text-base">Session with {session.counterpart}</CardTitle>
               <p className="text-xs text-muted-foreground">
                 You are the {session.role.toLowerCase()}
               </p>
@@ -311,13 +296,7 @@ function SessionCard({
   );
 }
 
-function CompletionDialog({
-  session,
-  onClose,
-}: {
-  session: Session | null;
-  onClose: () => void;
-}) {
+function CompletionDialog({ session, onClose }: { session: Session | null; onClose: () => void }) {
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
   const [review, setReview] = useState("");
@@ -390,11 +369,9 @@ function CompletionDialog({
             </span>
           </div>
 
-
           <div className="flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5" />
-            Releasing points is final. If something went wrong, use "Report Issue"
-            instead.
+            Releasing points is final. If something went wrong, use "Report Issue" instead.
           </div>
         </div>
 

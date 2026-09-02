@@ -1,15 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  Users,
-  Coins,
-  Flag,
-  AlertTriangle,
-  Trash2,
-  ShieldAlert,
-  Check,
-  Save,
-} from "lucide-react";
+import { Users, Coins, Flag, AlertTriangle, Trash2, ShieldAlert, Check, Save } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -147,7 +138,7 @@ const stats = [
     label: "Total Platform Users",
     value: "1,240",
     icon: Users,
-    tone: "bg-primary/10 text-primary",
+    tone: "bg-accent text-primary",
   },
   {
     label: "Points in Escrow",
@@ -289,7 +280,10 @@ function AdminPage() {
                   <TableBody>
                     {flagged.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
+                        <TableCell
+                          colSpan={5}
+                          className="py-10 text-center text-sm text-muted-foreground"
+                        >
                           Queue clear. Nothing to review. 🎉
                         </TableCell>
                       </TableRow>
@@ -350,11 +344,7 @@ function AdminPage() {
                                 <ShieldAlert className="mr-1 h-3.5 w-3.5" />
                                 Warn
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => dismissRow(row.id)}
-                              >
+                              <Button variant="ghost" size="sm" onClick={() => dismissRow(row.id)}>
                                 <Check className="mr-1 h-3.5 w-3.5" />
                                 Dismiss
                               </Button>
@@ -478,7 +468,7 @@ function AdminPage() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl bg-slate-50 p-4 dark:bg-muted/40">
+                <div className="rounded-2xl bg-accent p-4 dark:bg-muted/40">
                   <h3 className="text-sm font-semibold">Current Reward Summary</h3>
                   <Separator className="my-3" />
                   <ul className="space-y-2 text-sm">
@@ -496,7 +486,6 @@ function AdminPage() {
                     </li>
                   </ul>
                 </div>
-
               </div>
 
               <div className="mt-6 flex justify-end">

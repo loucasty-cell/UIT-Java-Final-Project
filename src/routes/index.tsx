@@ -79,21 +79,21 @@ const metrics: Metric[] = [
     value: "120 Pts",
     hint: "+12 this week",
     icon: TrendingUp,
-    accent: "text-sky-600 bg-sky-50 dark:bg-sky-950/40",
+    accent: "text-primary bg-accent dark:bg-accent",
   },
   {
     label: "Total Spent",
     value: "70 Pts",
     hint: "Across 6 sessions",
     icon: TrendingDown,
-    accent: "text-slate-600 bg-slate-100 dark:bg-muted",
+    accent: "text-muted-foreground bg-muted dark:bg-muted",
   },
   {
     label: "Completed Sessions",
     value: "8",
     hint: "3 as mentor · 5 as learner",
     icon: CalendarCheck,
-    accent: "text-sky-600 bg-sky-50 dark:bg-sky-950/40",
+    accent: "text-primary bg-accent dark:bg-accent",
   },
 ];
 
@@ -154,9 +154,9 @@ function levelClasses(level: "Advanced" | "Intermediate" | "Beginner") {
     case "Advanced":
       return "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300";
     case "Intermediate":
-      return "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300";
+      return "bg-accent text-primary dark:bg-accent dark:text-accent-foreground";
     default:
-      return "bg-slate-100 text-slate-600 dark:bg-muted dark:text-muted-foreground";
+      return "bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground";
   }
 }
 
@@ -172,41 +172,22 @@ function SectionTitle({
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="min-w-0">
-        <h2 className="truncate text-sm font-semibold text-slate-800 dark:text-foreground">
-          {title}
-        </h2>
-        {subtitle && (
-          <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
-        )}
+        <h2 className="truncate text-sm font-semibold text-foreground">{title}</h2>
+        {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
       </div>
       {action}
     </div>
   );
 }
 
-function Panel({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div
-      className={
-        "rounded-2xl bg-card p-4 ring-1 ring-slate-100 dark:ring-border " +
-        className
-      }
-    >
-      {children}
-    </div>
+    <div className={"rounded-2xl bg-card p-4 ring-1 ring-border " + className}>{children}</div>
   );
 }
 
 function Dashboard() {
-  const [certificates, setCertificates] = useState<
-    { name: string; size: string }[]
-  >([
+  const [certificates, setCertificates] = useState<{ name: string; size: string }[]>([
     { name: "Java SE 21 Certified.pdf", size: "412 KB" },
     { name: "SQL Fundamentals — Coursera.pdf", size: "228 KB" },
     { name: "Intro to Data Structures — Stanford.pdf", size: "356 KB" },
@@ -232,23 +213,22 @@ function Dashboard() {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-5 px-4 py-5 sm:px-6">
       {/* Welcome banner */}
-      <section className="rounded-2xl bg-slate-800 px-5 py-5 text-slate-100 sm:px-6">
+      <section className="rounded-2xl bg-brand-navy px-5 py-5 text-brand-pale sm:px-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-sky-300">
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-brand-pale">
               Fall 2026 · Week 3
             </p>
             <h1 className="mt-1 truncate text-inherit text-xl font-semibold tracking-tight sm:text-2xl">
               Welcome back, Alex
             </h1>
-            <p className="mt-1 text-sm text-slate-300">
-              You have 2 sessions coming up this week — the next one is Thursday
-              at 4:00 PM.
+            <p className="mt-1 text-sm text-brand-pale/90">
+              You have 2 sessions coming up this week — the next one is Thursday at 4:00 PM.
             </p>
           </div>
           <Button
             asChild
-            className="shrink-0 rounded-xl bg-sky-600 text-white hover:bg-sky-500"
+            className="shrink-0 rounded-xl bg-primary text-primary-foreground hover:bg-brand-bright"
           >
             <Link to="/mentors">
               Find a mentor
@@ -262,24 +242,13 @@ function Dashboard() {
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {metrics.map((m) => (
           <Panel key={m.label} className="flex items-center gap-3">
-            <span
-              className={
-                "grid h-10 w-10 shrink-0 place-items-center rounded-xl " +
-                m.accent
-              }
-            >
+            <span className={"grid h-10 w-10 shrink-0 place-items-center rounded-xl " + m.accent}>
               <m.icon className="h-4 w-4" />
             </span>
             <div className="min-w-0">
-              <p className="truncate text-xs text-muted-foreground">
-                {m.label}
-              </p>
-              <p className="text-lg font-semibold tracking-tight text-slate-800 dark:text-foreground">
-                {m.value}
-              </p>
-              <p className="truncate text-[11px] text-muted-foreground">
-                {m.hint}
-              </p>
+              <p className="truncate text-xs text-muted-foreground">{m.label}</p>
+              <p className="text-lg font-semibold tracking-tight text-foreground">{m.value}</p>
+              <p className="truncate text-[11px] text-muted-foreground">{m.hint}</p>
             </div>
           </Panel>
         ))}
@@ -291,17 +260,13 @@ function Dashboard() {
           <Panel>
             <div className="flex items-center gap-3">
               <Avatar className="h-14 w-14">
-                <AvatarFallback className="bg-sky-600 text-base font-semibold text-white">
+                <AvatarFallback className="bg-primary text-base font-semibold text-primary-foreground">
                   AC
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <h2 className="truncate text-base font-semibold text-slate-800 dark:text-foreground">
-                  Alex Chen
-                </h2>
-                <p className="truncate text-xs text-muted-foreground">
-                  Computer Science, Year 3
-                </p>
+                <h2 className="truncate text-base font-semibold text-foreground">Alex Chen</h2>
+                <p className="truncate text-xs text-muted-foreground">Computer Science, Year 3</p>
                 <Badge
                   variant="secondary"
                   className="mt-1.5 rounded-full border-0 bg-emerald-50 text-[11px] text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
@@ -311,16 +276,14 @@ function Dashboard() {
               </div>
             </div>
             <Separator className="my-3" />
-            <div className="grid grid-cols-3 divide-x divide-slate-100 text-center dark:divide-border">
+            <div className="grid grid-cols-3 divide-x divide-border text-center">
               {[
                 { v: "4.9", l: "Rating" },
                 { v: "23", l: "Reviews" },
                 { v: "8", l: "Sessions" },
               ].map((s) => (
                 <div key={s.l}>
-                  <p className="text-base font-semibold text-slate-800 dark:text-foreground">
-                    {s.v}
-                  </p>
+                  <p className="text-base font-semibold text-foreground">{s.v}</p>
                   <p className="text-[11px] text-muted-foreground">{s.l}</p>
                 </div>
               ))}
@@ -337,7 +300,7 @@ function Dashboard() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="shrink-0 rounded-lg text-sky-600 hover:bg-sky-50 hover:text-sky-700"
+                      className="shrink-0 rounded-lg text-primary hover:bg-accent hover:text-accent-foreground"
                     >
                       <Upload className="mr-1.5 h-3.5 w-3.5" />
                       Upload
@@ -347,22 +310,20 @@ function Dashboard() {
                     <DialogHeader>
                       <DialogTitle>Upload certificate</DialogTitle>
                       <DialogDescription>
-                        PDFs only. Certificates are reviewed before appearing on
-                        your public profile.
+                        PDFs only. Certificates are reviewed before appearing on your public
+                        profile.
                       </DialogDescription>
                     </DialogHeader>
                     <button
                       type="button"
                       onClick={() => fileRef.current?.click()}
-                      className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center transition hover:border-sky-300 hover:bg-sky-50 dark:border-border dark:bg-muted/40"
+                      className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-background px-6 py-8 text-center transition hover:border-brand-bright hover:bg-accent dark:bg-muted/40"
                     >
                       <UploadCloud className="h-7 w-7 text-muted-foreground" />
                       <p className="text-sm font-medium">
                         {pending ? pending.name : "Click to select a PDF"}
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        Max 10 MB · PDF only
-                      </p>
+                      <p className="text-xs text-muted-foreground">Max 10 MB · PDF only</p>
                     </button>
                     <input
                       ref={fileRef}
@@ -389,17 +350,13 @@ function Dashboard() {
                 </Dialog>
               }
             />
-            <ul className="mt-2 divide-y divide-slate-100 dark:divide-border">
+            <ul className="mt-2 divide-y divide-border">
               {certificates.map((c) => (
                 <li key={c.name} className="flex items-center gap-3 py-2.5">
-                  <FileText className="h-4 w-4 shrink-0 text-slate-400" />
+                  <FileText className="h-4 w-4 shrink-0 text-muted-foreground/70" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm text-slate-800 dark:text-foreground">
-                      {c.name}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      PDF · {c.size}
-                    </p>
+                    <p className="truncate text-sm text-foreground">{c.name}</p>
+                    <p className="text-[11px] text-muted-foreground">PDF · {c.size}</p>
                   </div>
                 </li>
               ))}
@@ -415,7 +372,7 @@ function Dashboard() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="shrink-0 rounded-lg text-sky-600 hover:bg-sky-50 hover:text-sky-700"
+                className="shrink-0 rounded-lg text-primary hover:bg-accent hover:text-accent-foreground"
               >
                 <Pencil className="mr-1.5 h-3.5 w-3.5" />
                 Edit
@@ -428,8 +385,7 @@ function Dashboard() {
                 key={s.name}
                 variant="secondary"
                 className={
-                  "rounded-full border-0 px-2.5 py-1 text-xs font-medium " +
-                  levelClasses(s.level)
+                  "rounded-full border-0 px-2.5 py-1 text-xs font-medium " + levelClasses(s.level)
                 }
               >
                 {s.name} · {s.level}
@@ -446,7 +402,7 @@ function Dashboard() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="shrink-0 rounded-lg text-sky-600 hover:bg-sky-50 hover:text-sky-700"
+                className="shrink-0 rounded-lg text-primary hover:bg-accent hover:text-accent-foreground"
               >
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
                 Add
@@ -459,8 +415,7 @@ function Dashboard() {
                 key={s.name}
                 variant="secondary"
                 className={
-                  "rounded-full border-0 px-2.5 py-1 text-xs font-medium " +
-                  levelClasses(s.level)
+                  "rounded-full border-0 px-2.5 py-1 text-xs font-medium " + levelClasses(s.level)
                 }
               >
                 {s.name} · {s.level}
@@ -470,14 +425,12 @@ function Dashboard() {
 
           <Separator className="my-4" />
 
-          <div className="flex items-start gap-2.5 rounded-xl bg-slate-50 px-3 py-2.5 dark:bg-muted/40">
-            <Lock className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+          <div className="flex items-start gap-2.5 rounded-xl bg-accent px-3 py-2.5 dark:bg-muted/40">
+            <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/70" />
             <p className="text-xs leading-relaxed text-muted-foreground">
-              <span className="font-medium text-slate-700 dark:text-foreground">
-                15 pts are currently in escrow.
-              </span>{" "}
-              Points held for booked sessions transfer to your mentor once both
-              sides confirm completion.
+              <span className="font-medium text-foreground">15 pts are currently in escrow.</span>{" "}
+              Points held for booked sessions transfer to your mentor once both sides confirm
+              completion.
             </p>
           </div>
         </Panel>
@@ -504,34 +457,27 @@ function Dashboard() {
           <div className="mt-2 overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-100 hover:bg-transparent dark:border-border">
+                <TableRow className="border-border hover:bg-transparent">
                   <TableHead className="h-9 pl-4 text-xs">Date</TableHead>
                   <TableHead className="h-9 text-xs">Activity</TableHead>
                   <TableHead className="h-9 text-xs">Type</TableHead>
-                  <TableHead className="h-9 pr-4 text-right text-xs">
-                    Points
-                  </TableHead>
+                  <TableHead className="h-9 pr-4 text-right text-xs">Points</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {activity.map((row, i) => (
-                  <TableRow
-                    key={i}
-                    className="border-slate-100 dark:border-border"
-                  >
+                  <TableRow key={i} className="border-border">
                     <TableCell className="whitespace-nowrap py-2.5 pl-4 text-xs text-muted-foreground">
                       {row.date}
                     </TableCell>
-                    <TableCell className="py-2.5 text-sm text-slate-800 dark:text-foreground">
-                      {row.activity}
-                    </TableCell>
+                    <TableCell className="py-2.5 text-sm text-foreground">{row.activity}</TableCell>
                     <TableCell className="py-2.5">
                       <span
                         className={
                           "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium " +
                           (row.type === "earn"
                             ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-                            : "bg-slate-100 text-slate-600 dark:bg-muted dark:text-muted-foreground")
+                            : "bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground")
                         }
                       >
                         {row.type === "earn" ? (
@@ -547,7 +493,7 @@ function Dashboard() {
                         "py-2.5 pr-4 text-right text-sm font-semibold tabular-nums " +
                         (row.type === "earn"
                           ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-slate-500")
+                          : "text-muted-foreground")
                       }
                     >
                       {row.type === "earn" ? "+" : "−"}

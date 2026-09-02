@@ -7,12 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,11 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 type Notification = {
@@ -65,16 +56,19 @@ export function TopNav() {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 bg-background/70 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/50 sm:px-8">
-      <SidebarTrigger className="shrink-0 hover:bg-sky-50" />
-      <Separator orientation="vertical" className="h-5 bg-slate-100" />
+      <SidebarTrigger className="shrink-0 hover:bg-accent hover:text-accent-foreground" />
+      <Separator orientation="vertical" className="h-5 bg-border" />
 
       {/* Search */}
       <div className="relative flex-1 max-w-xl">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" strokeWidth={1.5} />
+        <Search
+          className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          strokeWidth={1.5}
+        />
         <Input
           type="search"
           placeholder="Search skills, mentors, or forum topics..."
-          className="h-11 rounded-xl border-slate-100 bg-white pl-10 pr-3 text-base shadow-none focus-visible:ring-sky-200"
+          className="h-11 rounded-xl border-border bg-card pl-10 pr-3 text-base shadow-none focus-visible:ring-brand-bright"
         />
       </div>
 
@@ -95,9 +89,8 @@ export function TopNav() {
             <TooltipContent side="bottom" className="max-w-xs">
               <p className="text-xs leading-relaxed">
                 Your wallet balance. Points are held in{" "}
-                <span className="font-semibold text-amber-500">escrow</span>{" "}
-                during active sessions and released once both parties confirm
-                completion.
+                <span className="font-semibold text-amber-500">escrow</span> during active sessions
+                and released once both parties confirm completion.
               </p>
             </TooltipContent>
           </Tooltip>
@@ -134,10 +127,7 @@ export function TopNav() {
             </div>
             <ul className="max-h-80 divide-y divide-border overflow-y-auto">
               {notifications.map((n) => (
-                <li
-                  key={n.id}
-                  className="flex gap-3 px-4 py-3 hover:bg-muted/50"
-                >
+                <li key={n.id} className="flex gap-3 px-4 py-3 hover:bg-muted/50">
                   <span
                     className={
                       "mt-1 h-2 w-2 shrink-0 rounded-full " +
@@ -150,12 +140,8 @@ export function TopNav() {
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{n.title}</p>
-                    <p className="line-clamp-2 text-xs text-muted-foreground">
-                      {n.detail}
-                    </p>
-                    <p className="mt-1 text-[11px] text-muted-foreground/80">
-                      {n.time}
-                    </p>
+                    <p className="line-clamp-2 text-xs text-muted-foreground">{n.detail}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground/80">{n.time}</p>
                   </div>
                 </li>
               ))}
@@ -181,12 +167,8 @@ export function TopNav() {
                 </AvatarFallback>
               </Avatar>
               <div className="hidden text-left sm:block">
-                <p className="text-sm font-semibold leading-tight">
-                  Ava Ramirez
-                </p>
-                <p className="text-[11px] leading-tight text-muted-foreground">
-                  Computer Science
-                </p>
+                <p className="text-sm font-semibold leading-tight">Ava Ramirez</p>
+                <p className="text-[11px] leading-tight text-muted-foreground">Computer Science</p>
               </div>
             </button>
           </DropdownMenuTrigger>

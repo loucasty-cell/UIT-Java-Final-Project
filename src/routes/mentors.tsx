@@ -23,11 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -216,7 +212,7 @@ function levelClasses(level: Level) {
     case "Advanced":
       return "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60";
     case "Intermediate":
-      return "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-900/60";
+      return "border-brand-bright/30 bg-accent text-primary dark:border-brand-bright/50 dark:bg-accent dark:text-accent-foreground";
     default:
       return "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60";
   }
@@ -253,9 +249,7 @@ function MentorsPage() {
       {/* Header */}
       <div>
         <p className="text-sm font-medium text-primary">Skill Exchange</p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
-          Find a mentor
-        </h1>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Find a mentor</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Browse peers by skill and book a session with points, an exchange, or as a volunteer.
         </p>
@@ -312,9 +306,7 @@ function MentorsPage() {
           <CardContent className="flex flex-col items-center justify-center gap-2 p-10 text-center">
             <Sparkles className="h-8 w-8 text-muted-foreground" />
             <p className="text-sm font-medium">No mentors match those filters</p>
-            <p className="text-xs text-muted-foreground">
-              Try broadening the level or mode.
-            </p>
+            <p className="text-xs text-muted-foreground">Try broadening the level or mode.</p>
           </CardContent>
         </Card>
       ) : (
@@ -325,21 +317,12 @@ function MentorsPage() {
         </div>
       )}
 
-      <RequestSessionDialog
-        mentor={selected}
-        onClose={() => setSelected(null)}
-      />
+      <RequestSessionDialog mentor={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }
 
-function MentorCard({
-  mentor,
-  onRequest,
-}: {
-  mentor: Mentor;
-  onRequest: () => void;
-}) {
+function MentorCard({ mentor, onRequest }: { mentor: Mentor; onRequest: () => void }) {
   return (
     <Card className="flex h-full flex-col rounded-xl border-border/70 shadow-sm transition hover:shadow-md">
       <CardContent className="flex flex-1 flex-col gap-4 p-5">
@@ -351,15 +334,11 @@ function MentorCard({
           </Avatar>
           <div className="min-w-0">
             <h3 className="truncate text-base font-semibold">{mentor.name}</h3>
-            <p className="truncate text-xs text-muted-foreground">
-              {mentor.major}
-            </p>
+            <p className="truncate text-xs text-muted-foreground">{mentor.major}</p>
             <div className="mt-1 flex items-center gap-1 text-xs">
               <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
               <span className="font-semibold">{mentor.rating.toFixed(1)}</span>
-              <span className="text-muted-foreground">
-                / 5.0 · {mentor.reviews} reviews
-              </span>
+              <span className="text-muted-foreground">/ 5.0 · {mentor.reviews} reviews</span>
             </div>
           </div>
         </div>
@@ -371,7 +350,7 @@ function MentorCard({
               <Badge
                 key={mo}
                 variant="outline"
-                className="rounded-full border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-300"
+                className="rounded-full border-brand-bright/30 bg-accent px-2 py-0.5 text-[11px] font-medium text-primary dark:border-brand-bright/50 dark:bg-accent dark:text-accent-foreground"
               >
                 <M.icon className="mr-1 h-3 w-3" />
                 {M.label}
@@ -419,11 +398,7 @@ function MentorCard({
 
         <div className="mt-auto flex items-center justify-between border-t border-border/70 pt-4">
           <div className="text-xs text-muted-foreground">
-            From{" "}
-            <span className="font-semibold text-foreground">
-              {mentor.cost} Pts
-            </span>{" "}
-            / session
+            From <span className="font-semibold text-foreground">{mentor.cost} Pts</span> / session
           </div>
           <Button size="sm" className="rounded-lg" onClick={onRequest}>
             Request Session
@@ -434,13 +409,7 @@ function MentorCard({
   );
 }
 
-function RequestSessionDialog({
-  mentor,
-  onClose,
-}: {
-  mentor: Mentor | null;
-  onClose: () => void;
-}) {
+function RequestSessionDialog({ mentor, onClose }: { mentor: Mentor | null; onClose: () => void }) {
   const [date, setDate] = useState<Date | undefined>();
   const [time, setTime] = useState<string | undefined>();
   const [tab, setTab] = useState<Mode>("points");
@@ -455,17 +424,13 @@ function RequestSessionDialog({
   const matchingSkills = useMemo(() => {
     if (!mentor) return [] as string[];
     const wantNames = new Set(mentor.wants.map((w) => w.name.toLowerCase()));
-    return mySkills
-      .filter((s) => wantNames.has(s.name.toLowerCase()))
-      .map((s) => s.name);
+    return mySkills.filter((s) => wantNames.has(s.name.toLowerCase())).map((s) => s.name);
   }, [mentor]);
 
   const canSubmit =
     !!date &&
     !!time &&
-    (tab === "points" ||
-      tab === "volunteer" ||
-      (tab === "exchange" && !!exchangeSkill));
+    (tab === "points" || tab === "volunteer" || (tab === "exchange" && !!exchangeSkill));
 
   const handleSubmit = () => {
     if (!mentor || !canSubmit) return;
@@ -489,14 +454,9 @@ function RequestSessionDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent
-        key={key}
-        className="max-h-[90vh] overflow-y-auto rounded-xl sm:max-w-lg"
-      >
+      <DialogContent key={key} className="max-h-[90vh] overflow-y-auto rounded-xl sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>
-            Request Session with {mentor?.name ?? ""}
-          </DialogTitle>
+          <DialogTitle>Request Session with {mentor?.name ?? ""}</DialogTitle>
           <DialogDescription>
             Choose a time, pick a payment mode, and add a note for your mentor.
           </DialogDescription>
@@ -524,9 +484,7 @@ function RequestSessionDialog({
                   mode="single"
                   selected={date}
                   onSelect={setDate}
-                  disabled={(d) =>
-                    d < new Date(new Date().setHours(0, 0, 0, 0))
-                  }
+                  disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
                   initialFocus
                   className="pointer-events-auto p-3"
                 />
@@ -578,7 +536,8 @@ function RequestSessionDialog({
                       {mentor?.cost ?? 0} points will be locked in Escrow
                     </p>
                     <p className="mt-0.5 text-amber-700/90 dark:text-amber-300/90">
-                      Points transfer to {mentor?.name.split(" ")[0]} only after the session is marked complete by both of you.
+                      Points transfer to {mentor?.name.split(" ")[0]} only after the session is
+                      marked complete by both of you.
                     </p>
                   </div>
                 </div>
@@ -589,13 +548,9 @@ function RequestSessionDialog({
               {matchingSkills.length > 0 ? (
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">
-                    Select a skill you possess that {mentor?.name.split(" ")[0]}{" "}
-                    wants to learn
+                    Select a skill you possess that {mentor?.name.split(" ")[0]} wants to learn
                   </Label>
-                  <Select
-                    value={exchangeSkill}
-                    onValueChange={setExchangeSkill}
-                  >
+                  <Select value={exchangeSkill} onValueChange={setExchangeSkill}>
                     <SelectTrigger className="rounded-lg">
                       <SelectValue placeholder="Choose a skill to offer" />
                     </SelectTrigger>
@@ -657,11 +612,7 @@ function RequestSessionDialog({
           <Button variant="outline" onClick={onClose} className="rounded-lg">
             Cancel
           </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            className="rounded-lg"
-          >
+          <Button onClick={handleSubmit} disabled={!canSubmit} className="rounded-lg">
             <Send className="mr-1.5 h-4 w-4" />
             Send Request
           </Button>

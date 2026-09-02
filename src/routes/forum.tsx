@@ -34,7 +34,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 export const Route = createFileRoute("/forum")({
   head: () => ({
     meta: [
-      { title: "Volunteer Forum — SkillBridge" },
+      { title: "SkillBridge" },
       {
         name: "description",
         content: "Find free peer mentoring sessions and community learning threads on SkillBridge.",

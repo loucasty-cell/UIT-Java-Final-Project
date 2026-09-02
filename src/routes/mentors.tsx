@@ -46,7 +46,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/mentors")({
   head: () => ({
     meta: [
-      { title: "Find Mentors — SkillBridge" },
+      { title: "SkillBridge" },
       {
         name: "description",
         content:

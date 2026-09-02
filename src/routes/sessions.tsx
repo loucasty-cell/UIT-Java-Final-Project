@@ -30,7 +30,7 @@ import {
 export const Route = createFileRoute("/sessions")({
   head: () => ({
     meta: [
-      { title: "My Sessions — SkillBridge" },
+      { title: "SkillBridge" },
       {
         name: "description",
         content:

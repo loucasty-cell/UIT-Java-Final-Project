@@ -81,7 +81,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Dashboard — SkillBridge" },
+      { title: "SkillBridge" },
       {
         name: "description",
         content:
@@ -102,20 +102,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "Your SkillBridge dashboard: wallet balance, skills, certificates, and point activity.",
       },
-      {
-        property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1a7f0752-4e3c-4353-bf14-d0cf9daa6d0b/id-preview-683fde90--16b85d25-9e36-4f57-9617-28d56f6294ae.lovable.app-1784706805847.png",
-      },
-      {
-        name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1a7f0752-4e3c-4353-bf14-d0cf9daa6d0b/id-preview-683fde90--16b85d25-9e36-4f57-9617-28d56f6294ae.lovable.app-1784706805847.png",
-      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
   }),
   shellComponent: RootShell,

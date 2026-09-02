@@ -39,7 +39,7 @@ import { Separator } from "@/components/ui/separator";
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Admin Portal — SkillBridge" },
+      { title: "SkillBridge" },
       {
         name: "description",
         content:

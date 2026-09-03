@@ -87,7 +87,7 @@ it.each([400, 409])("shows duplicate-email feedback for status %s", async (statu
     await screen.findByText("An account with this email already exists. Please sign in."),
   ).toBeVisible();
   expect(success).not.toHaveBeenCalled();
-  expect(screen.getByLabelText("Email")).toHaveFocus();
+  await waitFor(() => expect(screen.getByLabelText("Email")).toHaveFocus());
 });
 it.each([
   [new ApiError(429, "Rate limited"), "Too many attempts. Please wait a moment and try again."],

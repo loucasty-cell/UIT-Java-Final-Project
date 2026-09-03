@@ -223,3 +223,13 @@ Spring Boot/PostgreSQL backend in `backend/`. Read this file before making chang
   success with all CI jobs passing: repository-wide lint also reports pre-existing
   formatting, explicit-any and Playwright fixture lint issues outside the auth
   feature. Full lint cleanup is not included in this dependency correction.
+
+## Checkpoint — 2026-09-03 (CI asynchronous focus assertion)
+
+- The primary CI workflow for 98ce9e6 passed frontend build/tests and backend
+  tests/package. A duplicate frontend workflow exposed a timing-sensitive test:
+  duplicate-email text can render before the effect restores input focus.
+- Changed register-form.test.tsx to wait for the focus effect before asserting it,
+  matching the component's asynchronous behavior without weakening the assertion.
+  Application runtime code is unchanged. Legacy lint jobs still have unrelated
+  repository-wide findings; do not report that all workflow checks are green.

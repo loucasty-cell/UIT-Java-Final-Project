@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
+import { useAuth } from "@/context/auth-context";
+import { userDisplayName, userInitials } from "@/lib/auth-validation";
 import { Bell, Search, Coins, LogOut, User, Info } from "lucide-react";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -53,6 +56,27 @@ const notifications: Notification[] = [
 
 export function TopNav() {
   const [unread, setUnread] = useState(notifications.length);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const displayName = userDisplayName(user);
+  const [loggingOut, setLoggingOut] = useState(false);
+  async function handleLogout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    // Clear local state immediately; report server revocation failures honestly.
+    const revoke = logout();
+    void navigate({ to: "/login", search: { redirect: "/" }, replace: true });
+    try {
+      await revoke;
+      toast.success("You have signed out.");
+    } catch {
+      toast.warning(
+        "Signed out on this device. The server could not be reached to revoke the session.",
+      );
+    } finally {
+      setLoggingOut(false);
+    }
+  }
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 bg-background/70 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/50 sm:px-8">
@@ -159,26 +183,25 @@ export function TopNav() {
           <DropdownMenuTrigger asChild>
             <button
               type="button"
+              aria-label={`Account menu for ${displayName}`}
               className="flex items-center gap-2 rounded-xl border border-transparent p-1 pr-2 transition hover:border-border hover:bg-muted/60"
             >
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
-                  AR
+                  {userInitials(displayName)}
                 </AvatarFallback>
               </Avatar>
               <div className="hidden text-left sm:block">
-                <p className="text-sm font-semibold leading-tight">Ava Ramirez</p>
-                <p className="text-[11px] leading-tight text-muted-foreground">Computer Science</p>
+                <p className="text-sm font-semibold leading-tight">{displayName}</p>
+                <p className="text-[11px] leading-tight text-muted-foreground">{user?.email}</p>
               </div>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 rounded-xl">
             <DropdownMenuLabel>
               <div className="flex flex-col">
-                <span className="text-sm font-semibold">Ava Ramirez</span>
-                <span className="text-xs font-normal text-muted-foreground">
-                  Computer Science · Junior
-                </span>
+                <span className="text-sm font-semibold">{displayName}</span>
+                <span className="text-xs font-normal text-muted-foreground">{user?.email}</span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -189,7 +212,11 @@ export function TopNav() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              onSelect={() => void handleLogout()}
+              disabled={loggingOut}
+              className="cursor-pointer text-destructive focus:text-destructive"
+            >
               <LogOut className="mr-2 h-4 w-4" />
               Log out
             </DropdownMenuItem>

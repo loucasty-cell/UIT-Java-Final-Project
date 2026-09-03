@@ -7,6 +7,7 @@ import com.skillbridge.admin.domain.entity.Dispute;
 import com.skillbridge.admin.domain.model.DisputeResolution;
 import com.skillbridge.admin.domain.model.DisputeStatus;
 import com.skillbridge.admin.infrastructure.persistence.DisputeRepository;
+import com.skillbridge.shared.error.InvalidDisputeResolutionException;
 import com.skillbridge.shared.security.SecurityUtils;
 import com.skillbridge.swap.domain.entity.SwapRequest;
 import com.skillbridge.swap.domain.entity.SwapSession;
@@ -46,6 +47,13 @@ public class AdminDisputeService {
             return adminMapper.toResponse(dispute);
         }
 
+        SwapSession disputedSession = sessionRepository.findById(dispute.getSessionId())
+                .orElseThrow(() -> new IllegalArgumentException("Session not found: " + dispute.getSessionId()));
+        if (disputedSession.getStatus() == SwapSessionStatus.CANCELLED) {
+            throw new InvalidDisputeResolutionException(
+                    "Cannot resolve dispute on cancelled session: " + disputedSession.getId());
+        }
+
         OffsetDateTime now = OffsetDateTime.now();
 
         // Financial & session status updates based on resolution
@@ -53,7 +61,7 @@ public class AdminDisputeService {
             sessionRepository.findById(dispute.getSessionId()).ifPresent(session -> {
                 requestRepository.findById(session.getSwapRequestId()).ifPresent(swapRequest -> {
                     if (Boolean.TRUE.equals(swapRequest.getPointsHeld())) {
-                        walletService.releaseHeldPoints(e
+                        walletService.releaseHeldPoints(
                                 swapRequest.getRequesterId(),
                                 swapRequest.getResponderId(),
                                 "SWAP_REQUEST",

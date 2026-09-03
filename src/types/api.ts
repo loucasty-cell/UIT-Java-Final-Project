@@ -39,9 +39,9 @@ export interface RegisterRequest {
   password: string;
   firstName: string;
   lastName: string;
-  displayName: string;
-  major: string;
-  yearOfStudy: number;
+  displayName?: string;
+  major?: string;
+  yearOfStudy?: number;
   referralCode?: string;
 }
 
@@ -83,6 +83,8 @@ export interface UserProfileResponse {
   timezone?: string;
   avatarObjectKey?: string;
   status: string;
+  roles?: string[];
+  accountStatus?: string;
 }
 
 export interface UpdateUserProfileRequest {

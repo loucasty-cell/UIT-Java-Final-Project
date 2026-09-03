@@ -1,4 +1,4 @@
-import { api, setAccessToken, setRefreshToken, clearAuth } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 import {
   AuthResponse,
   LoginRequest,
@@ -30,12 +30,7 @@ export const authService = {
    * POST /api/v1/auth/register
    */
   async register(data: RegisterRequest): Promise<AuthResponse> {
-    const res = await api.post<AuthResponse>("/api/v1/auth/register", data);
-    if (res.accessToken) {
-      setAccessToken(res.accessToken);
-      if (res.refreshToken) setRefreshToken(res.refreshToken);
-    }
-    return res;
+    return api.post<AuthResponse>("/api/v1/auth/register", data);
   },
 
   /**
@@ -43,12 +38,7 @@ export const authService = {
    * POST /api/v1/auth/login
    */
   async login(data: LoginRequest): Promise<AuthResponse> {
-    const res = await api.post<AuthResponse>("/api/v1/auth/login", data);
-    if (res.accessToken) {
-      setAccessToken(res.accessToken);
-      if (res.refreshToken) setRefreshToken(res.refreshToken);
-    }
-    return res;
+    return api.post<AuthResponse>("/api/v1/auth/login", { ...data, email: data.email.trim() });
   },
 
   /**
@@ -56,12 +46,7 @@ export const authService = {
    * POST /api/v1/auth/refresh
    */
   async refresh(data: RefreshTokenRequest): Promise<AuthResponse> {
-    const res = await api.post<AuthResponse>("/api/v1/auth/refresh", data);
-    if (res.accessToken) {
-      setAccessToken(res.accessToken);
-      if (res.refreshToken) setRefreshToken(res.refreshToken);
-    }
-    return res;
+    return api.post<AuthResponse>("/api/v1/auth/refresh", data);
   },
 
   /**
@@ -69,13 +54,8 @@ export const authService = {
    * POST /api/v1/auth/logout
    */
   async logout(refreshToken?: string): Promise<void> {
-    try {
-      if (refreshToken) {
-        await api.post<void>("/api/v1/auth/logout", { refreshToken });
-      }
-    } finally {
-      clearAuth();
-    }
+    if (refreshToken)
+      await api.post<void>("/api/v1/auth/logout", { refreshToken }, { timeoutMs: 5000 });
   },
 
   /**
@@ -83,11 +63,7 @@ export const authService = {
    * GET /api/v1/me
    */
   async getProfile(): Promise<UserProfileResponse> {
-    try {
-      return await api.get<UserProfileResponse>("/api/v1/me");
-    } catch {
-      return api.get<UserProfileResponse>("/api/v1/me/profile");
-    }
+    return api.get<UserProfileResponse>("/api/v1/me");
   },
 
   /**

@@ -6,6 +6,7 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  useRouterState,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
@@ -15,6 +16,8 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { TopNav } from "@/components/top-nav";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider, useAuth } from "@/context/auth-context";
+import { AuthGate } from "@/components/auth-gate";
 
 function NotFoundComponent() {
   return (
@@ -133,16 +136,29 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <AppContent />
+        <Toaster />
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
+
+function AppContent() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const { isAdmin } = useAuth();
+  if (["/login", "/login/", "/register", "/register/"].includes(pathname)) return <Outlet />;
+  return (
+    <AuthGate>
       <SidebarProvider>
-        <AppSidebar isAdmin />
+        <AppSidebar isAdmin={isAdmin} />
         <SidebarInset className="bg-background">
           <TopNav />
           <main className="flex-1">
             <Outlet />
           </main>
         </SidebarInset>
-        <Toaster />
       </SidebarProvider>
-    </QueryClientProvider>
+    </AuthGate>
   );
 }

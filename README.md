@@ -58,9 +58,25 @@ API: **http://localhost:9095**. Health check: **http://localhost:9096/actuator/h
 `-Dfrontend.skip=true` avoids reinstalling/building the frontend when running the
 API alongside Vite.
 
-The current route pages display demo data; starting the API does not automatically
-wire those pages to live data. The API services and auth utilities are available
-for that integration.
+Sign in at **http://localhost:3000/login** using an account in your local database.
+New users can choose **Create an account** or open **http://localhost:3000/register**.
+Registration requires first name, last name, email, and matching passwords
+(8–100 characters, including a letter and a number). Successful registration
+signs you in automatically. Duplicate emails receive a sign-in suggestion.
+Registration, login, session restoration, role checks, and logout use the real Java API.
+The account menu displays your name and contains **Log out**. Other dashboard
+statistics, certificates, notifications, and page content still display demo data.
+
+To review authentication locally, run `npm run test:auth-api` while the backend is
+running. It creates or reuses a synthetic local account and saves its credentials
+in the ignored `auth-test.local` file for browser testing. It does not modify your
+existing accounts. Do not commit that file. Logout clears browser credentials and
+cached queries immediately and revokes the server refresh-token family; already
+issued stateless access tokens expire according to the backend JWT lifetime.
+
+Backend migration V24 removes the old demo rule that assigned privileged roles
+from email wording. New registrations receive USER (Learner); existing roles are
+preserved. Flyway applies the migration when the backend starts.
 
 To run the compiled frontend locally:
 
@@ -113,7 +129,7 @@ The frontend and backend communicate via HTTP REST API:
 ```
 Browser (localhost:3000)
     ↓
-src/lib/api-client.ts (configures axios)
+src/lib/api-client.ts (fetch, errors, and token refresh)
     ↓ VITE_API_BASE_URL=http://localhost:9095
 src/services/*.ts (API calls)
     ↓
@@ -191,7 +207,7 @@ npm run dev
 # (Open http://localhost:3000 in browser, check DevTools Console)
 
 # 5. Make test API call from frontend
-# (Try login/registration in UI)
+# (Try login, reload, and logout in UI)
 ```
 
 ## 🧪 Testing
@@ -205,6 +221,9 @@ cd backend
 
 ### Frontend Tests
 ```bash
+npm test             # Authentication validation, session, API-client and route tests
+npm run test:auth-api # Real local API checks; requires the running backend
+npm run test:registration-api # Creates a synthetic local account; validates registration and default roles
 npm run build        # Type check and build
 npx tsc --noEmit     # Type check without building
 ```

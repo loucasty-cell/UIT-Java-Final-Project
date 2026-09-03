@@ -1,7 +1,25 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { clearAuth, getAccessToken, getRefreshToken, STORAGE_KEYS } from "@/lib/api-client";
-import { authService } from "@/services/auth.service";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { ApiError, refreshAuthTokens } from "@/lib/api-client";
 import {
+  AUTH_CLEARED_EVENT,
+  clearAuth,
+  getAccessToken,
+  getRefreshToken,
+  getAuthRevision,
+  saveSession,
+  STORAGE_KEYS,
+} from "@/lib/auth-session";
+import { authService } from "@/services/auth.service";
+import type {
   AuthResponse,
   AuthUser,
   LoginRequest,
@@ -11,19 +29,16 @@ import {
 } from "@/types/api";
 import { type AppRole, normalizeRoles, hasRole, hasAnyRole } from "@/lib/rbac";
 
+type SessionUser = UserProfileResponse | AuthUser;
 interface AuthContextType {
-  user: (UserProfileResponse & { roles?: string[] }) | AuthUser | null;
+  user: SessionUser | null;
   isAuthenticated: boolean;
-  /** User has USER role (every authenticated user is a learner) */
   isLearner: boolean;
-  /** User has MENTOR role (can create offerings, accept requests) */
   isInstructor: boolean;
-  /** User has ADMIN role (platform moderation) */
   isAdmin: boolean;
   isLoading: boolean;
-  /** Check if user has a specific role */
+  sessionError: string | null;
   checkRole: (role: AppRole) => boolean;
-  /** Check if user has any of the specified roles */
   checkAnyRole: (...roles: AppRole[]) => boolean;
   login: (credentials: LoginRequest) => Promise<AuthResponse>;
   register: (data: RegisterRequest) => Promise<AuthResponse>;
@@ -31,144 +46,116 @@ interface AuthContextType {
   updateProfile: (data: UpdateUserProfileRequest) => Promise<UserProfileResponse>;
   refreshProfile: () => Promise<void>;
 }
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<(UserProfileResponse & { roles?: string[] }) | AuthUser | null>(
-    () => {
-      if (typeof window === "undefined") return null;
-      const stored = localStorage.getItem(STORAGE_KEYS.USER);
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch {
-          return null;
-        }
-      }
-      return null;
-    },
-  );
-
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const queryClient = useQueryClient();
+  // Match SSR and first client render. Cached user JSON is not proof of login.
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  const operation = useRef(0);
 
   const fetchCurrentProfile = useCallback(async () => {
-    const token = getAccessToken();
-    if (!token) {
+    const current = ++operation.current;
+    setSessionError(null);
+    if (!getAccessToken() && !getRefreshToken()) {
       setUser(null);
       setIsLoading(false);
       return;
     }
-
+    setIsLoading(true);
     try {
+      if (!getAccessToken()) await refreshAuthTokens();
+      if (!getAccessToken()) return;
       const profile = await authService.getProfile();
-      setUser((prev) => {
-        const merged = { ...prev, ...profile };
-        if (typeof window !== "undefined") {
-          localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(merged));
-        }
-        return merged;
-      });
-    } catch (err) {
-      // If fetching fails, token might be invalid or network down
-      // we retain whatever cached user exists or clear if unauthorized
+      if (current !== operation.current) return;
+      if (!profile?.id || !profile.email || !Array.isArray(profile.roles))
+        throw new Error("The server returned an invalid profile.");
+      setUser(profile);
+    } catch (error) {
+      if (current !== operation.current) return;
+      setUser(null);
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) clearAuth();
+      else
+        setSessionError(error instanceof Error ? error.message : "Unable to restore your session.");
     } finally {
-      setIsLoading(false);
+      if (current === operation.current) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchCurrentProfile();
-  }, [fetchCurrentProfile]);
-
-  const login = async (credentials: LoginRequest): Promise<AuthResponse> => {
-    setIsLoading(true);
-    try {
-      const response = await authService.login(credentials);
-      if (response.user) {
-        setUser(response.user);
-        if (typeof window !== "undefined") {
-          localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.user));
-        }
-      }
-      // Re-fetch detailed profile asynchronously
-      fetchCurrentProfile();
-      return response;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const register = async (data: RegisterRequest): Promise<AuthResponse> => {
-    setIsLoading(true);
-    try {
-      const response = await authService.register(data);
-      if (response.user) {
-        setUser(response.user);
-        if (typeof window !== "undefined") {
-          localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.user));
-        }
-      }
-      fetchCurrentProfile();
-      return response;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const logout = async (): Promise<void> => {
-    const refreshToken = getRefreshToken();
-    try {
-      await authService.logout(refreshToken || undefined);
-    } finally {
-      clearAuth();
+    const reset = () => {
+      operation.current++;
       setUser(null);
-    }
-  };
-
-  const updateProfile = async (data: UpdateUserProfileRequest): Promise<UserProfileResponse> => {
-    const updated = await authService.updateProfile(data);
-    setUser((prev) => {
-      const merged = { ...prev, ...updated };
-      if (typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(merged));
+      setSessionError(null);
+      setIsLoading(false);
+      queryClient.clear();
+    };
+    const sync = (event: StorageEvent) => {
+      if (
+        event.key === null ||
+        event.key === STORAGE_KEYS.ACCESS_TOKEN ||
+        event.key === STORAGE_KEYS.REFRESH_TOKEN
+      ) {
+        // Logout in another tab invalidates in-flight responses in this tab too.
+        if (!getAccessToken() && !getRefreshToken()) clearAuth();
+        else void fetchCurrentProfile();
       }
-      return merged;
-    });
-    return updated;
+    };
+    window.addEventListener(AUTH_CLEARED_EVENT, reset);
+    window.addEventListener("storage", sync);
+    void fetchCurrentProfile();
+    return () => {
+      operation.current++;
+      window.removeEventListener(AUTH_CLEARED_EVENT, reset);
+      window.removeEventListener("storage", sync);
+    };
+  }, [fetchCurrentProfile, queryClient]);
+
+  const authenticate = async (request: () => Promise<AuthResponse>) => {
+    clearAuth();
+    const current = ++operation.current;
+    const revision = getAuthRevision();
+    const response = await request();
+    if (current !== operation.current || revision !== getAuthRevision())
+      throw new Error("Sign-in was cancelled. Please try again.");
+    saveSession(response);
+    setUser(response.user);
+    setSessionError(null);
+    setIsLoading(false);
+    return response;
   };
 
-  // Normalize roles once, reuse for all role checks
-  const rawRoles: string[] = useMemo(() => (user as any)?.roles || [], [user]);
-  const normalizedRoles = useMemo(() => normalizeRoles(rawRoles), [rawRoles]);
+  const logout = async () => {
+    const refreshToken = getRefreshToken();
+    clearAuth();
+    // Revoke the original family even if its access token expired.
+    await authService.logout(refreshToken || undefined);
+  };
 
-  const isLearner = normalizedRoles.includes("USER") || normalizedRoles.length > 0;
-  const isInstructor = normalizedRoles.includes("MENTOR");
-  const isAdmin = normalizedRoles.includes("ADMIN");
-
-  const checkRole = useCallback(
-    (role: AppRole) => hasRole(rawRoles, role),
-    [rawRoles],
-  );
-
-  const checkAnyRole = useCallback(
-    (...roles: AppRole[]) => hasAnyRole(rawRoles, ...roles),
-    [rawRoles],
-  );
-
+  const updateProfile = async (data: UpdateUserProfileRequest) => {
+    const current = operation.current;
+    const profile = await authService.updateProfile(data);
+    if (current === operation.current && getAccessToken()) setUser(profile);
+    return profile;
+  };
+  const roles = useMemo(() => user?.roles || [], [user]);
+  const normalizedRoles = useMemo(() => normalizeRoles(roles), [roles]);
   return (
     <AuthContext.Provider
       value={{
         user,
-        isAuthenticated: !!getAccessToken() || !!user,
-        isLearner,
-        isInstructor,
-        isAdmin,
+        isAuthenticated: user !== null,
         isLoading,
-        checkRole,
-        checkAnyRole,
-        login,
-        register,
+        sessionError,
+        isLearner: normalizedRoles.includes("USER"),
+        isInstructor: normalizedRoles.includes("MENTOR"),
+        isAdmin: normalizedRoles.includes("ADMIN"),
+        checkRole: (role) => hasRole(roles, role),
+        checkAnyRole: (...required) => hasAnyRole(roles, ...required),
+        login: (credentials) => authenticate(() => authService.login(credentials)),
+        register: (data) => authenticate(() => authService.register(data)),
         logout,
         updateProfile,
         refreshProfile: fetchCurrentProfile,
@@ -178,11 +165,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     </AuthContext.Provider>
   );
 }
-
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }

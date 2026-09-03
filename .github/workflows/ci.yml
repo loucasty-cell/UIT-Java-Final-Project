@@ -97,6 +97,10 @@ jobs:
         run: npx tsc --noEmit
         timeout-minutes: 5
 
+      - name: Run frontend authentication tests
+        run: npm run test:ci
+        timeout-minutes: 5
+
       - name: Build Frontend project
         run: npm run build
         env:

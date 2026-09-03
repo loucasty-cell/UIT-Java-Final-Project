@@ -37,6 +37,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
+import { useAuth } from "@/context/auth-context";
+import { userDisplayName, userInitials } from "@/lib/auth-validation";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -187,6 +189,8 @@ function Panel({ children, className = "" }: { children: React.ReactNode; classN
 }
 
 function Dashboard() {
+  const { user, isInstructor, isAdmin } = useAuth();
+  const displayName = userDisplayName(user);
   const [certificates, setCertificates] = useState<{ name: string; size: string }[]>([
     { name: "Java SE 21 Certified.pdf", size: "412 KB" },
     { name: "SQL Fundamentals — Coursera.pdf", size: "228 KB" },
@@ -220,7 +224,7 @@ function Dashboard() {
               Fall 2026 · Week 3
             </p>
             <h1 className="mt-1 truncate text-inherit text-xl font-semibold tracking-tight sm:text-2xl">
-              Welcome back, Alex
+              Welcome back, {user?.firstName || displayName}
             </h1>
             <p className="mt-1 text-sm text-brand-pale/90">
               You have 2 sessions coming up this week — the next one is Thursday at 4:00 PM.
@@ -261,17 +265,17 @@ function Dashboard() {
             <div className="flex items-center gap-3">
               <Avatar className="h-14 w-14">
                 <AvatarFallback className="bg-primary text-base font-semibold text-primary-foreground">
-                  AC
+                  {userInitials(displayName)}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <h2 className="truncate text-base font-semibold text-foreground">Alex Chen</h2>
-                <p className="truncate text-xs text-muted-foreground">Computer Science, Year 3</p>
+                <h2 className="truncate text-base font-semibold text-foreground">{displayName}</h2>
+                <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
                 <Badge
                   variant="secondary"
                   className="mt-1.5 rounded-full border-0 bg-emerald-50 text-[11px] text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
                 >
-                  Verified mentor
+                  {isAdmin ? "Administrator" : isInstructor ? "Mentor" : "Learner"}
                 </Badge>
               </div>
             </div>

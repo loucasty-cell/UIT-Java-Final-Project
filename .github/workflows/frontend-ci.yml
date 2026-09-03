@@ -133,11 +133,16 @@ jobs:
       - name: Check build size
         run: |
           echo "📦 Build Size Report:"
-          du -sh dist/ || true
+          du -sh .output/
       
+      - name: Verify compiled frontend runtime
+        run: node scripts/verify-frontend-build.mjs
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
-          path: dist/
+          path: .output/
+          include-hidden-files: true
+          if-no-files-found: error
           retention-days: 7

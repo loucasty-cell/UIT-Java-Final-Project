@@ -67,10 +67,15 @@ jobs:
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'http://localhost:9095' }}
         timeout-minutes: 7
+      - name: Verify compiled frontend runtime
+        run: node scripts/verify-frontend-build.mjs
+
       - uses: actions/upload-artifact@v4
         with:
           name: frontend-build-${{ github.run_id }}
-          path: dist/
+          path: .output/
+          include-hidden-files: true
+          if-no-files-found: error
           retention-days: 5
 
   backend-build:

@@ -19,20 +19,30 @@ import {
   UserSkillResponse,
   WalletResponse,
   WatchlistItemResponse,
+  SkillDirection,
+  SkillLevel,
 } from "@/types/api";
 
 // Seed state stored in memory and synchronized to localStorage if present
 const MOCK_STORAGE_KEY = "skillbridge_mock_db_v1";
 
 interface MockDB {
-  users: Array<AuthUser & { password?: string; bio?: string; major?: string; yearOfStudy?: number; points: number }>;
+  users: Array<
+    AuthUser & {
+      password?: string;
+      bio?: string;
+      major?: string;
+      yearOfStudy?: number;
+      points: number;
+    }
+  >;
   skills: GlobalCatalogSkill[];
   userSkills: Record<string, UserSkillResponse[]>;
   mentors: MentorDetailResponse[];
   offerings: MentorOfferingResponse[];
   sessions: SessionResponse[];
   swaps: SwapRequestResponse[];
-  forumPosts: any[];
+  forumPosts: typeof DEFAULT_FORUM_POSTS;
   notifications: NotificationResponse[];
   walletTransactions: PointTransactionResponse[];
   watchlist: WatchlistItemResponse[];
@@ -84,15 +94,60 @@ const DEFAULT_USERS = [
 ];
 
 const DEFAULT_SKILLS: GlobalCatalogSkill[] = [
-  { id: "sk-react", name: "React", category: "Programming", description: "Modern React with Hooks, Server Components, and State Management." },
-  { id: "sk-typescript", name: "TypeScript", category: "Programming", description: "Static typing for JavaScript, generics, utility types." },
-  { id: "sk-python", name: "Python", category: "Programming", description: "Data structures, algorithms, Flask, and pandas." },
-  { id: "sk-java", name: "Java & Spring Boot", category: "Programming", description: "Enterprise backend development, Spring Data JPA, REST APIs." },
-  { id: "sk-uiux", name: "UI/UX & Figma", category: "Design", description: "Wireframing, prototyping, design systems, and user testing." },
-  { id: "sk-algebra", name: "Linear Algebra", category: "Mathematics", description: "Vector spaces, eigenvalues, matrix transformations." },
-  { id: "sk-calculus", name: "Calculus & Analysis", category: "Mathematics", description: "Derivatives, integrals, multivariable calculus." },
-  { id: "sk-writing", name: "Academic Essay Writing", category: "Language & Writing", description: "Thesis development, structuring, academic style." },
-  { id: "sk-public-speaking", name: "Public Speaking", category: "Soft Skills", description: "Presentations, storytelling, and stage presence." },
+  {
+    id: "sk-react",
+    name: "React",
+    category: "Programming",
+    description: "Modern React with Hooks, Server Components, and State Management.",
+  },
+  {
+    id: "sk-typescript",
+    name: "TypeScript",
+    category: "Programming",
+    description: "Static typing for JavaScript, generics, utility types.",
+  },
+  {
+    id: "sk-python",
+    name: "Python",
+    category: "Programming",
+    description: "Data structures, algorithms, Flask, and pandas.",
+  },
+  {
+    id: "sk-java",
+    name: "Java & Spring Boot",
+    category: "Programming",
+    description: "Enterprise backend development, Spring Data JPA, REST APIs.",
+  },
+  {
+    id: "sk-uiux",
+    name: "UI/UX & Figma",
+    category: "Design",
+    description: "Wireframing, prototyping, design systems, and user testing.",
+  },
+  {
+    id: "sk-algebra",
+    name: "Linear Algebra",
+    category: "Mathematics",
+    description: "Vector spaces, eigenvalues, matrix transformations.",
+  },
+  {
+    id: "sk-calculus",
+    name: "Calculus & Analysis",
+    category: "Mathematics",
+    description: "Derivatives, integrals, multivariable calculus.",
+  },
+  {
+    id: "sk-writing",
+    name: "Academic Essay Writing",
+    category: "Language & Writing",
+    description: "Thesis development, structuring, academic style.",
+  },
+  {
+    id: "sk-public-speaking",
+    name: "Public Speaking",
+    category: "Soft Skills",
+    description: "Presentations, storytelling, and stage presence.",
+  },
 ];
 
 const DEFAULT_MENTORS: MentorDetailResponse[] = [
@@ -141,9 +196,7 @@ const DEFAULT_MENTORS: MentorDetailResponse[] = [
     averageRating: 4.9,
     reviewCount: 41,
     hourlyRatePoints: 55,
-    skills: [
-      { id: "sk-uiux", name: "UI/UX & Figma", category: "Design" },
-    ],
+    skills: [{ id: "sk-uiux", name: "UI/UX & Figma", category: "Design" }],
   },
 ];
 
@@ -153,7 +206,8 @@ const DEFAULT_FORUM_POSTS = [
     authorId: "user-student",
     authorName: "Alex Chen",
     title: "Looking for study partner / mentor for Advanced Algorithms (CS 301)",
-    content: "Preparing for the midterm next week. Happy to swap React/Tailwind frontend skills or offer 40 points per session!",
+    content:
+      "Preparing for the midterm next week. Happy to swap React/Tailwind frontend skills or offer 40 points per session!",
     tags: ["Algorithms", "StudyGroup", "Python"],
     upvotes: 14,
     hasUpvoted: false,
@@ -167,7 +221,8 @@ const DEFAULT_FORUM_POSTS = [
     authorId: "user-mentor",
     authorName: "Priya Anand",
     title: "Free volunteer office hours: Code review for React & TypeScript projects",
-    content: "Hosting free 30-min 1-on-1 portfolio review slots this Thursday for anyone building summer projects!",
+    content:
+      "Hosting free 30-min 1-on-1 portfolio review slots this Thursday for anyone building summer projects!",
     tags: ["Volunteer", "React", "TypeScript", "Mentorship"],
     upvotes: 38,
     hasUpvoted: true,
@@ -184,7 +239,9 @@ function initDB(): MockDB {
     if (raw) {
       try {
         return JSON.parse(raw);
-      } catch {}
+      } catch {
+        // A damaged cache is replaced by the default demo data below.
+      }
     }
   }
 
@@ -193,12 +250,40 @@ function initDB(): MockDB {
     skills: [...DEFAULT_SKILLS],
     userSkills: {
       "user-student": [
-        { id: "us-1", skill: { id: "sk-react", name: "React", category: "Programming" }, level: "INTERMEDIATE", direction: "TEACH", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: "us-2", skill: { id: "sk-algebra", name: "Linear Algebra", category: "Mathematics" }, level: "BEGINNER", direction: "LEARN", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        {
+          id: "us-1",
+          skill: { id: "sk-react", name: "React", category: "Programming" },
+          level: "INTERMEDIATE",
+          direction: "TEACH",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: "us-2",
+          skill: { id: "sk-algebra", name: "Linear Algebra", category: "Mathematics" },
+          level: "BEGINNER",
+          direction: "LEARN",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
       ],
       "user-mentor": [
-        { id: "us-3", skill: { id: "sk-react", name: "React", category: "Programming" }, level: "ADVANCED", direction: "TEACH", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: "us-4", skill: { id: "sk-typescript", name: "TypeScript", category: "Programming" }, level: "ADVANCED", direction: "TEACH", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        {
+          id: "us-3",
+          skill: { id: "sk-react", name: "React", category: "Programming" },
+          level: "ADVANCED",
+          direction: "TEACH",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: "us-4",
+          skill: { id: "sk-typescript", name: "TypeScript", category: "Programming" },
+          level: "ADVANCED",
+          direction: "TEACH",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
       ],
     },
     mentors: [...DEFAULT_MENTORS],
@@ -208,7 +293,8 @@ function initDB(): MockDB {
         mentorId: "user-mentor",
         skillId: "sk-react",
         skillName: "React",
-        description: "Comprehensive 1-on-1 coaching covering state management, hooks, and clean architecture.",
+        description:
+          "Comprehensive 1-on-1 coaching covering state management, hooks, and clean architecture.",
         hourlyRatePoints: 50,
         available: true,
       },
@@ -235,7 +321,8 @@ function initDB(): MockDB {
         id: "notif-1",
         userId: "user-student",
         title: "Welcome to SkillBridge!",
-        message: "You received +30 starter points in your student wallet. Start browsing mentors or offer a skill!",
+        message:
+          "You received +30 starter points in your student wallet. Start browsing mentors or offer a skill!",
         type: "SYSTEM_NOTIFICATION",
         read: false,
         createdAt: new Date().toISOString(),
@@ -281,13 +368,63 @@ function saveDB(db: MockDB) {
   if (typeof window !== "undefined") {
     try {
       localStorage.setItem(MOCK_STORAGE_KEY, JSON.stringify(db));
-    } catch {}
+    } catch {
+      // Demo data remains usable in memory when browser storage is unavailable.
+    }
   }
 }
 
 let db = initDB();
 
-export function handleMockApiRequest(endpoint: string, method: string = "GET", body?: any, params?: any): any {
+interface MockRequestBody {
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  displayName?: string;
+  bio?: string;
+  major?: string;
+  yearOfStudy?: number;
+  referralCode?: string;
+  skillId?: string;
+  skillName?: string;
+  description?: string;
+  hourlyRatePoints?: number;
+  category?: string;
+  level?: SkillLevel;
+  direction?: SkillDirection;
+  title?: string;
+  content?: string;
+  tags?: string[];
+  rewardOfferedPoints?: number;
+  mentorId?: string;
+  scheduledStart?: string;
+  pointCost?: number;
+  receiverId?: string;
+  initiatorSkillName?: string;
+  receiverSkillName?: string;
+  message?: string;
+  mentorOfferingId?: string;
+  requestedSkillId?: string;
+  mode?: string;
+  offeredUserSkillId?: string;
+  durationMinutes?: number;
+  motivation?: string;
+}
+
+export function handleMockApiRequest(
+  endpoint: string,
+  method: string = "GET",
+  body: MockRequestBody = {},
+  params?: {
+    search?: string;
+    q?: string;
+    direction?: string;
+    page?: number;
+    size?: number;
+    skillId?: string;
+    week?: string;
+  },
+): unknown {
   // Refresh db in case modified
   db = initDB();
 
@@ -334,7 +471,7 @@ export function handleMockApiRequest(endpoint: string, method: string = "GET", b
   if (cleanPath === "/api/v1/auth/register" && method === "POST") {
     const newUser = {
       id: "user-" + Date.now(),
-      email: body.email,
+      email: body.email ?? "",
       firstName: body.firstName || "Student",
       lastName: body.lastName || "User",
       displayName: body.displayName || `${body.firstName} ${body.lastName}`.trim() || "Student",
@@ -430,7 +567,7 @@ export function handleMockApiRequest(endpoint: string, method: string = "GET", b
         (m) =>
           m.name.toLowerCase().includes(search) ||
           m.skills.some((s) => s.name.toLowerCase().includes(search)) ||
-          (m.major && m.major.toLowerCase().includes(search))
+          (m.major && m.major.toLowerCase().includes(search)),
       );
     }
     return {
@@ -448,7 +585,8 @@ export function handleMockApiRequest(endpoint: string, method: string = "GET", b
     const mentorId = parts[4];
     const subRoute = parts[5];
 
-    const mentor = db.mentors.find((m) => m.id === mentorId || m.userId === mentorId) || db.mentors[0];
+    const mentor =
+      db.mentors.find((m) => m.id === mentorId || m.userId === mentorId) || db.mentors[0];
 
     if (subRoute === "availability") {
       return {
@@ -469,7 +607,8 @@ export function handleMockApiRequest(endpoint: string, method: string = "GET", b
             sessionId: "sess-1",
             authorName: "Alex Chen",
             rating: 5,
-            comment: "Exceptional explanation of React performance bottlenecks and useMemo! Highly recommended.",
+            comment:
+              "Exceptional explanation of React performance bottlenecks and useMemo! Highly recommended.",
             createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
           },
           {
@@ -519,11 +658,20 @@ export function handleMockApiRequest(endpoint: string, method: string = "GET", b
 
   if (cleanPath === "/api/skills/search" || cleanPath === "/api/v1/skills/search") {
     const q = params?.q?.toLowerCase() || "";
-    return db.skills.filter((s) => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q));
+    return db.skills.filter(
+      (s) => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q),
+    );
   }
 
   if (cleanPath === "/api/v1/skills/categories") {
-    return ["Programming", "Design", "Mathematics", "Language & Writing", "Soft Skills", "Business"];
+    return [
+      "Programming",
+      "Design",
+      "Mathematics",
+      "Language & Writing",
+      "Soft Skills",
+      "Business",
+    ];
   }
 
   if (cleanPath === "/api/v1/me/skills") {
@@ -578,8 +726,8 @@ export function handleMockApiRequest(endpoint: string, method: string = "GET", b
         id: "fp-" + Date.now(),
         authorId: db.users[0].id,
         authorName: db.users[0].displayName,
-        title: body.title,
-        content: body.content,
+        title: body.title ?? "",
+        content: body.content ?? "",
         tags: body.tags || [],
         upvotes: 0,
         hasUpvoted: false,
@@ -604,9 +752,24 @@ export function handleMockApiRequest(endpoint: string, method: string = "GET", b
 
   if (cleanPath === "/api/v1/forum/top-volunteers") {
     return [
-      { userId: "user-mentor", displayName: "Priya Anand", volunteerHours: 24, badge: "Gold Mentor" },
-      { userId: "user-marcus", displayName: "Marcus Delgado", volunteerHours: 18, badge: "Silver Mentor" },
-      { userId: "user-kenji", displayName: "Kenji Watanabe", volunteerHours: 14, badge: "Bronze Mentor" },
+      {
+        userId: "user-mentor",
+        displayName: "Priya Anand",
+        volunteerHours: 24,
+        badge: "Gold Mentor",
+      },
+      {
+        userId: "user-marcus",
+        displayName: "Marcus Delgado",
+        volunteerHours: 18,
+        badge: "Silver Mentor",
+      },
+      {
+        userId: "user-kenji",
+        displayName: "Kenji Watanabe",
+        volunteerHours: 14,
+        badge: "Bronze Mentor",
+      },
     ];
   }
 
@@ -847,7 +1010,10 @@ export function handleMockApiRequest(endpoint: string, method: string = "GET", b
   // ==========================================
   // Mentor Applications & Milestones
   // ==========================================
-  if (cleanPath === "/api/v1/mentor-applications" || cleanPath === "/api/v1/me/mentor-application") {
+  if (
+    cleanPath === "/api/v1/mentor-applications" ||
+    cleanPath === "/api/v1/me/mentor-application"
+  ) {
     if (method === "POST") {
       return {
         id: "ma-" + Date.now(),
@@ -867,9 +1033,30 @@ export function handleMockApiRequest(endpoint: string, method: string = "GET", b
 
   if (cleanPath === "/api/v1/milestones" || cleanPath === "/api/v1/me/milestones") {
     return [
-      { id: "ms-1", title: "Complete First Session", target: 1, current: 1, rewardPoints: 5, completed: true },
-      { id: "ms-2", title: "Join Community", target: 1, current: 1, rewardPoints: 30, completed: true },
-      { id: "ms-3", title: "Teach 5 Sessions", target: 5, current: 2, rewardPoints: 10, completed: false },
+      {
+        id: "ms-1",
+        title: "Complete First Session",
+        target: 1,
+        current: 1,
+        rewardPoints: 5,
+        completed: true,
+      },
+      {
+        id: "ms-2",
+        title: "Join Community",
+        target: 1,
+        current: 1,
+        rewardPoints: 30,
+        completed: true,
+      },
+      {
+        id: "ms-3",
+        title: "Teach 5 Sessions",
+        target: 5,
+        current: 2,
+        rewardPoints: 10,
+        completed: false,
+      },
     ];
   }
 

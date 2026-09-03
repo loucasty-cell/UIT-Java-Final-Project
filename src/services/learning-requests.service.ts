@@ -94,9 +94,9 @@ export const learningRequestsService = {
 
     const query = searchParams.toString();
     try {
-      const result = await apiClient<LearningRequestResponse[] | { content: LearningRequestResponse[] }>(
-        `/api/v1/learning-requests${query ? `?${query}` : ""}`,
-      );
+      const result = await apiClient<
+        LearningRequestResponse[] | { content: LearningRequestResponse[] }
+      >(`/api/v1/learning-requests${query ? `?${query}` : ""}`);
       return Array.isArray(result) ? result : result.content || [];
     } catch {
       return [];
@@ -116,18 +116,14 @@ export const learningRequestsService = {
    */
   acceptRequest: async (id: string, data?: AcceptRequestDTO): Promise<LearningRequestResponse> => {
     try {
-      return await apiClient<LearningRequestResponse>(
-        `/api/v1/learning-requests/${id}/accept`,
-        {
-          method: "POST",
-          body: data ? JSON.stringify(data) : undefined,
-        },
-      );
+      return await apiClient<LearningRequestResponse>(`/api/v1/learning-requests/${id}/accept`, {
+        method: "POST",
+        body: data ? JSON.stringify(data) : undefined,
+      });
     } catch {
-      return apiClient<LearningRequestResponse>(
-        `/api/requests/swaps/${id}/accept`,
-        { method: "POST" },
-      );
+      return apiClient<LearningRequestResponse>(`/api/requests/swaps/${id}/accept`, {
+        method: "POST",
+      });
     }
   },
 
@@ -137,18 +133,14 @@ export const learningRequestsService = {
    */
   rejectRequest: async (id: string, data?: RejectRequestDTO): Promise<LearningRequestResponse> => {
     try {
-      return await apiClient<LearningRequestResponse>(
-        `/api/v1/learning-requests/${id}/reject`,
-        {
-          method: "POST",
-          body: data ? JSON.stringify(data) : undefined,
-        },
-      );
+      return await apiClient<LearningRequestResponse>(`/api/v1/learning-requests/${id}/reject`, {
+        method: "POST",
+        body: data ? JSON.stringify(data) : undefined,
+      });
     } catch {
-      return apiClient<LearningRequestResponse>(
-        `/api/requests/swaps/${id}/reject`,
-        { method: "POST" },
-      );
+      return apiClient<LearningRequestResponse>(`/api/requests/swaps/${id}/reject`, {
+        method: "POST",
+      });
     }
   },
 
@@ -158,15 +150,13 @@ export const learningRequestsService = {
    */
   cancelRequest: async (id: string): Promise<LearningRequestResponse> => {
     try {
-      return await apiClient<LearningRequestResponse>(
-        `/api/v1/learning-requests/${id}/cancel`,
-        { method: "POST" },
-      );
+      return await apiClient<LearningRequestResponse>(`/api/v1/learning-requests/${id}/cancel`, {
+        method: "POST",
+      });
     } catch {
-      return apiClient<LearningRequestResponse>(
-        `/api/requests/swaps/${id}/cancel`,
-        { method: "POST" },
-      );
+      return apiClient<LearningRequestResponse>(`/api/requests/swaps/${id}/cancel`, {
+        method: "POST",
+      });
     }
   },
 };

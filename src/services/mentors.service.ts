@@ -30,24 +30,22 @@ export const mentorsService = {
    * PHASE 0: Add mock fallback for mentors page (only page allowed to use mock)
    */
   async searchMentors(
-    filters: MentorSearchFilters = {}
+    filters: MentorSearchFilters = {},
   ): Promise<MentorSearchResponse[] | PageResponse<MentorSearchResponse>> {
     try {
-      const res = await api.get<any>("/api/v1/mentors", filters);
+      const res = await api.get<MentorSearchResponse[] | PageResponse<MentorSearchResponse>>(
+        "/api/v1/mentors",
+        filters,
+      );
       // If backend returns Page<MentorSummaryResponse>, res.content exists
-      if (res && Array.isArray(res.content)) {
+      if (res && !Array.isArray(res) && Array.isArray(res.content)) {
         return res.content;
       }
       return res;
     } catch (error) {
       // PHASE 0: Fallback to mock for mentors page only
       try {
-        const mockResult = handleMockApiRequest(
-          "/api/v1/mentors",
-          "GET",
-          undefined,
-          filters
-        );
+        const mockResult = handleMockApiRequest("/api/v1/mentors", "GET", undefined, filters);
         return mockResult as MentorSearchResponse[];
       } catch {
         throw error;
@@ -67,15 +65,8 @@ export const mentorsService = {
    * Get mentor availability calendar slots
    * GET /api/v1/mentors/{mentorId}/availability?from={}&to={}
    */
-  async getAvailability(
-    mentorId: string,
-    from: string,
-    to: string
-  ): Promise<AvailabilityResponse> {
-    return api.get<AvailabilityResponse>(
-      `/api/v1/mentors/${mentorId}/availability`,
-      { from, to }
-    );
+  async getAvailability(mentorId: string, from: string, to: string): Promise<AvailabilityResponse> {
+    return api.get<AvailabilityResponse>(`/api/v1/mentors/${mentorId}/availability`, { from, to });
   },
 
   /**
@@ -84,12 +75,9 @@ export const mentorsService = {
    */
   async getMentorReviews(
     mentorId: string,
-    pagination: PaginationParams = { page: 0, size: 10 }
+    pagination: PaginationParams = { page: 0, size: 10 },
   ): Promise<PageResponse<ReviewResponse>> {
-    return api.get<PageResponse<ReviewResponse>>(
-      `/api/v1/mentors/${mentorId}/reviews`,
-      pagination
-    );
+    return api.get<PageResponse<ReviewResponse>>(`/api/v1/mentors/${mentorId}/reviews`, pagination);
   },
 
   // ==========================================
@@ -101,8 +89,10 @@ export const mentorsService = {
    * GET /api/v1/me/mentor-offerings
    */
   async getMyOfferings(): Promise<MentorOfferingResponse[]> {
-    const res = await api.get<any>("/api/v1/me/mentor-offerings");
-    if (res && Array.isArray(res.content)) {
+    const res = await api.get<MentorOfferingResponse[] | PageResponse<MentorOfferingResponse>>(
+      "/api/v1/me/mentor-offerings",
+    );
+    if (res && !Array.isArray(res) && Array.isArray(res.content)) {
       return res.content;
     }
     return Array.isArray(res) ? res : [];
@@ -112,9 +102,7 @@ export const mentorsService = {
    * Create a new mentor offering
    * POST /api/v1/me/mentor-offerings
    */
-  async createOffering(
-    data: CreateMentorOfferingRequest
-  ): Promise<MentorOfferingResponse> {
+  async createOffering(data: CreateMentorOfferingRequest): Promise<MentorOfferingResponse> {
     return api.post<MentorOfferingResponse>("/api/v1/me/mentor-offerings", data);
   },
 
@@ -124,18 +112,12 @@ export const mentorsService = {
    */
   async updateOffering(
     id: string,
-    data: UpdateMentorOfferingRequest
+    data: UpdateMentorOfferingRequest,
   ): Promise<MentorOfferingResponse> {
     try {
-      return await api.patch<MentorOfferingResponse>(
-        `/api/v1/me/mentor-offerings/${id}`,
-        data
-      );
+      return await api.patch<MentorOfferingResponse>(`/api/v1/me/mentor-offerings/${id}`, data);
     } catch {
-      return api.put<MentorOfferingResponse>(
-        `/api/v1/me/mentor-offerings/${id}`,
-        data
-      );
+      return api.put<MentorOfferingResponse>(`/api/v1/me/mentor-offerings/${id}`, data);
     }
   },
 

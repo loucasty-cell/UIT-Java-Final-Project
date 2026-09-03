@@ -29,10 +29,7 @@ export const skillsService = {
    * Update skill proficiency level
    * PATCH /api/v1/me/skills/{id}
    */
-  async updateUserSkill(
-    id: string,
-    data: UpdateUserSkillRequest
-  ): Promise<UserSkillResponse> {
+  async updateUserSkill(id: string, data: UpdateUserSkillRequest): Promise<UserSkillResponse> {
     try {
       return await api.patch<UserSkillResponse>(`/api/v1/me/skills/${id}`, data);
     } catch {
@@ -52,15 +49,12 @@ export const skillsService = {
    * Upload Skill Certificate (PDF / Image)
    * POST /api/v1/me/skills/{skillId}/certificate
    */
-  async uploadCertificate(
-    skillId: string,
-    file: File
-  ): Promise<SkillCertificateResponse> {
+  async uploadCertificate(skillId: string, file: File): Promise<SkillCertificateResponse> {
     const formData = new FormData();
     formData.append("file", file);
     return api.upload<SkillCertificateResponse>(
       `/api/v1/me/skills/${skillId}/certificate`,
-      formData
+      formData,
     );
   },
 
@@ -140,7 +134,11 @@ export const skillsService = {
    * Create a new catalog skill
    * POST /api/skills
    */
-  async createSkill(data: { name: string; category: string; description?: string }): Promise<GlobalCatalogSkill> {
+  async createSkill(data: {
+    name: string;
+    category: string;
+    description?: string;
+  }): Promise<GlobalCatalogSkill> {
     return api.post<GlobalCatalogSkill>("/api/skills", data);
   },
 };

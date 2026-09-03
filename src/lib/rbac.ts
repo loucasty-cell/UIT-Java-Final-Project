@@ -24,10 +24,7 @@ export function normalizeRoles(raw: string[]): AppRole[] {
 }
 
 /** Check if user has a specific role */
-export function hasRole(
-  roles: string[] | undefined | null,
-  role: AppRole,
-): boolean {
+export function hasRole(roles: string[] | undefined | null, role: AppRole): boolean {
   if (!roles || roles.length === 0) return false;
   const normalized = normalizeRoles(roles);
   return normalized.includes(role);

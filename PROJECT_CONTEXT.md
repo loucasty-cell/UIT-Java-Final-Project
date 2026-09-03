@@ -233,3 +233,32 @@ Spring Boot/PostgreSQL backend in `backend/`. Read this file before making chang
   matching the component's asynchronous behavior without weakening the assertion.
   Application runtime code is unchanged. Legacy lint jobs still have unrelated
   repository-wide findings; do not report that all workflow checks are green.
+
+## Checkpoint — 2026-09-03 (repair failing lint workflows)
+
+- Objective: user asks to fix the red GitHub check; repair lint and publish the
+  corrections to main under the existing authorization. Remote main was fetched
+  and matched local HEAD 5886cc8 before changes.
+- Changes: formatted application services, mock helpers, and E2E source/scripts
+  to the existing Prettier rules. Replaced explicit-any types with existing DTOs,
+  typed pagination unions, typed demo request fields, or unknown for unspecified
+  response bodies; narrowed array/page responses before accessing content.
+  Renamed the Playwright fixture callback from use to providePage to avoid its
+  false React-hook classification. Documented intentional demo cache recovery.
+- Lint configuration: exclude .agents/**, a separate vendored agent tool package,
+  from application ESLint. Application rules remain enabled and lint remains a
+  required CI step. Eight existing non-failing warnings remain; zero lint errors.
+- CI files: frontend.yml, frontend-ci.yml and main.yml now upload the real .output
+  artifact, include its hidden directory, and fail if it is missing. Added
+  scripts/verify-frontend-build.mjs to start the compiled Node server, validate
+  login/register/protected SSR and referenced JS/CSS, then stop the test process
+  before uploading. Existing deployment placeholders are unchanged.
+- Validation: npm run lint passed (0 errors), TypeScript passed, all 77 frontend
+  tests passed, and npm run build passed. The final generated artifact passed the
+  new runtime check: 3 routes and 24 assets, with no unresolved dependencies.
+  git diff --check passed. Backend source was unchanged in this repair; its prior
+  97-test pass remains applicable. User-owned dev/API servers were not stopped.
+- Files: eslint.config.js, affected src/lib and src/services files, src/types/api.ts,
+  E2E formatting/fixture files, test-e2e-demo-data.mjs, the three workflow files,
+  the artifact verification script, and this checkpoint. Private credentials,
+  logs, build output and existing root target/classes remain excluded.

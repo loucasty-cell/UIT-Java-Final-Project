@@ -1,3 +1,9 @@
+import type {
+  Milestone,
+  CreateMilestoneRequest,
+  UpdateMilestoneRequest,
+} from "./milestones.service";
+import type { MentorApplicationResponse } from "./mentor-application.service";
 import { api } from "@/lib/api-client";
 import {
   AdminAuditEventResponse,
@@ -51,7 +57,7 @@ export const adminService = {
    * GET /api/v1/admin/users
    */
   async getUsers(
-    params: PaginationParams = { page: 0, size: 20 }
+    params: PaginationParams = { page: 0, size: 20 },
   ): Promise<PageResponse<AdminUserResponse>> {
     return api.get<PageResponse<AdminUserResponse>>("/api/v1/admin/users", params);
   },
@@ -60,11 +66,7 @@ export const adminService = {
    * Manually adjust a user's points balance
    * POST /api/v1/admin/users/{userId}/wallet-adjustments
    */
-  async adjustUserPoints(
-    userId: string,
-    delta: number,
-    reason: string
-  ): Promise<void> {
+  async adjustUserPoints(userId: string, delta: number, reason: string): Promise<void> {
     try {
       await api.post<void>(`/api/v1/admin/users/${userId}/wallet-adjustments`, {
         targetUserId: userId,
@@ -83,14 +85,8 @@ export const adminService = {
    * Issue an account warning to a user
    * POST /api/v1/admin/users/{userId}/warnings
    */
-  async issueWarning(
-    userId: string,
-    data: AccountWarningRequest
-  ): Promise<AccountWarningResponse> {
-    return api.post<AccountWarningResponse>(
-      `/api/v1/admin/users/${userId}/warnings`,
-      data
-    );
+  async issueWarning(userId: string, data: AccountWarningRequest): Promise<AccountWarningResponse> {
+    return api.post<AccountWarningResponse>(`/api/v1/admin/users/${userId}/warnings`, data);
   },
 
   /**
@@ -100,7 +96,7 @@ export const adminService = {
   async updateStatus(
     userId: string,
     status: "ACTIVE" | "WARNED" | "SUSPENDED" | "DISABLED" | string,
-    reason?: string
+    reason?: string,
   ): Promise<AdminUserResponse> {
     return api.patch<AdminUserResponse>(`/api/v1/admin/users/${userId}/status`, {
       status,
@@ -156,12 +152,12 @@ export const adminService = {
    * List open and resolved dispute cases
    * GET /api/v1/admin/disputes
    */
-  async getDisputes(
-    status?: string,
-    params?: PaginationParams
-  ): Promise<AdminDisputeResponse[]> {
-    const res = await api.get<any>("/api/v1/admin/disputes", { status, ...params });
-    if (res && Array.isArray(res.content)) {
+  async getDisputes(status?: string, params?: PaginationParams): Promise<AdminDisputeResponse[]> {
+    const res = await api.get<AdminDisputeResponse[] | PageResponse<AdminDisputeResponse>>(
+      "/api/v1/admin/disputes",
+      { status, ...params },
+    );
+    if (res && !Array.isArray(res) && Array.isArray(res.content)) {
       return res.content;
     }
     return Array.isArray(res) ? res : [];
@@ -171,10 +167,7 @@ export const adminService = {
    * Resolve a disputed session with escrow allocation
    * POST /api/v1/admin/disputes/{disputeId}/resolve
    */
-  async resolveDispute(
-    disputeId: string,
-    data: ResolveDisputeRequest
-  ): Promise<void> {
+  async resolveDispute(disputeId: string, data: ResolveDisputeRequest): Promise<void> {
     return api.post<void>(`/api/v1/admin/disputes/${disputeId}/resolve`, data);
   },
 
@@ -185,7 +178,7 @@ export const adminService = {
   async getReports(
     status?: string,
     targetType?: string,
-    params?: PaginationParams
+    params?: PaginationParams,
   ): Promise<PageResponse<ReportResponse>> {
     return api.get<PageResponse<ReportResponse>>("/api/v1/admin/reports", {
       status,
@@ -208,14 +201,8 @@ export const adminService = {
    * Remove reported content
    * POST /api/v1/admin/reports/{reportId}/remove-content
    */
-  async removeReportedContent(
-    reportId: string,
-    reason: string
-  ): Promise<ReportResponse> {
-    return api.post<ReportResponse>(
-      `/api/v1/admin/reports/${reportId}/remove-content`,
-      { reason }
-    );
+  async removeReportedContent(reportId: string, reason: string): Promise<ReportResponse> {
+    return api.post<ReportResponse>(`/api/v1/admin/reports/${reportId}/remove-content`, { reason });
   },
 
   /**
@@ -231,18 +218,12 @@ export const adminService = {
    * PATCH /api/v1/admin/settings or PUT
    */
   async updateSettings(
-    data: Partial<AdminPlatformSettingsResponse>
+    data: Partial<AdminPlatformSettingsResponse>,
   ): Promise<AdminPlatformSettingsResponse> {
     try {
-      return await api.patch<AdminPlatformSettingsResponse>(
-        "/api/v1/admin/settings",
-        data
-      );
+      return await api.patch<AdminPlatformSettingsResponse>("/api/v1/admin/settings", data);
     } catch {
-      return api.put<AdminPlatformSettingsResponse>(
-        "/api/v1/admin/settings",
-        data
-      );
+      return api.put<AdminPlatformSettingsResponse>("/api/v1/admin/settings", data);
     }
   },
 
@@ -254,18 +235,15 @@ export const adminService = {
     params: PaginationParams & { actorId?: string; targetType?: string } = {
       page: 0,
       size: 20,
-    }
+    },
   ): Promise<PageResponse<AdminAuditEventResponse>> {
     try {
       return await api.get<PageResponse<AdminAuditEventResponse>>(
         "/api/v1/admin/audit-events",
-        params
+        params,
       );
     } catch {
-      return api.get<PageResponse<AdminAuditEventResponse>>(
-        "/api/v1/admin/audit-logs",
-        params
-      );
+      return api.get<PageResponse<AdminAuditEventResponse>>("/api/v1/admin/audit-logs", params);
     }
   },
 
@@ -273,24 +251,24 @@ export const adminService = {
    * List pending mentor applications
    * GET /api/v1/admin/mentor-applications
    */
-  async getPendingMentorApplications(): Promise<any[]> {
-    return api.get<any[]>("/api/v1/admin/mentor-applications");
+  async getPendingMentorApplications(): Promise<MentorApplicationResponse[]> {
+    return api.get<MentorApplicationResponse[]>("/api/v1/admin/mentor-applications");
   },
 
   /**
    * Approve mentor application
    * POST /api/v1/admin/mentor-applications/{id}/approve
    */
-  async approveMentorApplication(id: string): Promise<any> {
-    return api.post<any>(`/api/v1/admin/mentor-applications/${id}/approve`);
+  async approveMentorApplication(id: string): Promise<MentorApplicationResponse> {
+    return api.post<MentorApplicationResponse>(`/api/v1/admin/mentor-applications/${id}/approve`);
   },
 
   /**
    * Reject mentor application
    * POST /api/v1/admin/mentor-applications/{id}/reject
    */
-  async rejectMentorApplication(id: string, reason?: string): Promise<any> {
-    return api.post<any>(`/api/v1/admin/mentor-applications/${id}/reject`, {
+  async rejectMentorApplication(id: string, reason?: string): Promise<MentorApplicationResponse> {
+    return api.post<MentorApplicationResponse>(`/api/v1/admin/mentor-applications/${id}/reject`, {
       reason,
     });
   },
@@ -299,23 +277,23 @@ export const adminService = {
    * List platform milestones
    * GET /api/v1/admin/milestones
    */
-  async getMilestones(): Promise<any[]> {
-    return api.get<any[]>("/api/v1/admin/milestones");
+  async getMilestones(): Promise<Milestone[]> {
+    return api.get<Milestone[]>("/api/v1/admin/milestones");
   },
 
   /**
    * Create a platform milestone
    * POST /api/v1/admin/milestones
    */
-  async createMilestone(data: any): Promise<any> {
-    return api.post<any>("/api/v1/admin/milestones", data);
+  async createMilestone(data: CreateMilestoneRequest): Promise<Milestone> {
+    return api.post<Milestone>("/api/v1/admin/milestones", data);
   },
 
   /**
    * Update a platform milestone
    * PATCH /api/v1/admin/milestones/{id}
    */
-  async updateMilestone(id: string, data: any): Promise<any> {
-    return api.patch<any>(`/api/v1/admin/milestones/${id}`, data);
+  async updateMilestone(id: string, data: UpdateMilestoneRequest): Promise<Milestone> {
+    return api.patch<Milestone>(`/api/v1/admin/milestones/${id}`, data);
   },
 };

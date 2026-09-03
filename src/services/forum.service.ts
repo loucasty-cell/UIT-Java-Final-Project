@@ -31,27 +31,28 @@ export const forumService = {
   async getPosts(
     skillId?: string,
     search?: string,
-    params?: PaginationParams
+    params?: PaginationParams,
   ): Promise<ForumPostSummaryResponse[]> {
     try {
-      const res = await api.get<any>("/api/v1/forum/posts", {
+      const res = await api.get<
+        ForumPostSummaryResponse[] | PageResponse<ForumPostSummaryResponse>
+      >("/api/v1/forum/posts", {
         skillId,
         search,
         ...params,
       });
-      if (res && Array.isArray(res.content)) {
+      if (res && !Array.isArray(res) && Array.isArray(res.content)) {
         return res.content;
       }
       return Array.isArray(res) ? res : [];
     } catch (error) {
       // PHASE 0: Fallback to mock for forum page only
       try {
-        const mockResult = handleMockApiRequest(
-          "/api/v1/forum/posts",
-          "GET",
-          undefined,
-          { skillId, search, ...params }
-        );
+        const mockResult = handleMockApiRequest("/api/v1/forum/posts", "GET", undefined, {
+          skillId,
+          search,
+          ...params,
+        });
         return mockResult as ForumPostSummaryResponse[];
       } catch {
         throw error;
@@ -81,7 +82,7 @@ export const forumService = {
    */
   async updatePost(
     postId: string,
-    data: Partial<CreateForumPostRequest>
+    data: Partial<CreateForumPostRequest>,
   ): Promise<ForumPostResponse> {
     return api.patch<ForumPostResponse>(`/api/v1/forum/posts/${postId}`, data);
   },
@@ -120,11 +121,11 @@ export const forumService = {
    */
   async getComments(
     postId: string,
-    params?: PaginationParams
+    params?: PaginationParams,
   ): Promise<PageResponse<ForumCommentResponse> | ForumCommentResponse[]> {
     return api.get<PageResponse<ForumCommentResponse>>(
       `/api/v1/forum/posts/${postId}/comments`,
-      params
+      params,
     );
   },
 
@@ -132,14 +133,8 @@ export const forumService = {
    * Add a comment to a forum post
    * POST /api/v1/forum/posts/{postId}/comments
    */
-  async addComment(
-    postId: string,
-    data: CreateForumCommentRequest
-  ): Promise<ForumCommentResponse> {
-    return api.post<ForumCommentResponse>(
-      `/api/v1/forum/posts/${postId}/comments`,
-      data
-    );
+  async addComment(postId: string, data: CreateForumCommentRequest): Promise<ForumCommentResponse> {
+    return api.post<ForumCommentResponse>(`/api/v1/forum/posts/${postId}/comments`, data);
   },
 
   /**
@@ -154,18 +149,12 @@ export const forumService = {
    * Reward a comment / Mark helpful
    * POST /api/v1/forum/comments/{commentId}/mark-helpful or /posts/{postId}/reward
    */
-  async rewardComment(
-    postId: string,
-    data: RewardCommentRequest
-  ): Promise<RewardCommentResponse> {
+  async rewardComment(postId: string, data: RewardCommentRequest): Promise<RewardCommentResponse> {
     try {
       await api.post<void>(`/api/v1/forum/comments/${data.commentId}/mark-helpful`);
       return { success: true, pointsAwarded: data.points };
     } catch {
-      return api.post<RewardCommentResponse>(
-        `/api/v1/forum/posts/${postId}/reward`,
-        data
-      );
+      return api.post<RewardCommentResponse>(`/api/v1/forum/posts/${postId}/reward`, data);
     }
   },
 
@@ -176,24 +165,22 @@ export const forumService = {
    */
   async getTopVolunteers(
     week?: string,
-    params?: PaginationParams
+    params?: PaginationParams,
   ): Promise<PageResponse<TopVolunteerResponse>> {
     try {
       const defaultWeek = week || new Date().toISOString().split("T")[0];
-      return await api.get<PageResponse<TopVolunteerResponse>>(
-        "/api/v1/forum/top-volunteers",
-        { week: defaultWeek, ...params }
-      );
+      return await api.get<PageResponse<TopVolunteerResponse>>("/api/v1/forum/top-volunteers", {
+        week: defaultWeek,
+        ...params,
+      });
     } catch (error) {
       // PHASE 0: Fallback to mock for forum page only
       try {
         const defaultWeek = week || new Date().toISOString().split("T")[0];
-        const mockResult = handleMockApiRequest(
-          "/api/v1/forum/top-volunteers",
-          "GET",
-          undefined,
-          { week: defaultWeek, ...params }
-        );
+        const mockResult = handleMockApiRequest("/api/v1/forum/top-volunteers", "GET", undefined, {
+          week: defaultWeek,
+          ...params,
+        });
         return mockResult as PageResponse<TopVolunteerResponse>;
       } catch {
         throw error;

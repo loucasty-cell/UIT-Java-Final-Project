@@ -86,7 +86,12 @@ async function authenticateUser(userKey) {
   });
 
   if (res.status === 201 || res.status === 200) {
-    logResult("AUTH", `Registered ${userKey} (${user.email})`, true, `User ID: ${res.data.user?.id || "N/A"}`);
+    logResult(
+      "AUTH",
+      `Registered ${userKey} (${user.email})`,
+      true,
+      `User ID: ${res.data.user?.id || "N/A"}`,
+    );
     return res.data;
   }
 
@@ -103,7 +108,12 @@ async function authenticateUser(userKey) {
     logResult("AUTH", `Logged in ${userKey} (${user.email})`, true, `Tokens received`);
     return res.data;
   } else {
-    logResult("AUTH", `Authenticate ${userKey}`, false, `Status ${res.status}: ${JSON.stringify(res.data)}`);
+    logResult(
+      "AUTH",
+      `Authenticate ${userKey}`,
+      false,
+      `Status ${res.status}: ${JSON.stringify(res.data)}`,
+    );
     return null;
   }
 }
@@ -115,11 +125,21 @@ async function runAudit() {
 
   // 1. Health & Catalog Check
   const healthRes = await request("/actuator/health");
-  logResult("SYSTEM", "Backend Health Probe", healthRes.ok, `Status: ${JSON.stringify(healthRes.data)}`);
+  logResult(
+    "SYSTEM",
+    "Backend Health Probe",
+    healthRes.ok,
+    `Status: ${JSON.stringify(healthRes.data)}`,
+  );
 
   const catalogRes = await request("/api/v1/skills/catalog");
   const catalogSkills = Array.isArray(catalogRes.data) ? catalogRes.data : [];
-  logResult("SKILLS", "Public Skills Catalog", catalogRes.ok, `Found ${catalogSkills.length} catalog skills`);
+  logResult(
+    "SKILLS",
+    "Public Skills Catalog",
+    catalogRes.ok,
+    `Found ${catalogSkills.length} catalog skills`,
+  );
 
   // 2. Authenticate Learner
   const learnerAuth = await authenticateUser("learner");
@@ -127,13 +147,28 @@ async function runAudit() {
 
   if (learnerToken) {
     const profileRes = await request("/api/v1/me", { token: learnerToken });
-    logResult("LEARNER", "Get Learner Profile", profileRes.ok, `Display Name: ${profileRes.data?.displayName}`);
+    logResult(
+      "LEARNER",
+      "Get Learner Profile",
+      profileRes.ok,
+      `Display Name: ${profileRes.data?.displayName}`,
+    );
 
     const dashboardRes = await request("/api/v1/me/dashboard", { token: learnerToken });
-    logResult("LEARNER", "Get Dashboard Projection", dashboardRes.ok, `Available: ${dashboardRes.data?.availablePoints ?? "N/A"} pts`);
+    logResult(
+      "LEARNER",
+      "Get Dashboard Projection",
+      dashboardRes.ok,
+      `Available: ${dashboardRes.data?.availablePoints ?? "N/A"} pts`,
+    );
 
     const walletRes = await request("/api/v1/me/wallet", { token: learnerToken });
-    logResult("WALLET", "Get Learner Wallet", walletRes.ok, `Balance: ${walletRes.data?.availablePoints ?? "N/A"} pts`);
+    logResult(
+      "WALLET",
+      "Get Learner Wallet",
+      walletRes.ok,
+      `Balance: ${walletRes.data?.availablePoints ?? "N/A"} pts`,
+    );
 
     // Add a LEARN skill
     if (catalogSkills.length > 0) {
@@ -160,7 +195,12 @@ async function runAudit() {
 
   if (instructorToken) {
     const profileRes = await request("/api/v1/me", { token: instructorToken });
-    logResult("INSTRUCTOR", "Get Instructor Profile", profileRes.ok, `Roles: ${JSON.stringify(profileRes.data?.roles)}`);
+    logResult(
+      "INSTRUCTOR",
+      "Get Instructor Profile",
+      profileRes.ok,
+      `Roles: ${JSON.stringify(profileRes.data?.roles)}`,
+    );
 
     // Add TEACH skill
     if (catalogSkills.length > 0) {
@@ -173,13 +213,20 @@ async function runAudit() {
           level: "ADVANCED",
         },
       });
-      const teachOk = addTeachSkill.ok || addTeachSkill.status === 400 || addTeachSkill.status === 409;
-      logResult("INSTRUCTOR", "Add TEACH Skill", teachOk, `Status: ${addTeachSkill.status} (Verified)`);
+      const teachOk =
+        addTeachSkill.ok || addTeachSkill.status === 400 || addTeachSkill.status === 409;
+      logResult(
+        "INSTRUCTOR",
+        "Add TEACH Skill",
+        teachOk,
+        `Status: ${addTeachSkill.status} (Verified)`,
+      );
 
       // List user skills to find the teach user skill id
       const mySkillsRes = await request("/api/v1/me/skills", { token: instructorToken });
       if (Array.isArray(mySkillsRes.data) && mySkillsRes.data.length > 0) {
-        const teachSkill = mySkillsRes.data.find(s => s.direction === "TEACH") || mySkillsRes.data[0];
+        const teachSkill =
+          mySkillsRes.data.find((s) => s.direction === "TEACH") || mySkillsRes.data[0];
         teachUserSkillId = teachSkill.id;
         logResult("INSTRUCTOR", "Find Teach Skill ID", true, `ID: ${teachUserSkillId}`);
       }
@@ -200,9 +247,17 @@ async function runAudit() {
           availabilityText: "Mon-Fri 10:00-16:00 UTC",
         },
       });
-      const offeringOk = createOfferingRes.ok || createOfferingRes.status === 400 || createOfferingRes.status === 409;
+      const offeringOk =
+        createOfferingRes.ok ||
+        createOfferingRes.status === 400 ||
+        createOfferingRes.status === 409;
       offeringId = createOfferingRes.data?.id;
-      logResult("INSTRUCTOR", "Create Mentor Offering", offeringOk, `Offering ID: ${offeringId || "Verified"}`);
+      logResult(
+        "INSTRUCTOR",
+        "Create Mentor Offering",
+        offeringOk,
+        `Offering ID: ${offeringId || "Verified"}`,
+      );
     }
 
     // Submit mentor application
@@ -217,7 +272,12 @@ async function runAudit() {
         },
       });
       const appOk = mentorAppRes.ok || mentorAppRes.status === 400 || mentorAppRes.status === 409;
-      logResult("INSTRUCTOR", "Submit Mentor Application", appOk, `Status: ${mentorAppRes.status} (Verified)`);
+      logResult(
+        "INSTRUCTOR",
+        "Submit Mentor Application",
+        appOk,
+        `Status: ${mentorAppRes.status} (Verified)`,
+      );
     }
   }
 
@@ -227,14 +287,29 @@ async function runAudit() {
 
   if (adminToken) {
     const adminDashRes = await request("/api/v1/admin/dashboard", { token: adminToken });
-    logResult("ADMIN", "Query Admin Dashboard Metrics", adminDashRes.ok, `Status: ${adminDashRes.status}`);
+    logResult(
+      "ADMIN",
+      "Query Admin Dashboard Metrics",
+      adminDashRes.ok,
+      `Status: ${adminDashRes.status}`,
+    );
 
     const adminUsersRes = await request("/api/v1/admin/users", { token: adminToken });
     const userCount = Array.isArray(adminUsersRes.data) ? adminUsersRes.data.length : 0;
-    logResult("ADMIN", "Query User Management List", adminUsersRes.ok, `Found: ${userCount} registered users`);
+    logResult(
+      "ADMIN",
+      "Query User Management List",
+      adminUsersRes.ok,
+      `Found: ${userCount} registered users`,
+    );
 
     const adminSettingsRes = await request("/api/v1/admin/settings", { token: adminToken });
-    logResult("ADMIN", "Query Platform Settings", adminSettingsRes.ok, `Status: ${adminSettingsRes.status}`);
+    logResult(
+      "ADMIN",
+      "Query Platform Settings",
+      adminSettingsRes.ok,
+      `Status: ${adminSettingsRes.status}`,
+    );
   }
 
   // 5. Booking & Learning Requests Flow
@@ -255,11 +330,23 @@ async function runAudit() {
         message: "Hi! I would love to learn from you tomorrow at 10 AM.",
       },
     });
-    logResult("BOOKING", "Create Learning Request (POINTS Mode)", bookRes.ok || bookRes.status === 400, `Request ID: ${bookRes.data?.id || "Verified"}`);
+    logResult(
+      "BOOKING",
+      "Create Learning Request (POINTS Mode)",
+      bookRes.ok || bookRes.status === 400,
+      `Request ID: ${bookRes.data?.id || "Verified"}`,
+    );
 
     const listRequestsRes = await request("/api/v1/learning-requests", { token: learnerToken });
-    const reqCount = Array.isArray(listRequestsRes.data) ? listRequestsRes.data.length : (listRequestsRes.data?.content?.length || 0);
-    logResult("BOOKING", "List Learner Learning Requests", listRequestsRes.ok, `Found: ${reqCount} requests`);
+    const reqCount = Array.isArray(listRequestsRes.data)
+      ? listRequestsRes.data.length
+      : listRequestsRes.data?.content?.length || 0;
+    logResult(
+      "BOOKING",
+      "List Learner Learning Requests",
+      listRequestsRes.ok,
+      `Found: ${reqCount} requests`,
+    );
   }
 
   // 6. Forum & Community
@@ -269,33 +356,58 @@ async function runAudit() {
       token: learnerToken,
       body: {
         title: "Need guidance on React 19 Server Components and Suspense",
-        description: "Looking for a mentor or study partner who has experience with modern React 19 architecture.",
+        description:
+          "Looking for a mentor or study partner who has experience with modern React 19 architecture.",
         skillIds: [catalogSkills[0].id],
         availabilityText: "Evenings UTC",
       },
     });
-    logResult("FORUM", "Create Community Forum Post", createPostRes.ok, `Post ID: ${createPostRes.data?.id || "N/A"}`);
+    logResult(
+      "FORUM",
+      "Create Community Forum Post",
+      createPostRes.ok,
+      `Post ID: ${createPostRes.data?.id || "N/A"}`,
+    );
 
     const forumPostsRes = await request("/api/v1/forum/posts");
-    const postsCount = Array.isArray(forumPostsRes.data) ? forumPostsRes.data.length : (forumPostsRes.data?.content?.length || 0);
-    logResult("FORUM", "List Community Forum Posts", forumPostsRes.ok, `Found: ${postsCount} posts`);
+    const postsCount = Array.isArray(forumPostsRes.data)
+      ? forumPostsRes.data.length
+      : forumPostsRes.data?.content?.length || 0;
+    logResult(
+      "FORUM",
+      "List Community Forum Posts",
+      forumPostsRes.ok,
+      `Found: ${postsCount} posts`,
+    );
   }
 
   // 7. Referral & Milestone system
   if (learnerToken) {
     const referralCodeRes = await request("/api/v1/me/referral-code", { token: learnerToken });
-    logResult("REFERRALS", "Get User Referral Code", referralCodeRes.ok, `Code: ${referralCodeRes.data?.referralCode ?? JSON.stringify(referralCodeRes.data)}`);
+    logResult(
+      "REFERRALS",
+      "Get User Referral Code",
+      referralCodeRes.ok,
+      `Code: ${referralCodeRes.data?.referralCode ?? JSON.stringify(referralCodeRes.data)}`,
+    );
 
     const milestonesRes = await request("/api/v1/me/milestones", { token: learnerToken });
-    const msCount = Array.isArray(milestonesRes.data) ? milestonesRes.data.length : (milestonesRes.data?.content?.length || 0);
-    logResult("MILESTONES", "Get User Milestones", milestonesRes.ok, `Found: ${msCount} milestones`);
+    const msCount = Array.isArray(milestonesRes.data)
+      ? milestonesRes.data.length
+      : milestonesRes.data?.content?.length || 0;
+    logResult(
+      "MILESTONES",
+      "Get User Milestones",
+      milestonesRes.ok,
+      `Found: ${msCount} milestones`,
+    );
   }
 
   // Summary
   console.log("\n========================================================");
   console.log("                 AUDIT TEST SUMMARY                     ");
   console.log("========================================================");
-  const passed = results.filter(r => r.success).length;
+  const passed = results.filter((r) => r.success).length;
   const total = results.length;
   console.log(`Total Checks: ${total} | Passed: ${passed} | Failed: ${total - passed}`);
   console.log("========================================================\n");

@@ -13,7 +13,9 @@ test.describe("Dashboard Widgets", () => {
   });
 
   test("displays onboarding checklist for new users or dashboard header", async ({ page }) => {
-    await expect(page.getByText(/Get Started with SkillBridge|Welcome back|Dashboard/i).first()).toBeVisible();
+    await expect(
+      page.getByText(/Get Started with SkillBridge|Welcome back|Dashboard/i).first(),
+    ).toBeVisible();
   });
 
   test("quick actions panel is present and active", async ({ page }) => {

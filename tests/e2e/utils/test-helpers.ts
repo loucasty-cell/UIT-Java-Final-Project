@@ -1,22 +1,18 @@
-import { Page, expect } from '@playwright/test';
+import { Page, expect } from "@playwright/test";
 
 /**
  * Wait for API response matching a pattern
  */
-export async function waitForAPIResponse(
-  page: Page,
-  urlPattern: string | RegExp,
-  timeout = 10000
-) {
+export async function waitForAPIResponse(page: Page, urlPattern: string | RegExp, timeout = 10000) {
   return page.waitForResponse(
     (response) => {
       const url = response.url();
-      if (typeof urlPattern === 'string') {
+      if (typeof urlPattern === "string") {
         return url.includes(urlPattern);
       }
       return urlPattern.test(url);
     },
-    { timeout }
+    { timeout },
   );
 }
 
@@ -29,20 +25,20 @@ export const selectors = {
   mentorsLink: 'a:has-text("Find Mentor")',
   sessionsLink: 'a:has-text("Sessions")',
   walletLink: 'a:has-text("Wallet")',
-  
+
   // Dashboard widgets
   calendarWidget: '[data-testid="calendar-widget"]',
   walletWidget: '[data-testid="wallet-widget"]',
   progressWidget: '[data-testid="progress-widget"]',
   achievementsWidget: '[data-testid="achievements-widget"]',
   engagementWidget: '[data-testid="engagement-widget"]',
-  
+
   // Buttons
   addSkillBtn: 'button:has-text("Add Skill")',
   bookMentorBtn: 'button:has-text("Book Mentor")',
   loginBtn: 'button:has-text("Sign In")',
   logoutBtn: 'button:has-text("Sign Out")',
-  
+
   // Forms
   emailInput: 'input[name="email"]',
   passwordInput: 'input[name="password"]',
@@ -75,24 +71,23 @@ export async function getElementText(page: Page, selector: string): Promise<stri
  * Check element visibility
  */
 export async function isElementVisible(page: Page, selector: string): Promise<boolean> {
-  return page.locator(selector).isVisible().catch(() => false);
+  return page
+    .locator(selector)
+    .isVisible()
+    .catch(() => false);
 }
 
 /**
  * Wait for element to be visible
  */
 export async function waitForElement(page: Page, selector: string, timeout = 10000) {
-  await page.locator(selector).waitFor({ state: 'visible', timeout });
+  await page.locator(selector).waitFor({ state: "visible", timeout });
 }
 
 /**
  * Assert element contains text
  */
-export async function assertElementContains(
-  page: Page,
-  selector: string,
-  text: string
-) {
+export async function assertElementContains(page: Page, selector: string, text: string) {
   await expect(page.locator(selector)).toContainText(text);
 }
 

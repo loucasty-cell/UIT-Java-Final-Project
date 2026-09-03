@@ -11,9 +11,7 @@ export const swapsService = {
    * Create a new skill swap proposal
    * POST /api/swaps/proposals or /api/requests/swaps
    */
-  async createProposal(
-    data: CreateSwapProposalRequest
-  ): Promise<SwapProposalResponse> {
+  async createProposal(data: CreateSwapProposalRequest): Promise<SwapProposalResponse> {
     try {
       return await api.post<SwapProposalResponse>("/api/swaps/proposals", data);
     } catch {
@@ -39,18 +37,12 @@ export const swapsService = {
    */
   async rejectProposal(
     id: string,
-    data?: RejectSwapProposalRequest
+    data?: RejectSwapProposalRequest,
   ): Promise<SwapProposalResponse> {
     try {
-      return await api.post<SwapProposalResponse>(
-        `/api/swaps/proposals/${id}/reject`,
-        data || {}
-      );
+      return await api.post<SwapProposalResponse>(`/api/swaps/proposals/${id}/reject`, data || {});
     } catch {
-      return api.post<SwapProposalResponse>(
-        `/api/requests/swaps/${id}/reject`,
-        data || {}
-      );
+      return api.post<SwapProposalResponse>(`/api/requests/swaps/${id}/reject`, data || {});
     }
   },
 
@@ -60,7 +52,7 @@ export const swapsService = {
    */
   async counterProposal(
     id: string,
-    data: CounterSwapProposalRequest
+    data: CounterSwapProposalRequest,
   ): Promise<SwapProposalResponse> {
     return api.post<SwapProposalResponse>(`/api/swaps/proposals/${id}/counter`, data);
   },
@@ -101,7 +93,7 @@ export const swapsService = {
    * Mark a swap session completed
    * POST /api/swaps/sessions/{sessionId}/complete
    */
-  async completeSwapSession(sessionId: string): Promise<any> {
+  async completeSwapSession(sessionId: string): Promise<unknown> {
     return api.post(`/api/swaps/sessions/${sessionId}/complete`);
   },
 };

@@ -698,7 +698,7 @@ export interface NormalizedSession {
   mentorName?: string;
   learnerName?: string;
   counterpartAvatar?: string;
-  raw?: any;
+  raw?: SessionResponse;
   title?: string;
   requesterId?: string;
   responderId?: string;
@@ -738,10 +738,10 @@ export interface DashboardResponse {
   mentorSessionCount?: number;
   learnerSessionCount?: number;
   upcomingSessions?: SessionResponse[];
-  nextSessions?: any[];
-  teachSkills?: any[];
-  learnSkills?: any[];
-  certificates?: any[];
+  nextSessions?: SessionResponse[];
+  teachSkills?: UserSkillResponse[];
+  learnSkills?: UserSkillResponse[];
+  certificates?: SkillCertificateResponse[];
   recentActivity?: PointTransactionResponse[];
   skillProgress?: SkillProgress[];
   engagement?: EngagementMetrics;

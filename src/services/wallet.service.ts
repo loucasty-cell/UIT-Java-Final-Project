@@ -25,11 +25,14 @@ export const walletService = {
    * GET /api/v1/me/wallet/transactions
    */
   async getTransactions(
-    params: PaginationParams & { type?: string; from?: string; to?: string } = { page: 0, size: 20 }
+    params: PaginationParams & { type?: string; from?: string; to?: string } = {
+      page: 0,
+      size: 20,
+    },
   ): Promise<PageResponse<WalletTransactionResponse>> {
     return api.get<PageResponse<WalletTransactionResponse>>(
       "/api/v1/me/wallet/transactions",
-      params
+      params,
     );
   },
 
@@ -37,9 +40,13 @@ export const walletService = {
    * Export transactions as downloadable CSV file
    * GET /api/v1/me/wallet/transactions.csv — triggers browser download
    */
-  async exportTransactionsCsv(filters?: { type?: string; from?: string; to?: string }): Promise<void> {
+  async exportTransactionsCsv(filters?: {
+    type?: string;
+    from?: string;
+    to?: string;
+  }): Promise<void> {
     const blob = await api.download("/api/v1/me/wallet/transactions.csv", {
-      params: filters as Record<string, any>,
+      params: filters,
     });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -58,9 +65,7 @@ export const walletService = {
    * Direct point transfer to another peer user
    * POST /api/v1/wallet/transfer or /api/wallet/transfer
    */
-  async transferPoints(
-    data: TransferPointsRequest
-  ): Promise<WalletTransactionResponse> {
+  async transferPoints(data: TransferPointsRequest): Promise<WalletTransactionResponse> {
     try {
       return await api.post<WalletTransactionResponse>("/api/v1/wallet/transfer", data);
     } catch {

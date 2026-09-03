@@ -262,3 +262,18 @@ Spring Boot/PostgreSQL backend in `backend/`. Read this file before making chang
   E2E formatting/fixture files, test-e2e-demo-data.mjs, the three workflow files,
   the artifact verification script, and this checkpoint. Private credentials,
   logs, build output and existing root target/classes remain excluded.
+
+## Checkpoint — 2026-09-03 (workflow cancellation collision)
+
+- User's screenshot still showed a red cross on 402e3ed although four workflows
+  completed successfully. Inspected all commit checks: no failed checks, but two
+  duplicate workflows had cancelled jobs. The earlier all-green summary omitted
+  the effect of those cancellations on the commit indicator.
+- Cause: backend.yml/backend-ci.yml shared a workflow name, as did the two frontend
+  workflows. Their concurrency group uses github.workflow plus github.ref, so the
+  paired workflows cancelled each other on the same push.
+- Changed only the names in backend-ci.yml (Backend Tests and Migrations) and
+  frontend-ci.yml (Frontend Verification), giving each an independent concurrency
+  group while retaining all jobs and cancellation of older runs of the same workflow.
+- Validation: workflow YAML parses; names are unique across all workflow files.
+  Runtime source and previously verified build artifacts are unchanged.

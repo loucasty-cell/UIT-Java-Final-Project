@@ -209,3 +209,17 @@ Spring Boot/PostgreSQL backend in `backend/`. Read this file before making chang
   artifact server was stopped; user's existing servers were left running.
 - Scope: authentication is verified as described; unrelated demo-page data and
   full single-JAR frontend hosting are not certified by this checkpoint.
+
+## Checkpoint — 2026-09-03 (CI lockfile follow-up)
+
+- Published authentication commit d34c2c9 to origin/main and verified remote SHA.
+  GitHub clean-install jobs then failed before tests because npm 10 requires a
+  nested optional peer lru-cache entry that the local npm 11 lockfile omitted.
+- Change: regenerated lock metadata with npm 10.9.7 --package-lock-only; the only
+  dependency change adds nitro/node_modules/lru-cache 11.5.2 to package-lock.json.
+  The user's running node_modules and servers were left untouched.
+- Validation: npm 10.9.7 ci --dry-run --ignore-scripts passed. Previously verified
+  source, tests and frontend artifact are unchanged. Do not equate local build/test
+  success with all CI jobs passing: repository-wide lint also reports pre-existing
+  formatting, explicit-any and Playwright fixture lint issues outside the auth
+  feature. Full lint cleanup is not included in this dependency correction.

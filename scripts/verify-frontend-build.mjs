@@ -50,6 +50,8 @@ try {
     ["/login", "Welcome back"],
     ["/register", "Join SkillBridge"],
     ["/admin-login", "Administrator sign in"],
+    ["/wallet", "Checking your session"],
+    ["/settings", "Checking your session"],
     ["/", "Checking your session"],
   ]) {
     const response = await fetch(base + path, { signal: AbortSignal.timeout(5000) });
@@ -66,7 +68,7 @@ try {
     assert.equal(response.status, 200, asset);
     await response.arrayBuffer();
   }
-  console.log(`PASS: compiled frontend serves 4 routes and ${assets.size} assets.`);
+  console.log(`PASS: compiled frontend serves 6 routes and ${assets.size} assets.`);
 } finally {
   if (server.exitCode === null && !spawnError) {
     const stopped = new Promise((resolve) => server.once("exit", resolve));

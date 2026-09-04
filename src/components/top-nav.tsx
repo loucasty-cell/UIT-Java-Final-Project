@@ -106,7 +106,7 @@ export function TopNav() {
             <TooltipTrigger asChild>
               <button
                 type="button"
-                onClick={() => void navigate({ to: "/" })}
+                onClick={() => void navigate({ to: "/wallet" })}
                 className="group flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
               >
                 <Coins className="h-4 w-4" />
@@ -232,7 +232,7 @@ export function TopNav() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link to="/" className="cursor-pointer">
+              <Link to="/settings" className="cursor-pointer">
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </Link>

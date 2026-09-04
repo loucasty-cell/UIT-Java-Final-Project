@@ -42,8 +42,17 @@ export const registerSchema = z
     path: ["confirmPassword"],
   });
 
-const destinations = new Set(["/", "/mentors", "/forum", "/sessions", "/admin"]);
-type LoginDestination = "/" | "/mentors" | "/forum" | "/sessions" | "/admin";
+const destinations = new Set([
+  "/",
+  "/mentors",
+  "/forum",
+  "/sessions",
+  "/admin",
+  "/wallet",
+  "/settings",
+]);
+type LoginDestination =
+  "/" | "/mentors" | "/forum" | "/sessions" | "/admin" | "/wallet" | "/settings";
 export function safeLoginRedirect(value: unknown): LoginDestination {
   return typeof value === "string" && destinations.has(value) ? (value as LoginDestination) : "/";
 }

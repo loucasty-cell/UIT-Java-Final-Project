@@ -475,3 +475,28 @@ Spring Boot/PostgreSQL backend in `backend/`. Read this file before making chang
   available/held points exactly match pre-seed values. All demo bookings are
   zero-cost volunteer sessions. Only script/documentation and local data changed;
   no app rebuild required. No commit or push performed.
+
+## 2026-09-04 — Integrate upstream changes for authorized main push
+
+- User explicitly authorized pushing all local work to main after checking new
+  commits and validating integration. Fetched origin/main and found 337d610 and
+  f2face1 after the prior 8084726 baseline. Saved local work as a5c602b and merged
+  both upstream commits, preserving their Wallet and Settings routes/navigation.
+- Resolved overlaps in favor of the verified real login/logout, forum, session
+  request and notification behavior; upstream versions would restore dummy user
+  details and remove logout behavior. Wallet now uses actual balances/history
+  with loading/error/empty states instead of fabricated money. Settings skill
+  controls now persist to the backend, profile saves refresh auth context, and
+  login redirects include both new routes. Existing Settings photo preview and
+  unavailable password/notification-delivery controls are explicitly labelled;
+  they are not claimed as implemented upload or delivery services.
+- Retained immutable V23 content from the existing baseline, because the upstream
+  edit would change its applied Flyway checksum. V27 supplies the intended
+  COMPLETED constraint change as a new migration for existing databases.
+- Added SettingsSkills component and two wallet regression tests. Expanded final
+  artifact verification to six routes. Validation: 85 frontend tests, 100 backend
+  tests, frontend type-check/build and backend package passed; compiled frontend
+  served six routes and 48 assets. No dependency-resolution errors. Local private
+  backups, environment files, database records and untracked target/classes are
+  excluded from the commits. Demo data remains in the local database; the explicit
+  seed script is included so it can be recreated intentionally elsewhere.

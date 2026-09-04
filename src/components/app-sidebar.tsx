@@ -1,5 +1,13 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Users, MessagesSquare, CalendarClock, Shield } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  MessagesSquare,
+  CalendarClock,
+  Shield,
+  Wallet,
+  Settings,
+} from "lucide-react";
 
 import { BrandLogo } from "@/components/brand-logo";
 import {
@@ -12,6 +20,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
 
@@ -20,6 +29,7 @@ const mainItems = [
   { title: "Find Mentors", url: "/mentors", icon: Users },
   { title: "Volunteer Forum", url: "/forum", icon: MessagesSquare },
   { title: "My Sessions", url: "/sessions", icon: CalendarClock },
+  { title: "Wallet", url: "/wallet", icon: Wallet },
 ];
 
 const adminItems = [{ title: "Admin Portal", url: "/admin", icon: Shield }];
@@ -86,6 +96,19 @@ export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
           </SidebarGroup>
         )}
       </SidebarContent>
+
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={isActive("/settings")} tooltip="Settings">
+              <Link to="/settings">
+                <Settings className="h-4 w-4" />
+                <span>Settings</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }

@@ -22,6 +22,9 @@ replay_pid*
 !.env.staging
 !.env.production.example
 
+# Maven classpath artifacts (e.g., from dependency:build-classpath)
+cp.txt
+
 # IDE
 .idea/
 *.iml

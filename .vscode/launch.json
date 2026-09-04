@@ -1,0 +1,27 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Backend: SkillBridgeApplication",
+      "request": "launch",
+      "mainClass": "com.skillbridge.SkillBridgeApplication",
+      "projectName": "skillbridge-backend",
+      "cwd": "${workspaceFolder}/backend"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Frontend: Vite Dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "${workspaceFolder}"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Full Stack (Backend + Frontend)",
+      "configurations": ["Backend: SkillBridgeApplication", "Frontend: Vite Dev"]
+    }
+  ]
+}

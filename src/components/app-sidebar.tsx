@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Users, MessagesSquare, CalendarClock, Shield } from "lucide-react";
+import { LayoutDashboard, Users, MessagesSquare, CalendarClock, Shield, Wallet, Settings } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand-logo";
 import {
@@ -15,13 +15,13 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Badge } from "@/components/ui/badge";
 
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Find Mentors", url: "/mentors", icon: Users },
   { title: "Volunteer Forum", url: "/forum", icon: MessagesSquare },
   { title: "My Sessions", url: "/sessions", icon: CalendarClock },
+  { title: "Wallet", url: "/wallet", icon: Wallet },
 ];
 
 const adminItems = [{ title: "Admin Portal", url: "/admin", icon: Shield }];
@@ -90,17 +90,16 @@ export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
       </SidebarContent>
 
       <SidebarFooter>
-        {!collapsed ? (
-          <div className="flex items-center justify-between gap-2 px-3 py-2">
-            <span className="text-xs text-sidebar-foreground/75">Semester</span>
-            <Badge
-              variant="secondary"
-              className="rounded-full border-0 bg-sidebar-accent text-sidebar-accent-foreground"
-            >
-              Fall 2026
-            </Badge>
-          </div>
-        ) : null}
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={isActive("/settings")} tooltip="Settings">
+              <Link to="/settings">
+                <Settings className="h-4 w-4" />
+                <span>Settings</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   );

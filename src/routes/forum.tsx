@@ -164,18 +164,8 @@ function ForumPage() {
           </p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild>
-            <Button size="lg" className="gap-2">
-              <Plus className="h-4 w-4" /> Create Volunteer Post
-            </Button>
-          </DialogTrigger>
-          <CreatePostDialog
-            onSubmit={(post) => {
-              setPosts((ps) => [post, ...ps]);
-              setCreateOpen(false);
-              toast.success("Volunteer post published!");
-            }}
-          />
+          <DialogTrigger asChild><Button size="lg" className="gap-2"><Plus className="h-4 w-4" /> Create Volunteer Post</Button></DialogTrigger>
+          <CreatePostDialog onSubmit={(post) => { setPosts((ps) => [post, ...ps]); setCreateOpen(false); toast.success("Volunteer post published!"); }} />
         </Dialog>
       </div>
 

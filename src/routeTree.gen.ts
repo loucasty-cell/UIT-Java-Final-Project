@@ -14,8 +14,9 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ForumRouteImport } from './routes/forum'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MentorsRouteImport } from './routes/mentors'
-import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SessionsRouteImport } from './routes/sessions'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as WalletRouteImport } from './routes/wallet'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -42,14 +43,19 @@ const MentorsRoute = MentorsRouteImport.update({
   path: '/mentors',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RegisterRoute = RegisterRouteImport.update({
-  id: '/register',
-  path: '/register',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SessionsRoute = SessionsRouteImport.update({
   id: '/sessions',
   path: '/sessions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WalletRoute = WalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -59,8 +65,9 @@ export interface FileRoutesByFullPath {
   '/forum': typeof ForumRoute
   '/login': typeof LoginRoute
   '/mentors': typeof MentorsRoute
-  '/register': typeof RegisterRoute
   '/sessions': typeof SessionsRoute
+  '/settings': typeof SettingsRoute
+  '/wallet': typeof WalletRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -68,8 +75,9 @@ export interface FileRoutesByTo {
   '/forum': typeof ForumRoute
   '/login': typeof LoginRoute
   '/mentors': typeof MentorsRoute
-  '/register': typeof RegisterRoute
   '/sessions': typeof SessionsRoute
+  '/settings': typeof SettingsRoute
+  '/wallet': typeof WalletRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -78,8 +86,9 @@ export interface FileRoutesById {
   '/forum': typeof ForumRoute
   '/login': typeof LoginRoute
   '/mentors': typeof MentorsRoute
-  '/register': typeof RegisterRoute
   '/sessions': typeof SessionsRoute
+  '/settings': typeof SettingsRoute
+  '/wallet': typeof WalletRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -89,8 +98,9 @@ export interface FileRouteTypes {
     | '/forum'
     | '/login'
     | '/mentors'
-    | '/register'
     | '/sessions'
+    | '/settings'
+    | '/wallet'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -98,8 +108,9 @@ export interface FileRouteTypes {
     | '/forum'
     | '/login'
     | '/mentors'
-    | '/register'
     | '/sessions'
+    | '/settings'
+    | '/wallet'
   id:
     | '__root__'
     | '/'
@@ -107,8 +118,9 @@ export interface FileRouteTypes {
     | '/forum'
     | '/login'
     | '/mentors'
-    | '/register'
     | '/sessions'
+    | '/settings'
+    | '/wallet'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -117,8 +129,9 @@ export interface RootRouteChildren {
   ForumRoute: typeof ForumRoute
   LoginRoute: typeof LoginRoute
   MentorsRoute: typeof MentorsRoute
-  RegisterRoute: typeof RegisterRoute
   SessionsRoute: typeof SessionsRoute
+  SettingsRoute: typeof SettingsRoute
+  WalletRoute: typeof WalletRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -158,18 +171,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MentorsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/register': {
-      id: '/register'
-      path: '/register'
-      fullPath: '/register'
-      preLoaderRoute: typeof RegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/sessions': {
       id: '/sessions'
       path: '/sessions'
       fullPath: '/sessions'
       preLoaderRoute: typeof SessionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wallet': {
+      id: '/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof WalletRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -181,8 +201,9 @@ const rootRouteChildren: RootRouteChildren = {
   ForumRoute: ForumRoute,
   LoginRoute: LoginRoute,
   MentorsRoute: MentorsRoute,
-  RegisterRoute: RegisterRoute,
   SessionsRoute: SessionsRoute,
+  SettingsRoute: SettingsRoute,
+  WalletRoute: WalletRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

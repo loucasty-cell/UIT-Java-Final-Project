@@ -44,6 +44,6 @@ DO $$ BEGIN
     SELECT 1 FROM pg_constraint WHERE conname='chk_swap_requests_status'
   ) THEN
     ALTER TABLE swap_requests ADD CONSTRAINT chk_swap_requests_status
-      CHECK (status IN ('PENDING','ACCEPTED','REJECTED','CANCELLED','EXPIRED'));
+      CHECK (status IN ('PENDING','ACCEPTED','REJECTED','COMPLETED','CANCELLED','EXPIRED'));
   END IF;
 END $$;

@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
-import { toast } from "sonner";
-import { useAuth } from "@/context/auth-context";
-import { userDisplayName, userInitials } from "@/lib/auth-validation";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { Bell, Search, Coins, LogOut, User, Info } from "lucide-react";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -21,6 +19,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { walletService } from "@/services/wallet.service";
+import { getAccessToken } from "@/lib/api-client";
 
 type Notification = {
   id: string;
@@ -56,27 +56,12 @@ const notifications: Notification[] = [
 
 export function TopNav() {
   const [unread, setUnread] = useState(notifications.length);
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const displayName = userDisplayName(user);
-  const [loggingOut, setLoggingOut] = useState(false);
-  async function handleLogout() {
-    if (loggingOut) return;
-    setLoggingOut(true);
-    // Clear local state immediately; report server revocation failures honestly.
-    const revoke = logout();
-    void navigate({ to: "/login", search: { redirect: "/" }, replace: true });
-    try {
-      await revoke;
-      toast.success("You have signed out.");
-    } catch {
-      toast.warning(
-        "Signed out on this device. The server could not be reached to revoke the session.",
-      );
-    } finally {
-      setLoggingOut(false);
-    }
-  }
+  const wallet = useQuery({
+    queryKey: ["wallet", "balance"],
+    queryFn: () => walletService.getBalance(),
+    enabled: Boolean(getAccessToken()),
+  });
+  const availablePoints = wallet.data?.availablePoints ?? 50;
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 bg-background/70 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/50 sm:px-8">
@@ -101,14 +86,14 @@ export function TopNav() {
         <TooltipProvider delayDuration={150}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                type="button"
+              <Link
+                to="/wallet"
                 className="group flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
               >
                 <Coins className="h-4 w-4" />
-                <span>50 Pts</span>
+                <span>{availablePoints} Pts</span>
                 <Info className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100" />
-              </button>
+              </Link>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="max-w-xs">
               <p className="text-xs leading-relaxed">
@@ -183,25 +168,26 @@ export function TopNav() {
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              aria-label={`Account menu for ${displayName}`}
               className="flex items-center gap-2 rounded-xl border border-transparent p-1 pr-2 transition hover:border-border hover:bg-muted/60"
             >
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
-                  {userInitials(displayName)}
+                  AR
                 </AvatarFallback>
               </Avatar>
               <div className="hidden text-left sm:block">
-                <p className="text-sm font-semibold leading-tight">{displayName}</p>
-                <p className="text-[11px] leading-tight text-muted-foreground">{user?.email}</p>
+                <p className="text-sm font-semibold leading-tight">Ava Ramirez</p>
+                <p className="text-[11px] leading-tight text-muted-foreground">Computer Science</p>
               </div>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 rounded-xl">
             <DropdownMenuLabel>
               <div className="flex flex-col">
-                <span className="text-sm font-semibold">{displayName}</span>
-                <span className="text-xs font-normal text-muted-foreground">{user?.email}</span>
+                <span className="text-sm font-semibold">Ava Ramirez</span>
+                <span className="text-xs font-normal text-muted-foreground">
+                  Computer Science · Junior
+                </span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -212,11 +198,7 @@ export function TopNav() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={() => void handleLogout()}
-              disabled={loggingOut}
-              className="cursor-pointer text-destructive focus:text-destructive"
-            >
+            <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive">
               <LogOut className="mr-2 h-4 w-4" />
               Log out
             </DropdownMenuItem>

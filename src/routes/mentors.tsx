@@ -12,6 +12,7 @@ import {
   Send,
   Sparkles,
   Star,
+  CalendarPlus,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -40,6 +41,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
@@ -79,6 +81,7 @@ type Mentor = {
   modes: Mode[];
   teach: Skill[];
   wants: Skill[];
+  availability?: { day: string; time: string }[];
 };
 
 // The logged-in user's teachable skills — used to compute exchange matches.
@@ -89,7 +92,7 @@ const mySkills: Skill[] = [
   { name: "Git", level: "Intermediate" },
 ];
 
-const mentors: Mentor[] = [
+const INITIAL_MENTORS: Mentor[] = [
   {
     id: "priya",
     name: "Priya Anand",
@@ -225,14 +228,16 @@ const modeMeta: Record<Mode, { label: string; icon: typeof Coins }> = {
 };
 
 function MentorsPage() {
+  const [mentorList, setMentorList] = useState<Mentor[]>(INITIAL_MENTORS);
   const [query, setQuery] = useState("");
   const [level, setLevel] = useState<Level | "all">("all");
   const [mode, setMode] = useState<Mode | "all">("all");
   const [selected, setSelected] = useState<Mentor | null>(null);
+  const [sessionOpen, setSessionOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return mentors.filter((m) => {
+    return mentorList.filter((m) => {
       if (mode !== "all" && !m.modes.includes(mode)) return false;
       if (level !== "all" && !m.teach.some((s) => s.level === level)) return false;
       if (!q) return true;
@@ -242,17 +247,23 @@ function MentorsPage() {
         m.teach.some((s) => s.name.toLowerCase().includes(q))
       );
     });
-  }, [query, level, mode]);
+  }, [query, level, mode, mentorList]);
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
         <p className="text-sm font-medium text-primary">Skill Exchange</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Find a mentor</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Browse peers by skill and book a session with points, an exchange, or as a volunteer.
         </p>
+        </div>
+        <Dialog open={sessionOpen} onOpenChange={setSessionOpen}>
+          <DialogTrigger asChild><Button size="lg" className="gap-2"><CalendarPlus className="h-4 w-4" /> Create Session</Button></DialogTrigger>
+          <CreateSessionDialog onSubmit={(mentor) => { setMentorList((current) => [mentor, ...current]); setSessionOpen(false); toast.success("Teaching session published!"); }} />
+        </Dialog>
       </div>
 
       {/* Filters */}
@@ -322,6 +333,22 @@ function MentorsPage() {
   );
 }
 
+function CreateSessionDialog({ onSubmit }: { onSubmit: (mentor: Mentor) => void }) {
+  const [title, setTitle] = useState("");
+  const [teach, setTeach] = useState("");
+  const [teachLevel, setTeachLevel] = useState<Level>("Intermediate");
+  const [learn, setLearn] = useState("");
+  const [learnLevel, setLearnLevel] = useState<Level>("Beginner");
+  const [mode, setMode] = useState<Mode>("points");
+  const [description, setDescription] = useState("");
+  const [availability, setAvailability] = useState([{ day: "Monday", time: "10:00" }]);
+  const canSubmit = title.trim() && teach.trim() && learn.trim() && description.trim() && availability.length > 0;
+  const updateSlot = (index: number, key: "day" | "time", value: string) => setAvailability((slots) => slots.map((slot, i) => i === index ? { ...slot, [key]: value } : slot));
+  const publish = () => onSubmit({ id: crypto.randomUUID(), name: "Alex Chen", initials: "AC", major: "Computer Science, Year 3", rating: 5, reviews: 0, cost: 50, modes: [mode], teach: [{ name: teach.trim(), level: teachLevel }], wants: [{ name: learn.trim(), level: learnLevel }], availability });
+
+  return <DialogContent className="max-w-lg"><DialogHeader><DialogTitle>Create a teaching session</DialogTitle><DialogDescription>Add your teaching skills, learning goals, mode, and available time slots.</DialogDescription></DialogHeader><div className="max-h-[65vh] space-y-3 overflow-y-auto pr-1"><div className="space-y-1.5"><Label htmlFor="session-title">Session title</Label><Input id="session-title" placeholder="e.g. React hooks for beginners" value={title} onChange={(e) => setTitle(e.target.value)} /></div><div className="grid gap-3 sm:grid-cols-2"><div className="space-y-1.5"><Label>Teaching mode</Label><Select value={mode} onValueChange={(v) => setMode(v as Mode)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="points">Skill Points</SelectItem><SelectItem value="exchange">Skill Exchange</SelectItem></SelectContent></Select></div><div className="space-y-1.5"><Label htmlFor="session-teach">What can you teach?</Label><Input id="session-teach" placeholder="e.g. React" value={teach} onChange={(e) => setTeach(e.target.value)} /></div></div><div className="grid gap-3 sm:grid-cols-2"><div className="space-y-1.5"><Label>Teaching level</Label><Select value={teachLevel} onValueChange={(v) => setTeachLevel(v as Level)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(["Beginner", "Intermediate", "Advanced"] as Level[]).map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></div><div className="space-y-1.5"><Label htmlFor="session-learn">What would you like to learn?</Label><Input id="session-learn" placeholder="e.g. SQL" value={learn} onChange={(e) => setLearn(e.target.value)} /></div></div><div className="space-y-1.5"><Label>Learning level</Label><Select value={learnLevel} onValueChange={(v) => setLearnLevel(v as Level)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(["Beginner", "Intermediate", "Advanced"] as Level[]).map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><Label>Available days and times</Label>{availability.map((slot, index) => <div className="flex gap-2" key={`${index}-${slot.day}`}><Select value={slot.day} onValueChange={(v) => updateSlot(index, "day", v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => <SelectItem key={day} value={day}>{day}</SelectItem>)}</SelectContent></Select><Input type="time" value={slot.time} onChange={(e) => updateSlot(index, "time", e.target.value)} /></div>)}<Button type="button" variant="outline" size="sm" onClick={() => setAvailability((slots) => [...slots, { day: "Tuesday", time: "10:00" }])}>Add another time</Button></div><div className="space-y-1.5"><Label htmlFor="session-description">Session description</Label><Textarea id="session-description" placeholder="Describe what learners will get from this session." value={description} onChange={(e) => setDescription(e.target.value)} /></div></div><DialogFooter><Button disabled={!canSubmit} onClick={publish}>Publish session</Button></DialogFooter></DialogContent>;
+}
+
 function MentorCard({ mentor, onRequest }: { mentor: Mentor; onRequest: () => void }) {
   return (
     <Card className="flex h-full flex-col rounded-xl border-border/70 shadow-sm transition hover:shadow-md">
@@ -379,6 +406,15 @@ function MentorCard({ mentor, onRequest }: { mentor: Mentor; onRequest: () => vo
           </div>
         </div>
 
+        {mentor.availability && mentor.availability.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Available times</p>
+            <div className="flex flex-wrap gap-1.5">
+              {mentor.availability.map((slot) => <Badge key={`${slot.day}-${slot.time}`} variant="secondary" className="rounded-full px-2.5 py-0.5 text-[11px]">{slot.day} · {slot.time}</Badge>)}
+            </div>
+          </div>
+        )}
+
         <div className="space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Wants to learn
@@ -431,6 +467,11 @@ function RequestSessionDialog({ mentor, onClose }: { mentor: Mentor | null; onCl
     !!date &&
     !!time &&
     (tab === "points" || tab === "volunteer" || (tab === "exchange" && !!exchangeSkill));
+  const availableSlots = mentor?.availability ?? [];
+  const allowedForDate = (value: Date) => availableSlots.length === 0 || availableSlots.some((slot) => slot.day === format(value, "EEEE"));
+  const timesForDate = date && availableSlots.length > 0
+    ? availableSlots.filter((slot) => slot.day === format(date, "EEEE")).map((slot) => slot.time)
+    : times;
 
   const handleSubmit = () => {
     if (!mentor || !canSubmit) return;
@@ -463,6 +504,12 @@ function RequestSessionDialog({ mentor, onClose }: { mentor: Mentor | null; onCl
         </DialogHeader>
 
         {/* Date + time */}
+        {availableSlots.length > 0 && (
+          <div className="rounded-lg border border-primary/20 bg-accent/40 px-3 py-2 text-xs text-primary">
+            <span className="font-semibold">Mentor availability:</span>{" "}
+            {availableSlots.map((slot) => `${slot.day} · ${slot.time}`).join(", ")}
+          </div>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Preferred date</Label>
@@ -483,8 +530,8 @@ function RequestSessionDialog({ mentor, onClose }: { mentor: Mentor | null; onCl
                 <Calendar
                   mode="single"
                   selected={date}
-                  onSelect={setDate}
-                  disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+                  onSelect={(value) => { setDate(value); setTime(undefined); }}
+                  disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0)) || !allowedForDate(d)}
                   initialFocus
                   className="pointer-events-auto p-3"
                 />
@@ -494,11 +541,11 @@ function RequestSessionDialog({ mentor, onClose }: { mentor: Mentor | null; onCl
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Time slot</Label>
             <Select value={time} onValueChange={setTime}>
-              <SelectTrigger className="rounded-lg">
+                  <SelectTrigger className="rounded-lg" disabled={!date || timesForDate.length === 0}>
                 <SelectValue placeholder="Select a time" />
               </SelectTrigger>
               <SelectContent>
-                {times.map((t) => (
+                {timesForDate.map((t) => (
                   <SelectItem key={t} value={t}>
                     {t}
                   </SelectItem>

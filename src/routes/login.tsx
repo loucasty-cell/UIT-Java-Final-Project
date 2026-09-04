@@ -1,51 +1,33 @@
-import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
-import { useAuth } from "@/context/auth-context";
-import { safeLoginRedirect } from "@/lib/auth-validation";
-import { LoginForm } from "@/components/login-form";
-import { BrandLogo } from "@/components/brand-logo";
+import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { authService } from "@/services/auth.service";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-export const Route = createFileRoute("/login")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    redirect: safeLoginRedirect(search.redirect),
-  }),
-  head: () => ({ meta: [{ title: "Sign in — SkillBridge" }] }),
-  component: LoginPage,
-});
+export const Route = createFileRoute("/login")({ component: LoginPage });
 
 function LoginPage() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const { redirect } = Route.useSearch();
-  const navigate = Route.useNavigate();
-  if (isAuthenticated) return <Navigate to={redirect} replace />;
-  return (
-    <main className="flex min-h-svh items-center justify-center bg-background px-5 py-12">
-      <section
-        className="w-full max-w-md rounded-2xl border border-border bg-card p-7 shadow-sm sm:p-10"
-        aria-labelledby="login-heading"
-      >
-        <BrandLogo />
-        <h1 id="login-heading" className="mt-8 text-3xl font-semibold tracking-tight">
-          Welcome back
-        </h1>
-        <p className="mb-7 mt-2 text-sm text-muted-foreground">
-          Sign in to your SkillBridge account to continue.
-        </p>
-        {isLoading ? (
-          <p role="status">Checking your session…</p>
-        ) : (
-          <LoginForm onSuccess={() => navigate({ to: redirect, replace: true })} />
-        )}
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          New to SkillBridge?{" "}
-          <Link
-            to="/register"
-            search={{ redirect }}
-            className="font-semibold text-primary underline underline-offset-4"
-          >
-            Create an account
-          </Link>
-        </p>
-      </section>
-    </main>
-  );
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      await authService.login({ email, password });
+      await navigate({ to: "/wallet", replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to sign in. Please check your credentials.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return <div className="flex min-h-[70vh] items-center justify-center p-6"><Card className="w-full max-w-md"><CardHeader><CardTitle>Sign in to SkillBridge</CardTitle></CardHeader><CardContent><form onSubmit={submit} className="space-y-4"><div className="space-y-2"><Label htmlFor="email">Email</Label><Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></div><div className="space-y-2"><Label htmlFor="password">Password</Label><Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} /></div>{error && <p className="text-sm text-destructive">{error}</p>}<Button className="w-full" disabled={loading}>{loading ? "Signing in…" : "Sign in"}</Button><p className="text-center text-sm text-muted-foreground"><Link className="text-primary hover:underline" to="/">Back to dashboard</Link></p></form></CardContent></Card></div>;
 }

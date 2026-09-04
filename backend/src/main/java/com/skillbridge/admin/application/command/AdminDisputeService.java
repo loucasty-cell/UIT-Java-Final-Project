@@ -66,8 +66,7 @@ public class AdminDisputeService {
                                 swapRequest.getResponderId(),
                                 "SWAP_REQUEST",
                                 swapRequest.getId(),
-                                "DISPUTE_RELEASE:" + dispute.getId()
-                        );
+                                "DISPUTE_RELEASE:" + dispute.getId());
                         swapRequest.setPointsHeld(false);
                         swapRequest.setStatus(SwapRequestStatus.COMPLETED);
                         swapRequest.setCompletedAt(now);
@@ -90,8 +89,7 @@ public class AdminDisputeService {
                                 swapRequest.getRequesterId(),
                                 "SWAP_REQUEST",
                                 swapRequest.getId(),
-                                "DISPUTE_REFUND:" + dispute.getId()
-                        );
+                                "DISPUTE_REFUND:" + dispute.getId());
                         swapRequest.setPointsHeld(false);
                         swapRequest.setStatus(SwapRequestStatus.CANCELLED);
                         swapRequest.setCancelledAt(now);
@@ -122,8 +120,7 @@ public class AdminDisputeService {
                 "Status: " + beforeStatus,
                 "Resolution: " + request.getResolution().name(),
                 request.getNote(),
-                null
-        );
+                null);
 
         return adminMapper.toResponse(saved);
     }

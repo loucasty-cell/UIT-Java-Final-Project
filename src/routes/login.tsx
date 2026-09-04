@@ -13,10 +13,10 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin } = useAuth();
   const { redirect } = Route.useSearch();
   const navigate = Route.useNavigate();
-  if (isAuthenticated) return <Navigate to={redirect} replace />;
+  if (isAuthenticated) return <Navigate to={isAdmin ? "/admin" : redirect} replace />;
   return (
     <main className="flex min-h-svh items-center justify-center bg-background px-5 py-12">
       <section
@@ -29,6 +29,11 @@ function LoginPage() {
         </h1>
         <p className="mb-7 mt-2 text-sm text-muted-foreground">
           Sign in to your SkillBridge account to continue.
+        </p>
+        <p className="mt-3 text-center text-sm">
+          <Link to="/admin-login" className="text-primary underline">
+            Administrator sign in
+          </Link>
         </p>
         {isLoading ? (
           <p role="status">Checking your session…</p>

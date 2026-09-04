@@ -31,8 +31,9 @@ public class ForumQueryService {
 
     public Page<ForumPostSummaryResponse> searchPosts(ForumSearchQuery query) {
         Pageable pageable = PageRequest.of(
-            query.getPage() != null ? query.getPage() : 0,
-            query.getSize() != null ? query.getSize() : 20
+            query.getPage() != null ? Math.max(0, query.getPage()) : 0,
+            query.getSize() != null ? Math.max(1, Math.min(100, query.getSize())) : 20,
+            org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")
         );
 
         List<Specification<ForumPost>> specs = new ArrayList<>();
@@ -52,6 +53,10 @@ public class ForumQueryService {
             specs.add((root, query1, criteriaBuilder) ->
                 criteriaBuilder.equal(root.get("authorId"), query.getAuthorId())
             );
+        }
+
+        if (query.getSkillId() != null) {
+            specs.add((root, query1, criteriaBuilder) -> criteriaBuilder.isMember(query.getSkillId(), root.get("skillIds")));
         }
 
         Specification<ForumPost> spec = Specification.allOf(specs);

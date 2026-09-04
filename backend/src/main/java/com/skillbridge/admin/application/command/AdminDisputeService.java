@@ -57,7 +57,8 @@ public class AdminDisputeService {
         OffsetDateTime now = OffsetDateTime.now();
 
         // Financial & session status updates based on resolution
-        if (request.getResolution() == DisputeResolution.RELEASE_TO_MENTOR) {
+        if (request.getResolution() == DisputeResolution.RELEASE_TO_MENTOR
+                || request.getResolution() == DisputeResolution.MARK_COMPLETED) {
             sessionRepository.findById(dispute.getSessionId()).ifPresent(session -> {
                 requestRepository.findById(session.getSwapRequestId()).ifPresent(swapRequest -> {
                     if (Boolean.TRUE.equals(swapRequest.getPointsHeld())) {
@@ -69,11 +70,11 @@ public class AdminDisputeService {
                                 "DISPUTE_RELEASE:" + dispute.getId()
                         );
                         swapRequest.setPointsHeld(false);
-                        swapRequest.setStatus(SwapRequestStatus.COMPLETED);
-                        swapRequest.setCompletedAt(now);
-                        swapRequest.setUpdatedAt(now);
-                        requestRepository.save(swapRequest);
                     }
+                    swapRequest.setStatus(SwapRequestStatus.COMPLETED);
+                    swapRequest.setCompletedAt(now);
+                    swapRequest.setUpdatedAt(now);
+                    requestRepository.save(swapRequest);
                 });
                 session.setStatus(SwapSessionStatus.COMPLETED);
                 session.setCompletedAt(now);
@@ -93,11 +94,11 @@ public class AdminDisputeService {
                                 "DISPUTE_REFUND:" + dispute.getId()
                         );
                         swapRequest.setPointsHeld(false);
-                        swapRequest.setStatus(SwapRequestStatus.CANCELLED);
-                        swapRequest.setCancelledAt(now);
-                        swapRequest.setUpdatedAt(now);
-                        requestRepository.save(swapRequest);
                     }
+                    swapRequest.setStatus(SwapRequestStatus.CANCELLED);
+                    swapRequest.setCancelledAt(now);
+                    swapRequest.setUpdatedAt(now);
+                    requestRepository.save(swapRequest);
                 });
                 session.setStatus(SwapSessionStatus.CANCELLED);
                 session.setUpdatedAt(now);

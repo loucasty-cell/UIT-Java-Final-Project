@@ -96,7 +96,8 @@ public class LearningRequestServiceTest {
                 walletService,
                 walletRepository,
                 notificationService,
-                learningRequestMapper
+                learningRequestMapper,
+                Mockito.mock(com.skillbridge.forum.infrastructure.persistence.ForumPostRepository.class)
         );
 
         TestAuthContext.loginAs(learnerId);

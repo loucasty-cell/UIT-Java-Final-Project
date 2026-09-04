@@ -56,6 +56,7 @@ public class LearningRequestService {
     private final WalletRepository walletRepository;
     private final NotificationService notificationService;
     private final LearningRequestMapper learningRequestMapper;
+    private final com.skillbridge.forum.infrastructure.persistence.ForumPostRepository forumPostRepository;
 
     public LearningRequestResponse createLearningRequest(CreateLearningRequest request) {
         return createLearningRequest(request, null);
@@ -69,6 +70,12 @@ public class LearningRequestService {
         }
 
         if (request.getSourceForumPostId() != null) {
+            var post = forumPostRepository.findById(request.getSourceForumPostId())
+                    .orElseThrow(() -> new IllegalArgumentException("Volunteer post not found"));
+            if (!Boolean.TRUE.equals(post.getActive()) || !post.getAuthorId().equals(request.getMentorId())
+                    || !post.getSkillIds().contains(request.getRequestedSkillId())) {
+                throw new IllegalArgumentException("Choose an active volunteer post and one of its offered skills");
+            }
             request.setMode(SessionMode.VOLUNTEER);
         }
 
@@ -87,6 +94,21 @@ public class LearningRequestService {
                 : 60;
 
         // Mode specific validation
+        if (request.getMentorOfferingId() != null) {
+            MentorOffering offering = mentorOfferingRepository.findById(request.getMentorOfferingId())
+                    .orElseThrow(() -> new IllegalArgumentException("Mentor offering not found"));
+            UserSkill teaching = userSkillRepository.findById(offering.getTeachUserSkillId())
+                    .orElseThrow(() -> new IllegalArgumentException("Offering skill no longer exists"));
+            boolean enabled = switch (request.getMode()) {
+                case POINTS -> Boolean.TRUE.equals(offering.getPointsEnabled());
+                case SKILL_SWAP -> Boolean.TRUE.equals(offering.getSkillSwapEnabled());
+                case VOLUNTEER -> Boolean.TRUE.equals(offering.getVolunteerEnabled());
+            };
+            if (!Boolean.TRUE.equals(offering.getActive()) || !offering.getMentorId().equals(request.getMentorId())
+                    || !teaching.getSkillId().equals(request.getRequestedSkillId()) || !enabled) {
+                throw new IllegalArgumentException("The selected offering does not support this mentor, skill or mode");
+            }
+        }
         if (request.getMode() == SessionMode.POINTS) {
             if (request.getMentorOfferingId() != null) {
                 MentorOffering offering = mentorOfferingRepository.findById(request.getMentorOfferingId())
@@ -246,6 +268,9 @@ public class LearningRequestService {
         swapRequest.setCreatedAt(now);
         swapRequest.setUpdatedAt(now);
         SwapRequest savedSwapRequest = swapRequestRepository.save(swapRequest);
+        if (Boolean.TRUE.equals(entity.getPointsHeld())) {
+            walletService.linkLearningRequestEscrowToSession(entity.getId(), savedSwapRequest.getId());
+        }
 
         SwapSession session = new SwapSession();
         session.setId(UUID.randomUUID());
@@ -255,6 +280,7 @@ public class LearningRequestService {
         session.setOfferedSkillId(offeredSkillId);
         session.setRequestedSkillId(entity.getRequestedSkillId());
         session.setPointCost(entity.getPointCost());
+        session.setPointCostSnapshot(entity.getPointCost());
         session.setStatus(SwapSessionStatus.SCHEDULED);
         session.setAcceptedAt(now);
         session.setScheduledAt(entity.getScheduledStart());

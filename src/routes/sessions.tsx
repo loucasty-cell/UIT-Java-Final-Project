@@ -1,23 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CheckCircle2, Clock, ExternalLink, Flag, LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/context/auth-context";
+import { useLiveRefresh } from "@/hooks/use-live-refresh";
 import {
-  AlertTriangle,
-  Clock,
-  ExternalLink,
-  CheckCircle2,
-  Star,
-  Flag,
-  Coins,
-  Gift,
-} from "lucide-react";
+  learningRequestsService,
+  type LearningRequestResponse,
+} from "@/services/learning-requests.service";
+import { sessionsService } from "@/services/sessions.service";
+import { reviewsService } from "@/services/reviews.service";
+import type { SessionResponse } from "@/types/api";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -26,361 +23,508 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 
-export const Route = createFileRoute("/sessions")({
-  head: () => ({
-    meta: [
-      { title: "SkillBridge" },
-      {
-        name: "description",
-        content:
-          "Manage active, pending, completed, and disputed peer-mentoring sessions with escrow-backed point transfers.",
-      },
-      { property: "og:title", content: "My Sessions — SkillBridge" },
-      {
-        property: "og:description",
-        content: "Escrow-protected sessions and reviews on SkillBridge.",
-      },
-    ],
-  }),
-  component: SessionsPage,
-});
-
-type Session = {
-  id: string;
-  counterpart: string;
-  initials: string;
-  role: "Mentor" | "Learner";
-  date: string;
-  time: string;
-  mode: string;
-  points: number;
-  status: "SCHEDULED" | "PENDING" | "COMPLETED" | "DISPUTED";
-  meetUrl?: string;
-};
-
-const ACTIVE: Session[] = [
-  {
-    id: "s1",
-    counterpart: "Priya Nair",
-    initials: "PN",
-    role: "Mentor",
-    date: "Jul 24, 2026",
-    time: "3:00 PM",
-    mode: "Skill Points",
-    points: 50,
-    status: "SCHEDULED",
-    meetUrl: "https://meet.google.com/abc-defg-hij",
-  },
-  {
-    id: "s2",
-    counterpart: "Marcus Lee",
-    initials: "ML",
-    role: "Learner",
-    date: "Jul 26, 2026",
-    time: "6:30 PM",
-    mode: "Skill Exchange",
-    points: 0,
-    status: "SCHEDULED",
-    meetUrl: "https://meet.google.com/xyz-1234-lmn",
-  },
-];
-
-const PENDING: Session[] = [
-  {
-    id: "p1",
-    counterpart: "Aisha Khan",
-    initials: "AK",
-    role: "Mentor",
-    date: "Jul 29, 2026",
-    time: "5:00 PM",
-    mode: "Skill Points",
-    points: 40,
-    status: "PENDING",
-  },
-];
-
-const COMPLETED: Session[] = [
-  {
-    id: "c1",
-    counterpart: "Diego Martinez",
-    initials: "DM",
-    role: "Mentor",
-    date: "Jul 15, 2026",
-    time: "4:00 PM",
-    mode: "Skill Points",
-    points: 30,
-    status: "COMPLETED",
-  },
-  {
-    id: "c2",
-    counterpart: "Sara Wu",
-    initials: "SW",
-    role: "Learner",
-    date: "Jul 10, 2026",
-    time: "2:00 PM",
-    mode: "Volunteer",
-    points: 0,
-    status: "COMPLETED",
-  },
-];
-
-const DISPUTED: Session[] = [
-  {
-    id: "d1",
-    counterpart: "Jordan Blake",
-    initials: "JB",
-    role: "Mentor",
-    date: "Jul 08, 2026",
-    time: "7:00 PM",
-    mode: "Skill Points",
-    points: 25,
-    status: "DISPUTED",
-  },
-];
-
-function statusBadge(status: Session["status"]) {
-  switch (status) {
-    case "SCHEDULED":
-      return (
-        <Badge className="border-amber-500/30 bg-amber-500/15 text-amber-700 hover:bg-amber-500/15 dark:text-amber-400">
-          SCHEDULED
-        </Badge>
-      );
-    case "PENDING":
-      return (
-        <Badge className="border-brand-bright/30 bg-accent text-primary hover:bg-accent dark:border-brand-bright/50 dark:text-brand-pale">
-          PENDING
-        </Badge>
-      );
-    case "COMPLETED":
-      return (
-        <Badge className="border-emerald-500/30 bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400">
-          COMPLETED
-        </Badge>
-      );
-    case "DISPUTED":
-      return (
-        <Badge className="border-rose-500/30 bg-rose-500/15 text-rose-700 hover:bg-rose-500/15 dark:text-rose-400">
-          DISPUTED
-        </Badge>
-      );
-  }
-}
+export const Route = createFileRoute("/sessions")({ component: SessionsPage });
+type RoleTab = "learner" | "mentor";
+const activeStatuses = new Set(["ACCEPTED", "SCHEDULED", "STARTED"]);
 
 function SessionsPage() {
-  const [completingId, setCompletingId] = useState<string | null>(null);
-  const active = ACTIVE.find((s) => s.id === completingId);
-
+  const { user } = useAuth();
+  const [sessions, setSessions] = useState<SessionResponse[]>([]);
+  const [learnerRequests, setLearnerRequests] = useState<LearningRequestResponse[]>([]);
+  const [mentorRequests, setMentorRequests] = useState<LearningRequestResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [complete, setComplete] = useState<SessionResponse | null>(null);
+  const [report, setReport] = useState<SessionResponse | null>(null);
+  const load = useCallback(async () => {
+    try {
+      const [all, outgoing, incoming] = await Promise.all([
+        sessionsService.listSessions(),
+        learningRequestsService.listRequests("OUTGOING"),
+        learningRequestsService.listRequests("INCOMING"),
+      ]);
+      setSessions(all);
+      setLearnerRequests(outgoing);
+      setMentorRequests(incoming);
+      setError("");
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Unable to load sessions.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useLiveRefresh(load);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  const byRole = useMemo(
+    () => ({
+      learner: sessions.filter(
+        (s) =>
+          s.learnerId === user?.id || s.requester?.id === user?.id || s.requesterId === user?.id,
+      ),
+      mentor: sessions.filter(
+        (s) =>
+          s.mentorId === user?.id || s.responder?.id === user?.id || s.responderId === user?.id,
+      ),
+    }),
+    [sessions, user?.id],
+  );
   return (
-    <div className="mx-auto w-full max-w-7xl p-6 sm:p-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">My Sessions</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Track escrow-protected sessions, reviews, and disputes.
+    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-8">
+      <div>
+        <h1 className="text-3xl font-bold">My Sessions</h1>
+        <p className="text-sm text-muted-foreground">
+          Manage your learning requests and the sessions you teach.
         </p>
       </div>
-
-      {/* Auto-complete warning banner */}
-      <Alert className="mb-6 border-amber-500/40 bg-amber-500/10">
-        <Clock className="h-4 w-4 text-amber-600" />
-        <AlertTitle className="text-amber-800 dark:text-amber-300">
-          ⏳ Auto-complete pending
-        </AlertTitle>
-        <AlertDescription className="text-amber-800/90 dark:text-amber-200/90">
-          Session on July 20 marked complete by mentor. Points will auto-transfer in 18 hours if no
-          dispute is raised.
-        </AlertDescription>
-      </Alert>
-
-      <Tabs defaultValue="active">
-        <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:grid-cols-4">
-          <TabsTrigger value="active">Active Sessions</TabsTrigger>
-          <TabsTrigger value="pending">Pending Requests</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
-          <TabsTrigger value="disputed">Disputed</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="active" className="mt-6 space-y-4">
-          {ACTIVE.map((s) => (
-            <SessionCard key={s.id} session={s} onComplete={() => setCompletingId(s.id)} />
-          ))}
-        </TabsContent>
-        <TabsContent value="pending" className="mt-6 space-y-4">
-          {PENDING.map((s) => (
-            <SessionCard key={s.id} session={s} />
-          ))}
-        </TabsContent>
-        <TabsContent value="completed" className="mt-6 space-y-4">
-          {COMPLETED.map((s) => (
-            <SessionCard key={s.id} session={s} />
-          ))}
-        </TabsContent>
-        <TabsContent value="disputed" className="mt-6 space-y-4">
-          {DISPUTED.map((s) => (
-            <SessionCard key={s.id} session={s} />
-          ))}
-        </TabsContent>
-      </Tabs>
-
-      <CompletionDialog session={active ?? null} onClose={() => setCompletingId(null)} />
+      {loading && <p role="status">Loading sessions…</p>}
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            {error}{" "}
+            <Button variant="link" onClick={() => void load()}>
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {!loading && !error && (
+        <Tabs defaultValue="learner">
+          <TabsList className="grid w-full grid-cols-2 sm:w-96">
+            <TabsTrigger value="learner">Learner</TabsTrigger>
+            <TabsTrigger value="mentor">Mentor</TabsTrigger>
+          </TabsList>
+          <RolePanel
+            role="learner"
+            sessions={byRole.learner}
+            requests={learnerRequests}
+            reload={load}
+            onComplete={setComplete}
+            onReport={setReport}
+          />
+          <RolePanel
+            role="mentor"
+            sessions={byRole.mentor}
+            requests={mentorRequests}
+            reload={load}
+            onComplete={setComplete}
+            onReport={setReport}
+          />
+        </Tabs>
+      )}
+      <CompleteDialog session={complete} close={() => setComplete(null)} reload={load} />
+      <ReportDialog session={report} close={() => setReport(null)} reload={load} />
     </div>
   );
 }
 
-function SessionCard({ session, onComplete }: { session: Session; onComplete?: () => void }) {
-  const isActive = session.status === "SCHEDULED";
+function RolePanel({
+  role,
+  sessions,
+  requests,
+  reload,
+  onComplete,
+  onReport,
+}: {
+  role: RoleTab;
+  sessions: SessionResponse[];
+  requests: LearningRequestResponse[];
+  reload: () => Promise<void>;
+  onComplete: (s: SessionResponse) => void;
+  onReport: (s: SessionResponse) => void;
+}) {
+  const [section, setSection] = useState("active");
+  const active = sessions.filter((s) => activeStatuses.has(s.status));
+  const completed = sessions.filter((s) => s.status === "COMPLETED");
+  const disputed = sessions.filter((s) => s.status === "DISPUTED");
+  const awaiting = sessions.filter((s) => s.status === "AWAITING_CONFIRMATION");
+  const pending = requests.filter((r) => r.status === "PENDING");
   return (
-    <Card className="rounded-xl">
-      <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-11 w-11">
-              <AvatarFallback>{session.initials}</AvatarFallback>
-            </Avatar>
-            <div>
-              <CardTitle className="text-base">Session with {session.counterpart}</CardTitle>
-              <p className="text-xs text-muted-foreground">
-                You are the {session.role.toLowerCase()}
-              </p>
-            </div>
-          </div>
-          {statusBadge(session.status)}
+    <TabsContent value={role} className="mt-5">
+      <Tabs value={section} onValueChange={setSection}>
+        <TabsList className="flex h-auto flex-wrap">
+          <TabsTrigger value="active">Active ({active.length})</TabsTrigger>
+          <TabsTrigger value="pending">Requests ({pending.length})</TabsTrigger>
+          <TabsTrigger value="completed">Completed ({completed.length})</TabsTrigger>
+          <TabsTrigger value="awaiting">Awaiting confirmation ({awaiting.length})</TabsTrigger>
+          <TabsTrigger value="disputed">Reported ({disputed.length})</TabsTrigger>
+        </TabsList>
+        <TabsContent value="active" className="space-y-3">
+          {active.map((s) => (
+            <SessionCard
+              key={s.id}
+              session={s}
+              role={role}
+              complete={() => onComplete(s)}
+              report={() => onReport(s)}
+            />
+          ))}
+          <Empty show={!active.length} text="No active sessions." />
+        </TabsContent>
+        <TabsContent value="pending" className="space-y-3">
+          {pending.map((r) => (
+            <RequestCard key={r.id} request={r} role={role} reload={reload} />
+          ))}
+          <Empty show={!pending.length} text="No pending requests." />
+        </TabsContent>
+        <TabsContent value="completed" className="space-y-3">
+          {completed.map((s) => (
+            <SessionCard key={s.id} session={s} role={role} />
+          ))}
+          <Empty show={!completed.length} text="No completed sessions." />
+        </TabsContent>
+        <TabsContent value="awaiting" className="space-y-3">
+          {awaiting.map((session) => (
+            <SessionCard
+              key={session.id}
+              session={session}
+              role={role}
+              complete={() => onComplete(session)}
+              report={() => onReport(session)}
+            />
+          ))}
+          <Empty show={!awaiting.length} text="No sessions awaiting confirmation." />
+        </TabsContent>
+        <TabsContent value="disputed" className="space-y-3">
+          {disputed.map((s) => (
+            <SessionCard key={s.id} session={s} role={role} />
+          ))}
+          <Empty show={!disputed.length} text="No reported sessions." />
+        </TabsContent>
+      </Tabs>
+    </TabsContent>
+  );
+}
+function Empty({ show, text }: { show: boolean; text: string }) {
+  return show ? (
+    <Card>
+      <CardContent className="p-8 text-center text-muted-foreground">{text}</CardContent>
+    </Card>
+  ) : null;
+}
+function person(session: SessionResponse, role: RoleTab) {
+  return role === "learner"
+    ? session.responder?.displayName || session.mentorName || "Mentor"
+    : session.requester?.displayName || session.learnerName || "Learner";
+}
+function SessionCard({
+  session,
+  role,
+  complete,
+  report,
+}: {
+  session: SessionResponse;
+  role: RoleTab;
+  complete?: () => void;
+  report?: () => void;
+}) {
+  const when = session.scheduledStart || session.createdAt;
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between gap-3">
+          <CardTitle className="text-base">Session with {person(session, role)}</CardTitle>
+          <Badge>{session.status.replaceAll("_", " ")}</Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-3 text-sm sm:grid-cols-3">
-          <div>
-            <p className="text-xs text-muted-foreground">Date</p>
-            <p className="font-medium">{session.date}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Time</p>
-            <p className="font-medium">{session.time}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Mode</p>
-            <p className="font-medium">
-              {session.mode}
-              {session.points > 0 && (
-                <span className="ml-1 inline-flex items-center gap-1 text-amber-600">
-                  <Coins className="h-3.5 w-3.5" />
-                  {session.points} Pts Locked in Escrow
-                </span>
-              )}
-            </p>
-          </div>
+      <CardContent className="space-y-3">
+        <div className="grid gap-2 text-sm sm:grid-cols-3">
+          <span>
+            <b>Skill:</b> {session.requestedSkill?.name || session.skillName || "General mentoring"}
+          </span>
+          <span>
+            <b>Mode:</b> {session.mode?.replace("SKILL_SWAP", "Skill exchange") || "Session"}
+          </span>
+          <span>
+            <b>When:</b> {when ? new Date(when).toLocaleString() : "To be arranged"}
+          </span>
         </div>
-
-        {isActive && (
+        {session.status === "COMPLETED" && <SessionReview session={session} role={role} />}
+        {(activeStatuses.has(session.status) || session.status === "AWAITING_CONFIRMATION") && (
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" asChild>
-              <a href={session.meetUrl} target="_blank" rel="noreferrer">
-                <ExternalLink className="mr-1.5 h-4 w-4" /> Join Google Meet
-              </a>
+            {session.meetingUrl && (
+              <Button variant="outline" asChild>
+                <a href={session.meetingUrl} target="_blank" rel="noreferrer">
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Join meeting
+                </a>
+              </Button>
+            )}
+            <Button onClick={complete}>
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Complete Session
             </Button>
-            <Button onClick={onComplete}>
-              <CheckCircle2 className="mr-1.5 h-4 w-4" /> Mark Session as Completed
-            </Button>
-            <Button
-              variant="outline"
-              className="border-rose-500/40 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700"
-              onClick={() => toast.error("Dispute raised — admin will review.")}
-            >
-              <Flag className="mr-1.5 h-4 w-4" /> Report Issue
-            </Button>
+            {report && (
+              <Button variant="outline" onClick={report}>
+                <Flag className="mr-2 h-4 w-4" />
+                Report Issue
+              </Button>
+            )}
           </div>
         )}
       </CardContent>
     </Card>
   );
 }
-
-function CompletionDialog({ session, onClose }: { session: Session | null; onClose: () => void }) {
-  const [rating, setRating] = useState(0);
-  const [hover, setHover] = useState(0);
-  const [review, setReview] = useState("");
-
-  const submit = (withReview: boolean) => {
-    toast.success(
-      `${session?.points ?? 0} points released to ${session?.counterpart}${
-        withReview && rating > 0 ? " • review submitted" : ""
-      }`,
-    );
-    setRating(0);
-    setHover(0);
-    setReview("");
-    onClose();
+function SessionReview({ session, role }: { session: SessionResponse; role: RoleTab }) {
+  const [rating, setRating] = useState("5");
+  const [feedback, setFeedback] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await reviewsService.submitReview(session.id, {
+        revieweeId:
+          role === "learner"
+            ? session.responder?.id || session.mentorId
+            : session.requester?.id || session.learnerId,
+        skillId: session.requestedSkill?.id,
+        rating: Number(rating),
+        feedback: feedback.trim(),
+      });
+      setSaved(true);
+      toast.success("Review submitted");
+    } catch (failure) {
+      toast.error(failure instanceof Error ? failure.message : "Could not submit review.");
+    } finally {
+      setBusy(false);
+    }
   };
-
+  if (saved) return <p className="text-sm text-muted-foreground">Thank you for your review.</p>;
   return (
-    <Dialog open={!!session} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
+    <details className="space-y-3">
+      <summary className="cursor-pointer text-sm text-primary">Leave a review</summary>
+      <Label htmlFor={`rating-${session.id}`}>Rating</Label>
+      <select
+        id={`rating-${session.id}`}
+        value={rating}
+        onChange={(event) => setRating(event.target.value)}
+        className="h-10 rounded-md border bg-background px-3"
+      >
+        {[5, 4, 3, 2, 1].map((value) => (
+          <option key={value} value={value}>
+            {value} stars
+          </option>
+        ))}
+      </select>
+      <Label htmlFor={`feedback-${session.id}`}>Feedback</Label>
+      <Textarea
+        id={`feedback-${session.id}`}
+        value={feedback}
+        onChange={(event) => setFeedback(event.target.value)}
+        maxLength={1000}
+      />
+      <Button disabled={busy} onClick={() => void submit()}>
+        Submit review
+      </Button>
+    </details>
+  );
+}
+function RequestCard({
+  request,
+  role,
+  reload,
+}: {
+  request: LearningRequestResponse;
+  role: RoleTab;
+  reload: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const act = async (action: "accept" | "reject" | "cancel") => {
+    setBusy(true);
+    try {
+      if (action === "accept") await learningRequestsService.acceptRequest(request.id);
+      else if (action === "reject")
+        await learningRequestsService.rejectRequest(request.id, { reason: "Declined by mentor" });
+      else await learningRequestsService.cancelRequest(request.id);
+      toast.success(`Request ${action}ed`);
+      await reload();
+    } catch (f) {
+      toast.error(f instanceof Error ? f.message : "Request could not be updated.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card>
+      <CardContent className="space-y-3 p-5">
+        <div className="flex justify-between">
+          <div>
+            <h3 className="font-semibold">
+              {request.requestedSkill?.name || request.requestedSkillName || "Learning session"}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {role === "learner"
+                ? `Requested from ${request.mentorName || "mentor"}`
+                : `Requested by ${request.learnerName || "learner"}`}{" "}
+              · {request.mode.replace("SKILL_SWAP", "Skill exchange")}
+            </p>
+          </div>
+          <Badge variant="outline">PENDING</Badge>
+        </div>
+        <p className="text-sm">
+          <Clock className="mr-1 inline h-4 w-4" />
+          {new Date(request.scheduledStart).toLocaleString()}
+        </p>
+        <div className="flex gap-2">
+          {role === "mentor" ? (
+            <>
+              <Button disabled={busy} onClick={() => void act("accept")}>
+                Accept
+              </Button>
+              <Button disabled={busy} variant="outline" onClick={() => void act("reject")}>
+                Decline
+              </Button>
+            </>
+          ) : (
+            <Button disabled={busy} variant="outline" onClick={() => void act("cancel")}>
+              Cancel request
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CompleteDialog({
+  session,
+  close,
+  reload,
+}: {
+  session: SessionResponse | null;
+  close: () => void;
+  reload: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    if (!session) return;
+    setBusy(true);
+    try {
+      await sessionsService.completeSession(session.id);
+      toast.success("Completion recorded. The session left Active Sessions.");
+      close();
+      await reload();
+    } catch (f) {
+      toast.error(f instanceof Error ? f.message : "Could not complete session.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog open={!!session} onOpenChange={(v) => !v && close()}>
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Confirm session completion</DialogTitle>
+          <DialogTitle>Complete session?</DialogTitle>
           <DialogDescription>
-            Confirm session completion to release {session?.points ?? 0} points to{" "}
-            {session?.counterpart}.
+            This records your confirmation. The other participant may still need to confirm before
+            points are released.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4">
-          <div>
-            <p className="mb-2 text-sm font-medium">Rate your session</p>
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onMouseEnter={() => setHover(n)}
-                  onMouseLeave={() => setHover(0)}
-                  onClick={() => setRating(n)}
-                  className="p-1"
-                  aria-label={`${n} star`}
-                >
-                  <Star
-                    className={`h-7 w-7 transition-colors ${
-                      (hover || rating) >= n
-                        ? "fill-amber-400 text-amber-400"
-                        : "text-muted-foreground/40"
-                    }`}
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-2 text-sm font-medium">
-              Write a review for your mentor{" "}
-              <span className="text-muted-foreground">(Optional)</span>
-            </p>
-            <Textarea
-              placeholder="What went well? What could improve?"
-              value={review}
-              onChange={(e) => setReview(e.target.value)}
-            />
-          </div>
-
-          <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-sm dark:bg-emerald-950/30">
-            <Gift className="h-4 w-4 text-emerald-600" />
-            <span className="text-emerald-800 dark:text-emerald-300">
-              Reviews help other students pick the right mentor.
-            </span>
-          </div>
-
-          <div className="flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            <AlertTriangle className="mt-0.5 h-3.5 w-3.5" />
-            Releasing points is final. If something went wrong, use "Report Issue" instead.
-          </div>
-        </div>
-
-        <DialogFooter className="gap-2 sm:gap-2">
-          <Button variant="outline" onClick={() => submit(false)}>
-            Skip Review & Release Points
+        <DialogFooter>
+          <Button variant="outline" onClick={close}>
+            Cancel
           </Button>
-          <Button onClick={() => submit(true)} disabled={rating === 0}>
-            Submit Review & Release Points
+          <Button disabled={busy} onClick={() => void submit()}>
+            {busy && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}Confirm completion
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+const reasons = [
+  "Mentor or learner did not attend",
+  "Inappropriate behavior",
+  "Session was not as described",
+  "Payment or points problem",
+  "Technical problem",
+  "Other",
+];
+function ReportDialog({
+  session,
+  close,
+  reload,
+}: {
+  session: SessionResponse | null;
+  close: () => void;
+  reload: () => Promise<void>;
+}) {
+  const [reason, setReason] = useState("");
+  const [details, setDetails] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    if (!session || !reason) return;
+    setBusy(true);
+    try {
+      await sessionsService.disputeSession(session.id, {
+        reason,
+        details: details.trim() || undefined,
+      });
+      toast.success("Report submitted to the admin review queue.");
+      close();
+      setReason("");
+      setDetails("");
+      await reload();
+    } catch (f) {
+      toast.error(f instanceof Error ? f.message : "Could not submit report.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog open={!!session} onOpenChange={(v) => !v && close()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Report a session issue</DialogTitle>
+          <DialogDescription>
+            Select why you are reporting this session. Admins will receive the report directly.
+          </DialogDescription>
+        </DialogHeader>
+        <div>
+          <Label>Reason</Label>
+          <Select value={reason} onValueChange={setReason}>
+            <SelectTrigger>
+              <SelectValue placeholder="Choose a reason" />
+            </SelectTrigger>
+            <SelectContent>
+              {reasons.map((r) => (
+                <SelectItem key={r} value={r}>
+                  {r}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="report-details">Details</Label>
+          <Textarea
+            id="report-details"
+            value={details}
+            onChange={(e) => setDetails(e.target.value)}
+            maxLength={2000}
+            placeholder="Explain what happened"
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={close}>
+            Cancel
+          </Button>
+          <Button disabled={busy || !reason} onClick={() => void submit()}>
+            Submit Report
           </Button>
         </DialogFooter>
       </DialogContent>

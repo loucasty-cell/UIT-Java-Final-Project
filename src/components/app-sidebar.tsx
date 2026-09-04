@@ -12,10 +12,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Badge } from "@/components/ui/badge";
 
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -88,20 +86,6 @@ export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
           </SidebarGroup>
         )}
       </SidebarContent>
-
-      <SidebarFooter>
-        {!collapsed ? (
-          <div className="flex items-center justify-between gap-2 px-3 py-2">
-            <span className="text-xs text-sidebar-foreground/75">Semester</span>
-            <Badge
-              variant="secondary"
-              className="rounded-full border-0 bg-sidebar-accent text-sidebar-accent-foreground"
-            >
-              Fall 2026
-            </Badge>
-          </div>
-        ) : null}
-      </SidebarFooter>
     </Sidebar>
   );
 }

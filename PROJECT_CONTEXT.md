@@ -277,3 +277,201 @@ Spring Boot/PostgreSQL backend in `backend/`. Read this file before making chang
   group while retaining all jobs and cancellation of older runs of the same workflow.
 - Validation: workflow YAML parses; names are unique across all workflow files.
   Runtime source and previously verified build artifacts are unchanged.
+
+## Checkpoint — 2026-09-03 (local session, volunteer and admin workflows)
+
+- Objective: finish the user's local-only feature fixes: persistent mentor/volunteer
+  requests, Learner/Mentor session tabs, completion, arbitrary exchange skills,
+  shared posts, reason-based reporting and separate administrator sign-in.
+  Applied prompt-preflight and browser/React verification guidance. No commit or
+  push; HEAD remains 8084726. Existing untracked root target/classes is preserved.
+- Frontend changes: rebuilt routes/mentors.tsx, sessions.tsx, forum.tsx, admin.tsx
+  and index.tsx around actual APIs instead of static demo rows, balances and fake
+  success handlers. Added admin-login.tsx, role-aware auth routing, and typed DTO
+  updates. Corrected learning-request/session/forum/mentor/moderation/admin/skill
+  services. Session requests are separated by learner/mentor identity. Active,
+  Requests, Awaiting confirmation, Completed and Reported reflect saved states.
+  Mutations preserve the selected role tab. Completed-session reviews call the
+  real review API. Exchange accepts a named skill and safely reuses it on retry.
+- Shared data: use-live-refresh.ts refreshes visible session, forum, admin and
+  notification data every 15 seconds and on window focus. top-nav.tsx now shows
+  real wallet balances/notifications and working mentor search. Forum posting,
+  likes, comments, full post reading, owner deletion and reports use the backend.
+  Replaced demo dashboard information with real wallet/session/skill data.
+- Backend changes: custom user-skill creation DTO/controller/service and catalog
+  lookup; discover mentors from teaching portfolios; validate volunteer post
+  ownership/skills and selected offerings. Persist forum skill associations and
+  return skill tags and likedByMe; query newest posts first and filter by skill.
+  Attribute moderation reports to the authenticated user. Admin report responses
+  contain reporter names and details, and dashboard statistics use database
+  counts rather than constants. Admin dispute decisions update sessions and funds.
+- Completion and points: include SCHEDULED in active sessions; confirmation moves
+  a session out of Active, preserves its original deadline on repeat, and permits
+  AWAITING_CONFIRMATION to finish. Carry point cost snapshots and link held
+  learning-request escrow to the accepted swap request. Both-party completion
+  releases funds once. Preserve volunteer mode in reports.
+- Migrations: V25 creates forum_post_skills; V26 repairs escrow references for
+  accepted learning requests; V27 adds COMPLETED to the swap-request constraint
+  while retaining legacy EXPIRED compatibility. All applied successfully to the
+  local PostgreSQL database. The live test caught the missing COMPLETED database
+  state, which unit tests could not detect.
+- Browser-only blocker fixed: SecurityConfig now allows Idempotency-Key in CORS
+  preflight headers. Direct API calls had succeeded while browser bookings were
+  blocked. Added an explicit preflight assertion to the live API regression script.
+  Date/time inputs now capture input events as well as changes. Browser retry also
+  exposed and fixed duplicate custom-skill creation after a failed booking.
+- Added scripts/local-database.mjs, grant-local-admin.mjs and test-feature-api.mjs;
+  expanded verify-frontend-build.mjs to include admin-login. LOCAL_FEATURE_CHECKS.md
+  documents startup, explicit local admin assignment and two-account checks.
+  Test additions/updates cover admin-only login, session roles/completion, real
+  dashboard totals and authenticated reporting. Session UI test is named
+  routes/-sessions.test.tsx so TanStack excludes it from route discovery.
+- Validation: 82 frontend tests passed; TypeScript and lint passed (0 lint errors,
+  8 pre-existing warnings). 100 backend tests passed with no failures/errors, and
+  Maven package succeeded using -Dfrontend.skip=true. Final backend JAR started,
+  health returned HTTP 200 UP, and 79 local API checks passed against it: shared
+  posts/likes/comments, three booking modes, incoming/outgoing visibility,
+  unauthorized access, confirmations, one-time point release, reporting and admin
+  resolution, real admin counts, and newest-first posts. Frontend build succeeded
+  without unresolved dependencies; the produced .output server served four routes
+  and 33 JS/CSS assets. Windows sandbox readlink restrictions required an elevated
+  frontend build; source changes were not used to bypass that restriction.
+- Browser validation: signed in as a synthetic learner, requested a real exchange
+  with a newly typed skill, verified Learner/Requests, signed out and signed in as
+  its mentor, verified Mentor/Requests, accepted, completed out of Active, submitted
+  an issue with category/details, then signed into /admin-login and resolved that
+  same report. Confirmed reporter names and shared volunteer posts; no captured
+  browser console errors in these checks. Temporary admin access was removed,
+  browser test sessions logged out, test posts deactivated and the private fixture
+  file removed. Synthetic account/session history remains in the local database.
+- Runtime: restored frontend on port 3000 after reinstalling the locked npm
+  dependencies, and left the final packaged backend on 9095/9096 for user review.
+  To rebuild Java, stop that running JAR first (Windows locks the artifact); the
+  normal Maven dev command is documented. No package/lockfile changes were made.
+- Remaining: user acceptance testing. This verifies the named workflows and
+  related wallet/notification/review behavior, not every legacy endpoint or
+  production integration. The simplified dashboard does not certify the old
+  demo profile/certificate/activity controls, and existing certificate storage
+  configuration remains outside this task. No deployment or GitHub work requested.
+- Verification detail: the review UI is connected and existing backend review
+  tests pass; browser review submission was not part of the recorded end-to-end
+  check. Final discovery after renaming -sessions.test.tsx still ran all 82
+  frontend tests successfully. Final git diff --check passed.
+
+## 2026-09-04 — Final compiled-app browser verification
+
+- Objective: resume the local feature fixes and close the remaining volunteer
+  and review browser checks. No application source changes were needed today;
+  this checkpoint is the only additional file change. No commit or push made.
+- Restarted the packaged backend and normal Vite frontend as hidden processes
+  after finding the previous servers stopped. Verified frontend HTTP 200 on 3000
+  and backend health UP on 9096 (API on 9095).
+- Exercised the final .output frontend on temporary port 4173 against the final
+  backend JAR: mentor published a volunteer post, another account saw and booked
+  it, Learner/Requests and Mentor/Requests showed the same request, mentor
+  accepted, each participant confirmed completion, Active became empty, and
+  Completed showed the session. Learner submitted feedback successfully through
+  the review form. Captured browser console errors were empty.
+- Deleted the temporary post and signed out the browser test accounts. Synthetic
+  session/review history remains locally. Stopped the temporary port 4173 server;
+  left normal frontend/backend running. Runtime logs contained no ERROR,
+  Unhandled, or Exception matches; an existing PageImpl serialization warning
+  remains non-blocking and is not a missing dependency warning.
+- Reused the unchanged-source results from the previous checkpoint: 82 frontend
+  tests, 100 backend tests, 79 live API checks, successful builds and compiled
+  route/asset checks. Final git diff --check passed before this documentation
+  append. Remaining work is user acceptance testing within the documented scope.
+
+## 2026-09-04 — Restore dashboard features and fix volunteer publishing
+
+- Objective: restore user-requested skill levels, certificates, activity log and
+  teaching posts removed by the previous dashboard simplification; make volunteer
+  skills manually entered and explain why publishing cannot proceed.
+- Frontend changes: added components/dashboard-extras.tsx for real certificate
+  upload/download/delete, wallet activity pagination/CSV export, and teaching
+  offering create/hide/republish. Dashboard skill creation now accepts Beginner,
+  Intermediate or Advanced. Updated forum.tsx to accept typed skills and display
+  title/description validation errors on Publish rather than silently disabling
+  the button. Updated mentors.tsx to let learners select published offerings,
+  respecting their price, duration, skill and enabled modes. Updated skill service,
+  API types and mock fixtures to match actual backend payloads. Added
+  routes/-forum.test.tsx regression for the screenshot's short description case.
+- Backend changes: MentorMapper now resolves portfolio IDs to actual skill IDs;
+  MentorOfferingService validates ownership, teaching direction and nonempty modes
+  when creating offerings. application.yml defaults certificate storage to local
+  filesystem and permits multipart PDFs up to 5 MB. Filesystem storage uses UUID
+  keys independent of uploaded filenames. LOCAL_FEATURE_CHECKS.md updated.
+- Validation: 83 frontend tests and 100 backend tests passed; frontend type-check
+  and production build passed; backend package passed; lint has 0 errors and the
+  same 8 existing warnings. Final compiled frontend served 4 routes and 34 assets
+  without unresolved dependencies. git diff --check passed; HEAD stays 8084726.
+- Browser/API: created an Advanced teaching skill and 45-minute/12-point post;
+  confirmed another account sees it and the booking UI applies its price/duration
+  and disables unsupported modes. API booking charged 12 points and cancellation
+  refunded 12, both reflected in real activity. Confirmed ownership rejection for
+  another account's teaching skill and certificate download access protection.
+  Uploaded a PDF through the browser; restarted the final backend JAR and checked
+  downloaded bytes exactly match the source file. Browser volunteer publishing
+  showed the 20-character error for HI, then published with a manually entered new
+  skill. Captured browser errors were empty after the checks.
+- Cleanup/runtime: deleted only the synthetic uploaded certificate and volunteer
+  post, hid the synthetic teaching offering, cancelled the test booking, signed
+  out test sessions and removed the local PDF fixture. Synthetic skill/history
+  rows remain. Frontend 3000 and packaged backend 9095/9096 left running; health UP.
+  No commit, push, deployment, or user-account permission changes were made.
+
+## 2026-09-04 — Remove verification data and enable shared development API access
+
+- User requested removal of generated Flow/Creative skills, BrowserMentor and
+  FlowCheck accounts/requests, review of other pages, and an explanation of
+  pending requests and testing with two laptops.
+- Added scripts/cleanup-local-test-data.mjs with a preview default, exact documented
+  synthetic identity patterns, verified Git-ignored local recovery snapshot, and
+  transactional dependent-record cleanup. Applied it to the local database:
+  removed 22 synthetic accounts, their posts/sessions/reports/notifications and
+  unused generated skills. Preserved the sole genuine account and its data.
+  Refunded 10 held points on its pending request to a test mentor before cleanup;
+  retained genuine wallet audit history. Verified available +10, held -10, no
+  other real-wallet changes, and zero synthetic accounts afterward. Remaining
+  catalog: Java, MySQL, React, Machine learning, problem solving. No invented
+  replacement users or posts were inserted. Private backup stays under ignored
+  backend/storage/backups; do not publish it.
+- Removed the hardcoded Fall 2026 sidebar label and global exchange-skill datalist;
+  exchange entry remains manual and persists real user skills. Runtime service
+  scan found no active mock-api import or fabricated fallback; removed a stale
+  mock-fallback comment in forum service. Test fixtures remain development code.
+- Added a same-origin API base for development plus a Vite /api proxy to the host
+  backend and npm run dev:lan. Production API configuration is unchanged. The
+  feature API test now refuses to seed unless explicitly configured for a
+  disposable test database using FEATURE_TEST_ISOLATED_DATABASE=true.
+- Files: cleanup script, feature-test script, mentors route, app-sidebar,
+  api-client, forum service, vite.config.ts, package.json, LOCAL_FEATURE_CHECKS.md
+  and this checkpoint. No backend source or dependency versions changed.
+- Validation: all 83 frontend tests passed, lint 0 errors/8 pre-existing warnings,
+  git diff --check clean. Local frontend API proxy returned HTTP 200 both via
+  localhost and host Wi-Fi IP 192.168.1.25; backend health UP. A physical second
+  laptop was not available, so cross-device firewall/router access is not claimed
+  verified. Two devices must use the same host URL/backend/database and different
+  accounts. No GitHub push/commit or firewall modification was made.
+- Final frontend production build passed; the produced artifact served all four
+  checked routes and 34 assets successfully.
+
+## 2026-09-04 — Small presentation dataset in the existing account
+
+- User explicitly reversed the no-demo preference for a small classroom demo,
+  and clarified that sample sessions must appear in their existing account,
+  not require switching to a demo learner account.
+- Added and ran scripts/seed-presentation-demo.mjs locally: two clearly labelled
+  fictional mentors (Java and MySQL), two labelled volunteer posts, one pending
+  outgoing request, one scheduled active session, and one incoming request in the
+  real account's Mentor tab. No changes to the user's profile or skills.
+- Demo mentor records are necessary for relational session/post ownership; their
+  presentation-only identities use a reserved example domain. Credentials are
+  random, not printed or recorded here, and their API sessions were logged out.
+  No admin access granted. The script refuses duplicate seeds and requires an
+  explicit existing account ID if multiple genuine accounts are present.
+- Validation: API creation/acceptance succeeded, mentor search returns demo data,
+  database checks confirm PENDING and SCHEDULED states, and the existing account's
+  available/held points exactly match pre-seed values. All demo bookings are
+  zero-cost volunteer sessions. Only script/documentation and local data changed;
+  no app rebuild required. No commit or push performed.

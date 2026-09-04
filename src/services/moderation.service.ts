@@ -1,9 +1,11 @@
 import { api } from "@/lib/api-client";
 
 export interface FlagContentRequest {
+  reporterId?: string;
   targetType: "FORUM_POST" | "FORUM_COMMENT" | "SESSION_MESSAGE" | "USER" | string;
   targetId: string;
   reason: string;
+  details?: string;
 }
 
 export interface ModerationReportResponse {

@@ -216,6 +216,14 @@ public class WalletService {
                 "Refund of held points", referenceType, referenceId, idempotencyKey);
     }
 
+    public void linkLearningRequestEscrowToSession(UUID learningRequestId, UUID swapRequestId) {
+        Escrow escrow = openEscrow("LEARNING_REQUEST", learningRequestId);
+        escrow.setReferenceType("SWAP_REQUEST");
+        escrow.setReferenceId(swapRequestId);
+        escrow.setUpdatedAt(OffsetDateTime.now());
+        escrowRepository.save(escrow);
+    }
+
     // Applies a signed admin adjustment (-10000..10000, never zero) with a
     // mandatory reason
     // Linkage: AdminUserController POST

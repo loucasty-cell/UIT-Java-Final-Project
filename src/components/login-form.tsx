@@ -7,8 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function LoginForm({ onSuccess }: { onSuccess: () => void | Promise<void> }) {
-  const { login } = useAuth();
+export function LoginForm({
+  onSuccess,
+  adminOnly = false,
+}: {
+  onSuccess: () => void | Promise<void>;
+  adminOnly?: boolean;
+}) {
+  const { login, logout } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
@@ -34,7 +40,16 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void | Promise<void>
     submitting.current = true;
     setPending(true);
     try {
-      await login(result.data);
+      const response = await login(result.data);
+      if (
+        adminOnly &&
+        !response.user.roles.some((role) => role.replace(/^ROLE_/i, "").toUpperCase() === "ADMIN")
+      ) {
+        await logout();
+        throw new Error(
+          "This account does not have administrator access. Use the user sign-in page.",
+        );
+      }
       setPassword("");
       await onSuccess();
     } catch (failure) {

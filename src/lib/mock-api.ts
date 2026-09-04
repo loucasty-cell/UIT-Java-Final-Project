@@ -290,13 +290,12 @@ function initDB(): MockDB {
     offerings: [
       {
         id: "off-1",
-        mentorId: "user-mentor",
-        skillId: "sk-react",
-        skillName: "React",
-        description:
-          "Comprehensive 1-on-1 coaching covering state management, hooks, and clean architecture.",
-        hourlyRatePoints: 50,
-        available: true,
+        mentor: { id: "user-mentor", displayName: "Demo mentor" },
+        skill: { id: "sk-react", name: "React", category: "Programming" },
+        price: 50,
+        modes: ["POINTS"],
+        duration: 60,
+        active: true,
       },
     ],
     sessions: [
@@ -635,12 +634,16 @@ export function handleMockApiRequest(
     if (method === "POST") {
       const newOffering: MentorOfferingResponse = {
         id: "off-" + Date.now(),
-        mentorId: db.users[0].id,
-        skillId: body.skillId || "sk-react",
-        skillName: body.skillName || "React",
-        description: body.description || "1-on-1 mentorship",
-        hourlyRatePoints: body.hourlyRatePoints ?? 35,
-        available: true,
+        mentor: { id: db.users[0].id, displayName: "Demo mentor" },
+        skill: {
+          id: body.skillId || "sk-react",
+          name: body.skillName || "React",
+          category: "Programming",
+        },
+        price: body.pointCost ?? 35,
+        modes: ["POINTS"],
+        duration: 60,
+        active: true,
       };
       db.offerings.push(newOffering);
       saveDB(db);

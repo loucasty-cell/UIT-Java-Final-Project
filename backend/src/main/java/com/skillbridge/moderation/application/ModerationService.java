@@ -13,6 +13,7 @@ import com.skillbridge.moderation.api.dto.response.ModerationReportResponse;
 import com.skillbridge.moderation.api.mapper.ModerationMapper;
 import com.skillbridge.review.infrastructure.persistence.ReviewRepository;
 import lombok.RequiredArgsConstructor;
+import com.skillbridge.shared.security.SecurityUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,15 +34,16 @@ public class ModerationService {
     private final ModerationMapper moderationMapper;
 
     public ModerationReportResponse flagContent(FlagContentRequest request) {
-        if (!userRepository.existsById(request.getReporterId())) {
-            throw new IllegalArgumentException("Reporter not found: " + request.getReporterId());
+        UUID reporterId = SecurityUtils.getCurrentUserId();
+        if (!userRepository.existsById(reporterId)) {
+            throw new IllegalArgumentException("Reporter not found: " + reporterId);
         }
         validateTarget(request.getTargetType(), request.getTargetId());
 
         OffsetDateTime now = OffsetDateTime.now();
         Report report = new Report();
         report.setId(UUID.randomUUID());
-        report.setReporterId(request.getReporterId());
+        report.setReporterId(reporterId);
         report.setTargetType(request.getTargetType());
         report.setTargetId(request.getTargetId());
         report.setReason(request.getReason());

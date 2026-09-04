@@ -8,10 +8,13 @@ import com.skillbridge.forum.api.dto.response.ForumPostSummaryResponse;
 import com.skillbridge.forum.domain.entity.ForumComment;
 import com.skillbridge.forum.domain.entity.ForumPost;
 import com.skillbridge.shared.api.dto.response.UserSummaryResponse;
+import com.skillbridge.shared.api.dto.response.SkillSummaryResponse;
+import com.skillbridge.skill.domain.entity.Skill;
+import com.skillbridge.skill.infrastructure.SkillRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 @Component
@@ -19,6 +22,8 @@ import java.util.UUID;
 public class ForumMapper {
 
     private final UserRepository userRepository;
+    private final SkillRepository skillRepository;
+    private final com.skillbridge.forum.infrastructure.persistence.ForumLikeRepository forumLikeRepository;
 
     public ForumPostSummaryResponse toSummaryResponse(ForumPost entity) {
         if (entity == null) {
@@ -31,11 +36,11 @@ public class ForumMapper {
 
         response.setTitle(entity.getTitle());
         response.setExcerpt(entity.getDescription().substring(0, Math.min(entity.getDescription().length(), 100)));
-        response.setSkillTags(Collections.emptyList()); // Stubbed
+        response.setSkillTags(toSkillTags(entity));
         response.setAvailability(entity.getAvailabilityText());
         response.setLikeCount(entity.getLikeCount());
         response.setCommentCount(entity.getCommentCount());
-        response.setLikedByMe(false); // Derivable from context in real app
+        response.setLikedByMe(likedByMe(entity));
         response.setTimestamp(entity.getCreatedAt());
         response.setVersion(entity.getVersion());
 
@@ -53,11 +58,11 @@ public class ForumMapper {
 
         response.setTitle(entity.getTitle());
         response.setDescription(entity.getDescription());
-        response.setSkillTags(Collections.emptyList()); // Stubbed
+        response.setSkillTags(toSkillTags(entity));
         response.setAvailability(entity.getAvailabilityText());
         response.setLikeCount(entity.getLikeCount());
         response.setCommentCount(entity.getCommentCount());
-        response.setLikedByMe(false); // Derivable from context
+        response.setLikedByMe(likedByMe(entity));
         response.setTimestamp(entity.getCreatedAt());
         response.setVersion(entity.getVersion());
 
@@ -113,5 +118,31 @@ public class ForumMapper {
         }
 
         return user.getEmail();
+    }
+
+    private List<SkillSummaryResponse> toSkillTags(ForumPost post) {
+        return post.getSkillIds().stream()
+                .map(skillRepository::findById)
+                .flatMap(java.util.Optional::stream)
+                .map(this::toSkillSummary)
+                .toList();
+    }
+
+    private boolean likedByMe(ForumPost post) {
+        try {
+            return forumLikeRepository.existsByPostIdAndUserId(post.getId(),
+                    com.skillbridge.shared.security.SecurityUtils.getCurrentUserId());
+        } catch (org.springframework.security.access.AccessDeniedException anonymous) {
+            return false;
+        }
+    }
+
+    private SkillSummaryResponse toSkillSummary(Skill skill) {
+        return SkillSummaryResponse.builder()
+                .id(skill.getId())
+                .name(skill.getName())
+                .category(skill.getCategory())
+                .slug(skill.getName().toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]+", "-"))
+                .build();
     }
 }

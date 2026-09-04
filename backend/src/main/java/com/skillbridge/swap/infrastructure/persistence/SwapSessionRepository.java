@@ -14,6 +14,7 @@ import java.util.UUID;
 
 @Repository
 public interface SwapSessionRepository extends JpaRepository<SwapSession, UUID> {
+    long countByStatusIn(List<SwapSessionStatus> statuses);
 
     Optional<SwapSession> findBySwapRequestId(UUID swapRequestId);
 

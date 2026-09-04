@@ -28,7 +28,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
       </main>
     );
   if (!isAuthenticated)
-    return <Navigate to="/login" search={{ redirect: safeLoginRedirect(pathname) }} replace />;
+    return pathname === "/admin" || pathname.startsWith("/admin/") ? (
+      <Navigate to="/admin-login" replace />
+    ) : (
+      <Navigate to="/login" search={{ redirect: safeLoginRedirect(pathname) }} replace />
+    );
   if ((pathname === "/admin" || pathname.startsWith("/admin/")) && !isAdmin)
     return (
       <main className="grid min-h-svh place-items-center p-6">

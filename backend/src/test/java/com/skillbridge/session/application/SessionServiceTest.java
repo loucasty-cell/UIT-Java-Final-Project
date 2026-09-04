@@ -190,6 +190,36 @@ public class SessionServiceTest {
         assertThrows(IllegalArgumentException.class, () -> fixture.service.completeSession(null));
     }
 
+    @Test
+    void scheduledBookingLeavesActiveAfterCompletionAndKeepsOriginalDeadline() {
+        Fixture fixture = new Fixture();
+        SwapSession session = session(SwapSessionStatus.SCHEDULED);
+        fixture.sessions.put(session.getId(), session);
+        TestAuthContext.loginAs(session.getRequesterId());
+        assertEquals(1, fixture.service.getActiveSwapSessions().size());
+
+        fixture.service.confirmCompletion(session.getId());
+        OffsetDateTime deadline = session.getAutoReleaseAt();
+        assertEquals(SwapSessionStatus.AWAITING_CONFIRMATION, session.getStatus());
+        assertEquals(0, fixture.service.getActiveSwapSessions().size());
+
+        fixture.service.confirmCompletion(session.getId());
+        assertEquals(deadline, session.getAutoReleaseAt());
+        assertEquals(1, fixture.confirmedUsers.size());
+    }
+
+    @Test
+    void cannotConfirmCancelledOrDisputedSession() {
+        for (SwapSessionStatus status : List.of(SwapSessionStatus.CANCELLED, SwapSessionStatus.DISPUTED)) {
+            Fixture fixture = new Fixture();
+            SwapSession session = session(status);
+            fixture.sessions.put(session.getId(), session);
+            TestAuthContext.loginAs(session.getRequesterId());
+            assertThrows(IllegalStateException.class, () -> fixture.service.confirmCompletion(session.getId()));
+            assertEquals(0, fixture.confirmedUsers.size());
+        }
+    }
+
     private static SwapSession session(SwapSessionStatus status) {
         SwapSession session = new SwapSession();
         session.setId(UUID.randomUUID());
@@ -239,7 +269,7 @@ public class SessionServiceTest {
                 new SessionMapper(null),
                 notificationService,
                 disputeRepository,
-                new AdminMapper(),
+                new AdminMapper(org.mockito.Mockito.mock(com.skillbridge.auth.infrastructure.persistence.UserRepository.class)),
                 confirmationRepository,
                 platformSettingRepository);
 

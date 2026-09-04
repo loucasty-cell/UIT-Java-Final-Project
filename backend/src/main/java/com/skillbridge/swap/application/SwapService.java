@@ -149,8 +149,11 @@ public class SwapService {
         SwapSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Swap session not found: " + sessionId));
         requireSessionParticipant(session, SecurityUtils.getCurrentUserId(), "Only session participants can complete this session");
-        if (session.getStatus() != SwapSessionStatus.ACCEPTED && session.getStatus() != SwapSessionStatus.STARTED) {
-            throw new IllegalStateException("Only accepted or started swap sessions can be completed");
+        if (session.getStatus() != SwapSessionStatus.ACCEPTED
+                && session.getStatus() != SwapSessionStatus.SCHEDULED
+                && session.getStatus() != SwapSessionStatus.STARTED
+                && session.getStatus() != SwapSessionStatus.AWAITING_CONFIRMATION) {
+            throw new IllegalStateException("Only active or awaiting-confirmation sessions can be completed");
         }
 
         SwapRequest swapRequest = loadRequest(session.getSwapRequestId());

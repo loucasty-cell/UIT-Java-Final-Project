@@ -5,6 +5,7 @@ import com.skillbridge.shared.security.SecurityUtils;
 import com.skillbridge.skill.domain.entity.Skill;
 import com.skillbridge.skill.infrastructure.SkillRepository;
 import com.skillbridge.user.api.dto.request.UserSkillCreateRequest;
+import com.skillbridge.user.api.dto.request.CustomUserSkillCreateRequest;
 import com.skillbridge.user.api.dto.request.UserSkillUpdateRequest;
 import com.skillbridge.user.api.dto.response.UserSkillResponse;
 import com.skillbridge.user.api.mapper.UserSkillMapper;
@@ -59,6 +60,24 @@ public class UserSkillService {
 
         UserSkill saved = userSkillRepository.save(userSkill);
         return userSkillMapper.toResponse(saved, skill);
+    }
+
+    public UserSkillResponse createCustomUserSkill(CustomUserSkillCreateRequest request) {
+        String name = request.getName().trim().replaceAll("\\s+", " ");
+        Skill skill = skillRepository.findFirstByNameIgnoreCase(name).orElseGet(() ->
+                skillRepository.save(Skill.builder()
+                        .name(name)
+                        .category(request.getCategory() == null || request.getCategory().isBlank()
+                                ? "Community"
+                                : request.getCategory().trim())
+                        .description("Community-added skill")
+                        .build()));
+        UserSkillCreateRequest create = UserSkillCreateRequest.builder()
+                .skillId(skill.getId())
+                .direction(request.getDirection())
+                .level(request.getLevel())
+                .build();
+        return createUserSkill(create);
     }
 
     public UserSkillResponse updateUserSkill(UUID id, UserSkillUpdateRequest request) {

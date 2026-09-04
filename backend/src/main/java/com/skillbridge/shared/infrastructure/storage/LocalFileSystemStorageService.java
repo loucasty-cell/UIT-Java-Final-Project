@@ -27,7 +27,7 @@ public class LocalFileSystemStorageService implements StorageService {
     public String store(String filename, byte[] content, String contentType) {
         try {
             // Create storage key with UUID to avoid filename collisions
-            String storageKey = UUID.randomUUID() + "-" + filename;
+            String storageKey = UUID.randomUUID() + ".pdf";
             Path storagePath = Paths.get(basePath);
 
             // Ensure directory exists

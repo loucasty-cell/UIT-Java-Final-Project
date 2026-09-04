@@ -3,10 +3,11 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import userEvent from "@testing-library/user-event";
 import { LoginForm } from "./login-form";
 import { ApiError } from "@/lib/api-client";
-const { login } = vi.hoisted(() => ({ login: vi.fn() }));
-vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ login }) }));
+const { login, logout } = vi.hoisted(() => ({ login: vi.fn(), logout: vi.fn() }));
+vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ login, logout }) }));
 beforeEach(() => {
   login.mockReset();
+  logout.mockReset().mockResolvedValue(undefined);
 });
 afterEach(cleanup);
 function setup() {
@@ -21,6 +22,25 @@ function fill(email = "test@example.com", password = "Password123") {
   });
 }
 describe("login form validation", () => {
+  it("rejects a normal account at administrator sign in and revokes its session", async () => {
+    const success = vi.fn();
+    login.mockResolvedValue({ user: { roles: ["USER"] } });
+    render(<LoginForm adminOnly onSuccess={success} />);
+    fill();
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(await screen.findByText(/does not have administrator access/)).toBeVisible();
+    expect(logout).toHaveBeenCalledOnce();
+    expect(success).not.toHaveBeenCalled();
+  });
+  it("accepts an administrator through the separate sign-in form", async () => {
+    const success = vi.fn();
+    login.mockResolvedValue({ user: { roles: ["USER", "ADMIN"] } });
+    render(<LoginForm adminOnly onSuccess={success} />);
+    fill();
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await waitFor(() => expect(success).toHaveBeenCalledOnce());
+    expect(logout).not.toHaveBeenCalled();
+  });
   it.each([
     ["", "", "Email is required."],
     ["bad-address", "password", "Enter a valid email address."],

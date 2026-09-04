@@ -16,17 +16,23 @@ public class AdminDashboardQueryService {
 
     private final ReportRepository reportRepository;
     private final DisputeRepository disputeRepository;
+    private final com.skillbridge.auth.infrastructure.persistence.UserRepository userRepository;
+    private final com.skillbridge.wallet.infrastructure.persistence.WalletRepository walletRepository;
+    private final com.skillbridge.swap.infrastructure.persistence.SwapSessionRepository sessionRepository;
 
     public AdminDashboardResponse getDashboardStats() {
         long openReports = reportRepository.countByStatus(ReportStatus.OPEN);
         long activeDisputes = disputeRepository.countByStatus(DisputeStatus.OPEN);
 
         return AdminDashboardResponse.builder()
-                .totalUsers(1240L)
-                .heldEscrowPoints(3500L)
+                .totalUsers(userRepository.count())
+                .heldEscrowPoints(walletRepository.sumHeldPoints())
                 .openReports(openReports)
                 .activeDisputes(activeDisputes)
-                .activeSessions(8L)
+                .activeSessions(sessionRepository.countByStatusIn(java.util.List.of(
+                        com.skillbridge.swap.domain.model.SwapSessionStatus.ACCEPTED,
+                        com.skillbridge.swap.domain.model.SwapSessionStatus.SCHEDULED,
+                        com.skillbridge.swap.domain.model.SwapSessionStatus.STARTED)))
                 .build();
     }
 }

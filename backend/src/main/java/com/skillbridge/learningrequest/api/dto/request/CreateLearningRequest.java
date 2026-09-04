@@ -29,6 +29,8 @@ public class CreateLearningRequest {
     @Future(message = "Scheduled start time must be in the future")
     private OffsetDateTime scheduledStart;
 
+    @jakarta.validation.constraints.Min(15)
+    @jakarta.validation.constraints.Max(480)
     private Integer durationMinutes = 60;
 
     private UUID sourceForumPostId;

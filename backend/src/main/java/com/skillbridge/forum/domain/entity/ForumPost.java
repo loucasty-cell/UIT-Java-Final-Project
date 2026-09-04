@@ -5,11 +5,17 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Column;
 import jakarta.persistence.Version;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "forum_posts")
@@ -27,6 +33,11 @@ public class ForumPost {
 
     @Column(name = "description", nullable = false, length = 5000)
     private String description;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "forum_post_skills", joinColumns = @JoinColumn(name = "post_id"))
+    @Column(name = "skill_id", nullable = false)
+    private Set<UUID> skillIds = new LinkedHashSet<>();
 
     @Column(name = "availability_text", length = 500)
     private String availabilityText;

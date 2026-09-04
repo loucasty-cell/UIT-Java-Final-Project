@@ -23,6 +23,7 @@ public class MentorMapper {
 
     private final UserRepository userRepository;
     private final SkillRepository skillRepository;
+    private final com.skillbridge.user.infrastructure.persistence.UserSkillRepository userSkillRepository;
 
     public MentorOfferingResponse toResponse(MentorOffering entity) {
         if (entity == null) {
@@ -32,7 +33,9 @@ public class MentorMapper {
         MentorOfferingResponse response = new MentorOfferingResponse();
         response.setId(entity.getId());
         response.setMentor(toUserSummary(entity.getMentorId(), true));
-        response.setSkill(toSkillSummary(entity.getTeachUserSkillId()));
+        var teachingSkill = userSkillRepository.findById(entity.getTeachUserSkillId())
+                .orElseThrow(() -> new IllegalArgumentException("Teaching skill not found"));
+        response.setSkill(toSkillSummary(teachingSkill.getSkillId()));
 
         response.setPrice(entity.getPointCost());
 

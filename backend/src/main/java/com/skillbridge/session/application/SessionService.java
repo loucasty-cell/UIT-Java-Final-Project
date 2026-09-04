@@ -51,7 +51,10 @@ public class SessionService {
     public List<SessionResponse> getActiveSwapSessions() {
         UUID userId = SecurityUtils.getCurrentUserId();
         return sessionRepository
-                .findActiveByUserId(userId, List.of(SwapSessionStatus.ACCEPTED, SwapSessionStatus.STARTED))
+                .findActiveByUserId(userId, List.of(
+                        SwapSessionStatus.ACCEPTED,
+                        SwapSessionStatus.SCHEDULED,
+                        SwapSessionStatus.STARTED))
                 .stream()
                 .map(sessionMapper::toResponse)
                 .toList();
@@ -113,49 +116,7 @@ public class SessionService {
         if (sessionId == null) {
             throw new IllegalArgumentException("Session ID must not be null");
         }
-        SwapSession session = loadSession(sessionId);
-        requireParticipant(session, "Only session participants can complete this session");
-
-        if (session.getStatus() == SwapSessionStatus.COMPLETED) {
-            return sessionMapper.toResponse(session);
-        }
-        if (session.getStatus() != SwapSessionStatus.ACCEPTED && session.getStatus() != SwapSessionStatus.STARTED) {
-            throw new IllegalStateException("Only accepted or started sessions can be completed");
-        }
-
-        UUID currentUserId = SecurityUtils.getCurrentUserId();
-        if (!confirmationRepository.existsBySessionIdAndConfirmedBy(sessionId, currentUserId)) {
-            SessionConfirmation confirmation = new SessionConfirmation();
-            confirmation.setId(UUID.randomUUID());
-            confirmation.setSessionId(sessionId);
-            confirmation.setConfirmedBy(currentUserId);
-            confirmation.setConfirmedAt(OffsetDateTime.now());
-            confirmationRepository.save(confirmation);
-        }
-
-        UUID otherParticipantId = session.getRequesterId().equals(currentUserId)
-                ? session.getResponderId()
-                : session.getRequesterId();
-
-        boolean otherConfirmed = confirmationRepository.existsBySessionIdAndConfirmedBy(sessionId, otherParticipantId);
-
-        if (otherConfirmed) {
-            // Both confirmed -> complete immediately
-            swapService.completeSwapSession(sessionId);
-        } else {
-            // First confirmation -> set auto release deadline and notify other party
-            int releaseHours = platformSettingRepository.findTopByOrderByUpdatedAtDesc()
-                    .map(PlatformSetting::getEscrowReleaseHours)
-                    .orElse(DEFAULT_ESCROW_RELEASE_HOURS);
-
-            session.setAutoReleaseAt(OffsetDateTime.now().plusHours(releaseHours));
-            session.setUpdatedAt(OffsetDateTime.now());
-            sessionRepository.save(session);
-
-            notificationService.notifySessionStatusChange(otherParticipantId, NotificationType.SESSION_UPDATED,
-                    sessionId);
-        }
-
+        confirmCompletion(sessionId);
         return sessionMapper.toResponse(loadSession(sessionId));
     }
 
@@ -165,6 +126,17 @@ public class SessionService {
         }
         SwapSession session = loadSession(sessionId);
         requireParticipant(session, "Only session participants can complete this session");
+
+        if (session.getStatus() == SwapSessionStatus.COMPLETED) {
+            return confirmationResponse(session, true, true,
+                    session.getPointCostSnapshot() != null ? session.getPointCostSnapshot() : 0);
+        }
+        if (session.getStatus() != SwapSessionStatus.ACCEPTED
+                && session.getStatus() != SwapSessionStatus.SCHEDULED
+                && session.getStatus() != SwapSessionStatus.STARTED
+                && session.getStatus() != SwapSessionStatus.AWAITING_CONFIRMATION) {
+            throw new IllegalStateException("Only active sessions can be completed");
+        }
 
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         if (!confirmationRepository.existsBySessionIdAndConfirmedBy(sessionId, currentUserId)) {
@@ -195,7 +167,9 @@ public class SessionService {
                     .orElse(DEFAULT_ESCROW_RELEASE_HOURS);
 
             session.setStatus(SwapSessionStatus.AWAITING_CONFIRMATION);
-            session.setAutoReleaseAt(OffsetDateTime.now().plusHours(releaseHours));
+            if (session.getAutoReleaseAt() == null) {
+                session.setAutoReleaseAt(OffsetDateTime.now().plusHours(releaseHours));
+            }
             session.setUpdatedAt(OffsetDateTime.now());
             session = sessionRepository.save(session);
 
@@ -203,13 +177,18 @@ public class SessionService {
                     sessionId);
         }
 
+        return confirmationResponse(session, true, otherConfirmed, pointsReleased);
+    }
+
+    private SessionConfirmationResponse confirmationResponse(
+            SwapSession session, boolean confirmedByMe, boolean confirmedByOther, int pointsReleased) {
         return SessionConfirmationResponse.builder()
                 .id(session.getId())
                 .status(session.getStatus())
                 .pointsReleased(pointsReleased)
                 .autoReleaseAt(session.getAutoReleaseAt())
-                .confirmedByMe(true)
-                .confirmedByOther(otherConfirmed)
+                .confirmedByMe(confirmedByMe)
+                .confirmedByOther(confirmedByOther)
                 .build();
     }
 
@@ -276,8 +255,8 @@ public class SessionService {
         Dispute dispute = new Dispute();
         dispute.setId(UUID.randomUUID());
         dispute.setSessionId(sessionId);
-        dispute.setSessionMode(
-                session.getPointCost() != null && session.getPointCost() > 0 ? Mode.POINTS : Mode.SKILL_SWAP);
+        dispute.setSessionMode(session.getMode() != null ? Mode.valueOf(session.getMode().name())
+                : session.getPointCost() != null && session.getPointCost() > 0 ? Mode.POINTS : Mode.SKILL_SWAP);
         dispute.setOpenedBy(currentUserId);
         dispute.setReason(request.getReason());
         dispute.setDetails(request.getDetails());

@@ -4,6 +4,7 @@ import {
   GlobalCatalogSkill,
   SkillCertificateResponse,
   SkillDirection,
+  SkillLevel,
   UpdateUserSkillRequest,
   UserSkillResponse,
 } from "@/types/api";
@@ -23,6 +24,30 @@ export const skillsService = {
    */
   async addUserSkill(data: AddUserSkillRequest): Promise<UserSkillResponse> {
     return api.post<UserSkillResponse>("/api/v1/me/skills", data);
+  },
+
+  async addCustomUserSkill(
+    name: string,
+    direction: SkillDirection,
+    level: SkillLevel = "INTERMEDIATE",
+  ): Promise<UserSkillResponse> {
+    return api.post<UserSkillResponse>("/api/v1/me/skills/custom", {
+      name,
+      category: "Community",
+      direction,
+      level,
+    });
+  },
+
+  async ensureTeachingSkill(
+    name: string,
+    level: SkillLevel = "INTERMEDIATE",
+  ): Promise<UserSkillResponse> {
+    const owned = await this.getUserSkills("TEACH");
+    return (
+      owned.find((item) => item.skill.name.toLowerCase() === name.trim().toLowerCase()) ||
+      this.addCustomUserSkill(name.trim(), "TEACH", level)
+    );
   },
 
   /**

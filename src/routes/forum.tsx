@@ -1,25 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Calendar, Flag, HandHeart, LoaderCircle, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import {
-  BadgeCheck,
-  Heart,
-  MessageCircle,
-  Share2,
-  Plus,
-  Send,
-  Sparkles,
-  ShieldCheck,
-  Star,
-} from "lucide-react";
+import { useAuth } from "@/context/auth-context";
+import { useLiveRefresh } from "@/hooks/use-live-refresh";
+import { forumService } from "@/services/forum.service";
+import { learningRequestsService } from "@/services/learning-requests.service";
+import { moderationService } from "@/services/moderation.service";
+import { skillsService } from "@/services/skills.service";
+import type { ForumCommentResponse, ForumPostSummaryResponse } from "@/types/api";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
@@ -27,456 +19,498 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
-export const Route = createFileRoute("/forum")({
-  head: () => ({
-    meta: [
-      { title: "SkillBridge" },
-      {
-        name: "description",
-        content: "Find free peer mentoring sessions and community learning threads on SkillBridge.",
-      },
-      { property: "og:title", content: "Volunteer Forum — SkillBridge" },
-      {
-        property: "og:description",
-        content: "Free peer mentoring and community learning threads.",
-      },
-    ],
-  }),
-  component: ForumPage,
-});
-
-type Comment = {
-  id: string;
-  author: string;
-  initials: string;
-  major: string;
-  body: string;
-};
-
-type Post = {
-  id: string;
-  author: string;
-  initials: string;
-  major: string;
-  title: string;
-  content: string;
-  tags: string[];
-  likes: number;
-  comments: Comment[];
-};
-
-const INITIAL_POSTS: Post[] = [
-  {
-    id: "p1",
-    author: "Priya Nair",
-    initials: "PN",
-    major: "Computer Science, Year 4",
-    title: "Offering free weekend Java OOP basics tutoring sessions!",
-    content:
-      "I've been TAing CS201 for two semesters and love breaking down inheritance, polymorphism, and interfaces with real examples. Saturdays 10am–12pm works for me — small groups of 2–3 preferred.",
-    tags: ["Java", "OOP", "Beginner"],
-    likes: 24,
-    comments: [
-      {
-        id: "c1",
-        author: "Marcus Lee",
-        initials: "ML",
-        major: "CS, Year 2",
-        body: "Would love a slot next Saturday — abstract classes still trip me up!",
-      },
-      {
-        id: "c2",
-        author: "Sara Wu",
-        initials: "SW",
-        major: "IS, Year 2",
-        body: "Do you cover generics too? Have a project due soon.",
-      },
-    ],
-  },
-  {
-    id: "p2",
-    author: "Diego Martinez",
-    initials: "DM",
-    major: "Data Science, Year 3",
-    title: "Free SQL query optimization walkthroughs — bring your slow queries",
-    content:
-      "Happy to sit down with anyone struggling with EXPLAIN plans, indexing, or joins. Bring a real query and we'll tune it together.",
-    tags: ["SQL", "Databases", "Intermediate"],
-    likes: 17,
-    comments: [],
-  },
+export const Route = createFileRoute("/forum")({ component: ForumPage });
+const reportReasons = [
+  "Spam",
+  "Inappropriate language",
+  "Fraud or scam",
+  "Harassment",
+  "Unsafe content",
+  "Other",
 ];
-
-const TOP_MENTORS = [
-  { name: "Priya Nair", major: "CS, Year 4", sessions: 14, initials: "PN" },
-  { name: "Diego Martinez", major: "DS, Year 3", sessions: 11, initials: "DM" },
-  { name: "Aisha Khan", major: "EE, Year 4", sessions: 9, initials: "AK" },
-];
-
 function ForumPage() {
-  const [posts, setPosts] = useState<Post[]>(INITIAL_POSTS);
-  const [liked, setLiked] = useState<Record<string, boolean>>({});
-  const [createOpen, setCreateOpen] = useState(false);
-  const [bookingPost, setBookingPost] = useState<Post | null>(null);
-
-  const toggleLike = (id: string) => {
-    setLiked((l) => ({ ...l, [id]: !l[id] }));
-    setPosts((ps) =>
-      ps.map((p) => (p.id === id ? { ...p, likes: p.likes + (liked[id] ? -1 : 1) } : p)),
-    );
-  };
-
-  const addComment = (postId: string, body: string) => {
-    if (!body.trim()) return;
-    setPosts((ps) =>
-      ps.map((p) =>
-        p.id === postId
-          ? {
-              ...p,
-              comments: [
-                ...p.comments,
-                {
-                  id: crypto.randomUUID(),
-                  author: "Alex Chen",
-                  initials: "AC",
-                  major: "CS, Year 3",
-                  body,
-                },
-              ],
-            }
-          : p,
-      ),
-    );
-  };
-
+  const { user } = useAuth();
+  const [posts, setPosts] = useState<ForumPostSummaryResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [create, setCreate] = useState(false);
+  const [booking, setBooking] = useState<ForumPostSummaryResponse | null>(null);
+  const [reporting, setReporting] = useState<ForumPostSummaryResponse | null>(null);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const p = await forumService.getPosts(undefined, undefined, { page: 0, size: 100 });
+      setPosts(p);
+      setError("");
+    } catch (f) {
+      setError(f instanceof Error ? f.message : "Unable to load community posts.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useLiveRefresh(load);
+  useEffect(() => {
+    void load();
+  }, [load]);
   return (
-    <div className="mx-auto w-full max-w-7xl p-6 sm:p-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mx-auto w-full max-w-5xl space-y-6 p-4 sm:p-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Volunteer Learning Community</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Find free peer mentoring sessions and community learning threads.
+          <p className="text-sm font-medium text-primary">Community</p>
+          <h1 className="text-3xl font-bold">Volunteer Forum</h1>
+          <p className="text-sm text-muted-foreground">
+            Share your skills, offer free sessions, and learn together.
           </p>
         </div>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild>
-            <Button size="lg" className="gap-2">
-              <Plus className="h-4 w-4" /> Create Volunteer Post
-            </Button>
-          </DialogTrigger>
-          <CreatePostDialog
-            onSubmit={(post) => {
-              setPosts((ps) => [post, ...ps]);
-              setCreateOpen(false);
-              toast.success("Volunteer post published!");
-            }}
-          />
-        </Dialog>
+        <Button onClick={() => setCreate(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Post Volunteer Session
+        </Button>
       </div>
-
-      <div className="mt-8 grid gap-6 lg:grid-cols-3">
-        {/* Feed */}
-        <div className="space-y-6 lg:col-span-2">
-          {posts.map((post) => (
-            <PostCard
-              key={post.id}
-              post={post}
-              liked={!!liked[post.id]}
-              onLike={() => toggleLike(post.id)}
-              onComment={(body) => addComment(post.id, body)}
-              onRequest={() => setBookingPost(post)}
-            />
-          ))}
-        </div>
-
-        {/* Sidebar */}
-        <aside className="space-y-6">
-          <Card className="rounded-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Sparkles className="h-4 w-4 text-primary" /> Top Volunteer Mentors — This Week
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {TOP_MENTORS.map((m, i) => (
-                <div key={m.name} className="flex items-center gap-3">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-xs font-semibold text-primary">
-                    {i + 1}
-                  </div>
-                  <Avatar className="h-9 w-9">
-                    <AvatarFallback>{m.initials}</AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{m.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">{m.major}</p>
-                  </div>
-                  <div className="flex items-center gap-1 text-xs font-medium text-amber-600">
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    {m.sessions}
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <ShieldCheck className="h-4 w-4 text-primary" /> Forum Guidelines
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm text-muted-foreground">
-              <p>• Be respectful — everyone is here to learn.</p>
-              <p>• Volunteer sessions are free; never ask for points.</p>
-              <p>• Share resources; avoid solving graded assignments.</p>
-              <p>• Report harassment or spam to moderators.</p>
-            </CardContent>
-          </Card>
-        </aside>
-      </div>
-
-      {/* Booking modal (pre-set to Volunteer mode) */}
-      <Dialog open={!!bookingPost} onOpenChange={(o) => !o && setBookingPost(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Request Free Session with {bookingPost?.author}</DialogTitle>
-            <DialogDescription>Volunteer Mode — no points required.</DialogDescription>
-          </DialogHeader>
-          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm">
-            <span className="font-semibold text-emerald-700 dark:text-emerald-400">
-              Cost: FREE (0 Pts)
-            </span>{" "}
-            <span className="text-muted-foreground">— Volunteer Mode</span>
-          </div>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label>Preferred date & time</Label>
-              <Input type="datetime-local" />
+      {loading && <p role="status">Loading posts…</p>}
+      {error && (
+        <p role="alert" className="text-destructive">
+          {error}
+          <Button variant="link" onClick={() => void load()}>
+            Retry
+          </Button>
+        </p>
+      )}
+      {!loading && !posts.length && !error && (
+        <Card>
+          <CardContent className="p-8 text-center">
+            No volunteer posts yet. Create the first one.
+          </CardContent>
+        </Card>
+      )}
+      {posts.map((post) => (
+        <Card key={post.id}>
+          <CardHeader>
+            <div className="flex justify-between gap-3">
+              <div>
+                <CardTitle>{post.title}</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {post.author?.displayName || post.authorName || "SkillBridge member"} ·{" "}
+                  {new Date(post.timestamp || post.createdAt).toLocaleString()}
+                </p>
+              </div>
+              <div className="flex gap-1">
+                {post.skillTags?.map((skill) => (
+                  <Badge key={skill.id}>{skill.name}</Badge>
+                ))}
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>Message to mentor</Label>
-              <Textarea placeholder="Briefly describe what you'd like help with…" />
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <PostDiscussion post={post} reload={load} />
+            {(post.availability || post.availabilityText) && (
+              <p className="text-sm">
+                <Calendar className="mr-1 inline h-4 w-4" />
+                {post.availability || post.availabilityText}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                disabled={post.author?.id === user?.id || !post.skillTags?.length}
+                onClick={() => setBooking(post)}
+              >
+                <HandHeart className="mr-2 h-4 w-4" />
+                Request Volunteer Session
+              </Button>
+              <Button
+                variant="outline"
+                disabled={post.author?.id === user?.id}
+                onClick={() => setReporting(post)}
+              >
+                <Flag className="mr-2 h-4 w-4" />
+                Report Post
+              </Button>
+              <Button variant="ghost" onClick={() => void load()}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refresh
+              </Button>
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBookingPost(null)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                toast.success(`Request sent to ${bookingPost?.author}!`);
-                setBookingPost(null);
-              }}
-            >
-              Send Request
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </CardContent>
+        </Card>
+      ))}
+      <CreatePost open={create} close={() => setCreate(false)} reload={load} />
+      <VolunteerRequest post={booking} close={() => setBooking(null)} />
+      <PostReport post={reporting} close={() => setReporting(null)} />
     </div>
   );
 }
-
-function PostCard({
-  post,
-  liked,
-  onLike,
-  onComment,
-  onRequest,
+function CreatePost({
+  open,
+  close,
+  reload,
 }: {
-  post: Post;
-  liked: boolean;
-  onLike: () => void;
-  onComment: (body: string) => void;
-  onRequest: () => void;
+  open: boolean;
+  close: () => void;
+  reload: () => Promise<void>;
 }) {
-  const [reply, setReply] = useState("");
-  const [open, setOpen] = useState(false);
-
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [skillName, setSkillName] = useState("");
+  const [error, setError] = useState("");
+  const [availability, setAvailability] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    setError("");
+    if (title.trim().length < 5) return setError("Enter a title with at least 5 characters.");
+    if (!skillName.trim()) return setError("Enter the skill you want to teach.");
+    if (description.trim().length < 20)
+      return setError("Describe your session in at least 20 characters.");
+    setBusy(true);
+    try {
+      const teachingSkill = await skillsService.ensureTeachingSkill(skillName);
+      await forumService.createPost({
+        title: title.trim(),
+        description: description.trim(),
+        skillIds: [teachingSkill.skill.id],
+        availabilityText: availability.trim() || undefined,
+        active: true,
+      });
+      toast.success("Volunteer post published for all users");
+      close();
+      setTitle("");
+      setDescription("");
+      setSkillName("");
+      setAvailability("");
+      await reload();
+    } catch (f) {
+      setError(f instanceof Error ? f.message : "Could not publish post.");
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
-    <Card className="rounded-xl">
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-3">
-          <Avatar className="h-11 w-11">
-            <AvatarImage src="" />
-            <AvatarFallback>{post.initials}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <p className="font-semibold">{post.author}</p>
-              <Badge
-                variant="secondary"
-                className="gap-1 border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-              >
-                <BadgeCheck className="h-3 w-3" /> Volunteer Mentor
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">{post.major}</p>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <Dialog open={open} onOpenChange={(v) => !v && close()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Post a volunteer session</DialogTitle>
+          <DialogDescription>
+            Offer a free learning session to the SkillBridge community.
+          </DialogDescription>
+        </DialogHeader>
         <div>
-          <h3 className="text-lg font-semibold">{post.title}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">{post.content}</p>
+          <Label htmlFor="post-title">Title</Label>
+          <Input
+            id="post-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={150}
+          />
         </div>
-        <div className="flex flex-wrap gap-2">
-          {post.tags.map((t) => (
-            <Badge key={t} variant="outline" className="rounded-full">
-              #{t}
-            </Badge>
-          ))}
+        <div>
+          <Label htmlFor="post-skill">Skill</Label>
+          <Input
+            id="post-skill"
+            value={skillName}
+            onChange={(event) => setSkillName(event.target.value)}
+            maxLength={100}
+            placeholder="Enter a skill, e.g. Java"
+          />
+          <p className="text-xs text-muted-foreground">
+            New skills are added to your teaching portfolio.
+          </p>
         </div>
-
-        <Separator />
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onLike}
-              className={liked ? "text-rose-600" : ""}
-            >
-              <Heart className={`mr-1.5 h-4 w-4 ${liked ? "fill-current" : ""}`} />
-              {post.likes}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setOpen((o) => !o)}>
-              <MessageCircle className="mr-1.5 h-4 w-4" />
-              {post.comments.length}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => toast.success("Link copied to clipboard")}
-            >
-              <Share2 className="mr-1.5 h-4 w-4" /> Share
-            </Button>
-          </div>
-          <Button onClick={onRequest} className="gap-2">
-            Request Free Session
+        <div>
+          <Label htmlFor="post-description">Description</Label>
+          <Textarea
+            id="post-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={5000}
+          />
+          <p className="text-xs text-muted-foreground">
+            At least 20 characters ({description.trim().length}/20).
+          </p>
+        </div>
+        <div>
+          <Label htmlFor="post-availability">Availability</Label>
+          <Input
+            id="post-availability"
+            value={availability}
+            onChange={(e) => setAvailability(e.target.value)}
+            placeholder="Example: Weekdays after 5 PM"
+            maxLength={500}
+          />
+        </div>
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={close}>
+            Cancel
           </Button>
+          <Button disabled={busy} onClick={() => void submit()}>
+            {busy && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}Publish
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+function VolunteerRequest({
+  post,
+  close,
+}: {
+  post: ForumPostSummaryResponse | null;
+  close: () => void;
+}) {
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    if (!post?.author?.id || !post.skillTags?.[0]) return;
+    setBusy(true);
+    try {
+      await learningRequestsService.createRequest({
+        mentorId: post.author.id,
+        requestedSkillId: post.skillTags[0].id,
+        mode: "VOLUNTEER",
+        scheduledStart: new Date(`${date}T${time}`).toISOString(),
+        durationMinutes: 60,
+        message: message.trim() || undefined,
+        sourceForumPostId: post.id,
+      });
+      toast.success("Volunteer request sent", {
+        description: "View it under My Sessions → Learner.",
+      });
+      close();
+      setDate("");
+      setTime("");
+      setMessage("");
+    } catch (f) {
+      toast.error(f instanceof Error ? f.message : "Could not request session.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog open={!!post} onOpenChange={(v) => !v && close()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Request volunteer session</DialogTitle>
+          <DialogDescription>
+            Request {post?.skillTags?.[0]?.name} help from {post?.author?.displayName}.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>Date</Label>
+            <Input
+              aria-label="Volunteer session date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              onInput={(e) => setDate(e.currentTarget.value)}
+            />
+          </div>
+          <div>
+            <Label>Time</Label>
+            <Input
+              aria-label="Volunteer session time"
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              onInput={(e) => setTime(e.currentTarget.value)}
+            />
+          </div>
         </div>
-
-        <Collapsible open={open} onOpenChange={setOpen}>
-          <CollapsibleTrigger className="sr-only">Toggle comments</CollapsibleTrigger>
-          <CollapsibleContent className="space-y-3 pt-2">
-            {post.comments.map((c) => (
-              <div key={c.id} className="flex gap-3 rounded-lg bg-muted/40 p-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="text-xs">{c.initials}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-baseline gap-2">
-                    <p className="text-sm font-medium">{c.author}</p>
-                    <p className="text-xs text-muted-foreground">{c.major}</p>
-                  </div>
-                  <p className="mt-0.5 text-sm">{c.body}</p>
-                </div>
-              </div>
+        <Textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="What would you like help with?"
+        />
+        <DialogFooter>
+          <Button variant="outline" onClick={close}>
+            Cancel
+          </Button>
+          <Button disabled={busy || !date || !time} onClick={() => void submit()}>
+            Send Request
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+function PostReport({ post, close }: { post: ForumPostSummaryResponse | null; close: () => void }) {
+  const { user } = useAuth();
+  const [reason, setReason] = useState("");
+  const [details, setDetails] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    if (!post || !user || !reason) return;
+    setBusy(true);
+    try {
+      await moderationService.flagContent({
+        reporterId: user.id,
+        targetType: "FORUM_POST",
+        targetId: post.id,
+        reason,
+        details,
+      });
+      toast.success("Report sent to the admin portal");
+      close();
+      setReason("");
+      setDetails("");
+    } catch (f) {
+      toast.error(f instanceof Error ? f.message : "Could not submit report.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog open={!!post} onOpenChange={(v) => !v && close()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Report this post</DialogTitle>
+          <DialogDescription>Tell administrators why this content needs review.</DialogDescription>
+        </DialogHeader>
+        <Select value={reason} onValueChange={setReason}>
+          <SelectTrigger>
+            <SelectValue placeholder="Choose a reason" />
+          </SelectTrigger>
+          <SelectContent>
+            {reportReasons.map((r) => (
+              <SelectItem key={r} value={r}>
+                {r}
+              </SelectItem>
             ))}
-            <form
-              className="flex gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                onComment(reply);
-                setReply("");
-              }}
-            >
-              <Input
-                placeholder="Write a reply…"
-                value={reply}
-                onChange={(e) => setReply(e.target.value)}
-              />
-              <Button type="submit" size="icon" aria-label="Send reply">
-                <Send className="h-4 w-4" />
-              </Button>
-            </form>
-          </CollapsibleContent>
-        </Collapsible>
-      </CardContent>
-    </Card>
+          </SelectContent>
+        </Select>
+        <Textarea
+          value={details}
+          onChange={(e) => setDetails(e.target.value)}
+          maxLength={2000}
+          placeholder="Additional details"
+        />
+        <DialogFooter>
+          <Button variant="outline" onClick={close}>
+            Cancel
+          </Button>
+          <Button disabled={busy || !reason} onClick={() => void submit()}>
+            Submit Report
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-function CreatePostDialog({ onSubmit }: { onSubmit: (p: Post) => void }) {
-  const [title, setTitle] = useState("");
-  const [topics, setTopics] = useState("");
-  const [desc, setDesc] = useState("");
-  const [avail, setAvail] = useState("");
-
-  const canSubmit = title && topics && desc;
-
+function PostDiscussion({
+  post,
+  reload,
+}: {
+  post: ForumPostSummaryResponse;
+  reload: (silent?: boolean) => Promise<void>;
+}) {
+  const { user } = useAuth();
+  const [expanded, setExpanded] = useState(false);
+  const [description, setDescription] = useState(post.description || post.excerpt || "");
+  const [comments, setComments] = useState<ForumCommentResponse[]>([]);
+  const [body, setBody] = useState("");
+  const [busy, setBusy] = useState(false);
+  const refreshDiscussion = async () => {
+    const [full, result] = await Promise.all([
+      forumService.getPost(post.id),
+      forumService.getComments(post.id, { page: 0, size: 100 }),
+    ]);
+    setDescription(full.description || "");
+    setComments(Array.isArray(result) ? result : result.content);
+    setExpanded(true);
+  };
+  const action = async (operation: () => Promise<unknown>) => {
+    setBusy(true);
+    try {
+      await operation();
+      await reload(true);
+    } catch (failure) {
+      toast.error(failure instanceof Error ? failure.message : "Could not update post.");
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
-    <DialogContent className="max-w-lg">
-      <DialogHeader>
-        <DialogTitle>Create Volunteer Post</DialogTitle>
-        <DialogDescription>
-          Share what you can teach for free with the SkillBridge community.
-        </DialogDescription>
-      </DialogHeader>
-      <div className="space-y-3">
-        <div className="space-y-1.5">
-          <Label>Post title</Label>
-          <Input
-            placeholder="e.g. Free weekend React basics tutoring"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Topics / skills covered</Label>
-          <Input
-            placeholder="e.g. React, Hooks, State Management"
-            value={topics}
-            onChange={(e) => setTopics(e.target.value)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Experience description</Label>
-          <Textarea
-            placeholder="Briefly describe your background and what learners will get out of it."
-            value={desc}
-            onChange={(e) => setDesc(e.target.value)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Availability</Label>
-          <Input
-            placeholder="e.g. Sat 10am–12pm, Sun evenings"
-            value={avail}
-            onChange={(e) => setAvail(e.target.value)}
-          />
-        </div>
-      </div>
-      <DialogFooter>
+    <div className="space-y-3">
+      <p className="whitespace-pre-wrap">{description}</p>
+      <div className="flex flex-wrap gap-2">
         <Button
-          disabled={!canSubmit}
+          variant="outline"
+          disabled={busy}
+          aria-pressed={!!post.likedByMe}
           onClick={() =>
-            onSubmit({
-              id: crypto.randomUUID(),
-              author: "Alex Chen",
-              initials: "AC",
-              major: "Computer Science, Year 3",
-              title,
-              content: `${desc}${avail ? `\n\nAvailability: ${avail}` : ""}`,
-              tags: topics
-                .split(",")
-                .map((t) => t.trim())
-                .filter(Boolean),
-              likes: 0,
-              comments: [],
-            })
+            void action(() =>
+              post.likedByMe ? forumService.unlikePost(post.id) : forumService.likePost(post.id),
+            )
           }
         >
-          Publish Post
+          {post.likedByMe ? "Unlike" : "Like"} ({post.likeCount})
         </Button>
-      </DialogFooter>
-    </DialogContent>
+        <Button variant="outline" disabled={busy} onClick={() => void action(refreshDiscussion)}>
+          Read post & comments ({post.commentCount})
+        </Button>
+        {post.author?.id === user?.id && (
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={() => {
+              if (window.confirm("Delete this volunteer post?"))
+                void action(() => forumService.deletePost(post.id));
+            }}
+          >
+            Delete post
+          </Button>
+        )}
+      </div>
+      {expanded && (
+        <div className="space-y-3 border-t pt-3">
+          {comments.map((comment) => (
+            <div key={comment.id} className="rounded-md bg-muted p-3">
+              <p className="text-sm font-semibold">
+                {comment.author?.displayName || comment.authorName}
+              </p>
+              <p className="whitespace-pre-wrap">{comment.body}</p>
+            </div>
+          ))}
+          {!comments.length && <p className="text-sm text-muted-foreground">No comments yet.</p>}
+          <Label htmlFor={`comment-${post.id}`}>Add a comment</Label>
+          <Textarea
+            id={`comment-${post.id}`}
+            value={body}
+            maxLength={2000}
+            onChange={(event) => setBody(event.target.value)}
+          />
+          <Button
+            disabled={busy || !body.trim()}
+            onClick={() =>
+              void action(async () => {
+                await forumService.addComment(post.id, { body: body.trim() });
+                setBody("");
+                await refreshDiscussion();
+              })
+            }
+          >
+            Post comment
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

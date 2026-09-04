@@ -11,6 +11,8 @@ import java.util.UUID;
 
 @Repository
 public interface WalletRepository extends JpaRepository<Wallet, UUID> {
+    @org.springframework.data.jpa.repository.Query("select coalesce(sum(wallet.heldPoints), 0) from Wallet wallet")
+    long sumHeldPoints();
 
     Optional<Wallet> findByUserId(UUID userId);
 

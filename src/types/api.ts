@@ -154,7 +154,7 @@ export interface UpdateUserSkillRequest {
 
 export interface SkillCertificateResponse {
   id: string;
-  skillId: string;
+  skill: GlobalCatalogSkill;
   fileName: string;
   fileSize: number;
   contentType: string;
@@ -172,17 +172,23 @@ export interface MentorSearchFilters {
 }
 
 export interface MentorSearchResponse {
-  mentorId: string;
-  name: string;
-  avatarUrl?: string;
-  bio?: string;
-  averageRating: number;
-  reviewCount: number;
-  skills: string[];
-  hourlyRatePoints: number;
+  user: {
+    id: string;
+    displayName: string;
+    major?: string;
+    yearOfStudy?: number;
+    avatarUrl?: string;
+  };
+  rating: number;
+  ratingCount: number;
+  activeModes: ("POINTS" | "SKILL_SWAP" | "VOLUNTEER")[];
+  matchingTeachSkills: GlobalCatalogSkill[];
+  wantedSkills: GlobalCatalogSkill[];
+  minimumPointCost: number;
 }
 
 export interface MentorDetailResponse {
+  activeOfferings?: MentorOfferingResponse[];
   id: string;
   userId: string;
   mentorId: string;
@@ -201,27 +207,31 @@ export interface MentorDetailResponse {
 
 export interface MentorOfferingResponse {
   id: string;
-  mentorId: string;
-  skillId: string;
-  skillName?: string;
-  description: string;
-  hourlyRatePoints: number;
-  available: boolean;
+  mentor: { id: string; displayName: string };
+  skill: GlobalCatalogSkill;
+  price: number;
+  modes: ("POINTS" | "SKILL_SWAP" | "VOLUNTEER")[];
+  duration: number;
+  availability?: string;
+  active: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface CreateMentorOfferingRequest {
-  skillId: string;
-  hourlyRatePoints: number;
-  description: string;
-  available: boolean;
+  teachUserSkillId: string;
+  pointCost: number;
+  pointsEnabled: boolean;
+  skillSwapEnabled: boolean;
+  volunteerEnabled: boolean;
+  duration: number;
+  availabilityText?: string;
 }
 
-export interface UpdateMentorOfferingRequest {
-  hourlyRatePoints?: number;
-  description?: string;
-  available?: boolean;
+export interface UpdateMentorOfferingRequest extends Partial<
+  Omit<CreateMentorOfferingRequest, "teachUserSkillId">
+> {
+  active?: boolean;
 }
 
 // ==========================================
@@ -268,7 +278,13 @@ export interface SwapProposalResponse {
 // ==========================================
 
 export type SessionStatus =
-  "ACCEPTED" | "SCHEDULED" | "STARTED" | "COMPLETED" | "DISPUTED" | "CANCELLED";
+  | "ACCEPTED"
+  | "SCHEDULED"
+  | "STARTED"
+  | "AWAITING_CONFIRMATION"
+  | "COMPLETED"
+  | "DISPUTED"
+  | "CANCELLED";
 
 export interface SessionResponse {
   id: string;
@@ -277,11 +293,17 @@ export interface SessionResponse {
   responderId?: string;
   mentorId?: string;
   learnerId?: string;
+  mentorName?: string;
+  learnerName?: string;
   counterpartName?: string;
   counterpartAvatar?: string;
   skillId?: string;
   skillName?: string;
   role?: "Mentor" | "Learner";
+  requester?: { id: string; displayName: string; major?: string; avatarUrl?: string };
+  responder?: { id: string; displayName: string; major?: string; avatarUrl?: string };
+  requestedSkill?: GlobalCatalogSkill;
+  offeredSkill?: GlobalCatalogSkill;
   scheduledStart?: string;
   startedAt?: string;
   completedAt?: string;
@@ -304,6 +326,7 @@ export interface UpdateSessionRequest {
 
 export interface DisputeSessionRequest {
   reason: string;
+  details?: string;
 }
 
 // ==========================================
@@ -390,6 +413,7 @@ export interface ForumCommentResponse {
   postId?: string;
   authorId: string;
   authorName: string;
+  author?: { id: string; displayName: string; major?: string; avatarUrl?: string };
   authorMajor?: string;
   authorAvatar?: string;
   body: string;
@@ -399,7 +423,12 @@ export interface ForumCommentResponse {
 export interface ForumPostSummaryResponse {
   id: string;
   title: string;
-  description: string;
+  description?: string;
+  excerpt?: string;
+  author?: { id: string; displayName: string; major?: string; avatarUrl?: string };
+  skillTags?: GlobalCatalogSkill[];
+  availability?: string;
+  timestamp?: string;
   skillIds: string[];
   skills?: string[];
   tags?: string[];
@@ -477,9 +506,12 @@ export interface UnreadCountResponse {
 export interface AdminDashboardMetricsResponse {
   totalUsers: number;
   activeSessions: number;
-  pendingDisputes: number;
-  totalPointsInCirculation: number;
-  newUsersLast24h: number;
+  pendingDisputes?: number;
+  openReports?: number;
+  activeDisputes?: number;
+  heldEscrowPoints?: number;
+  totalPointsInCirculation?: number;
+  newUsersLast24h?: number;
 }
 
 export interface AdminUserResponse {
@@ -496,6 +528,9 @@ export interface AdminUserResponse {
 }
 
 export interface AdminDisputeResponse {
+  details?: string;
+  openedBy?: { id: string; displayName: string };
+  resolutionNote?: string;
   id: string;
   sessionId: string;
   requesterId: string;
@@ -574,7 +609,8 @@ export interface LearningRequestResponse {
   mentorId: string;
   mentorName?: string;
   mentorOfferingId: string;
-  requestedSkillId: string;
+  requestedSkillId?: string;
+  requestedSkill?: GlobalCatalogSkill;
   requestedSkillName?: string;
   mode: LearningRequestMode;
   offeredUserSkillId?: string;

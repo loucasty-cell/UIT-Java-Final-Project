@@ -13,6 +13,8 @@ import com.skillbridge.moderation.api.dto.response.ModerationReportResponse;
 import com.skillbridge.moderation.api.mapper.ModerationMapper;
 import com.skillbridge.review.infrastructure.persistence.ReviewRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
+import com.skillbridge.support.TestAuthContext;
 
 import java.lang.reflect.Proxy;
 import java.time.OffsetDateTime;
@@ -25,6 +27,11 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ModerationServiceTest {
+
+    @AfterEach
+    void clearAuthentication() {
+        TestAuthContext.logout();
+    }
 
     @Test
     void flagsListsAndResolvesReports() {
@@ -41,8 +48,10 @@ public class ModerationServiceTest {
                 new ModerationMapper()
         );
 
-        ModerationReportResponse created = service.flagContent(flagRequest(reporterId, targetId));
+        TestAuthContext.loginAs(reporterId);
+        ModerationReportResponse created = service.flagContent(flagRequest(UUID.randomUUID(), targetId));
 
+        assertEquals(reporterId, created.getReporterId(), "Reporter must come from authentication, not request JSON");
         assertEquals(ReportStatus.OPEN, created.getStatus());
         assertEquals(1, service.getReports(ReportStatus.OPEN).size());
 

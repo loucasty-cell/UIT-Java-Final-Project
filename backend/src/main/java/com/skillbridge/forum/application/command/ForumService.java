@@ -14,6 +14,7 @@ import com.skillbridge.forum.infrastructure.persistence.ForumCommentRepository;
 import com.skillbridge.forum.infrastructure.persistence.ForumLikeRepository;
 import com.skillbridge.forum.infrastructure.persistence.ForumPostRepository;
 import com.skillbridge.notification.application.NotificationService;
+import com.skillbridge.skill.infrastructure.SkillRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +32,7 @@ public class ForumService {
     private final ForumLikeRepository forumLikeRepository;
     private final ForumMapper forumMapper;
     private final NotificationService notificationService;
+    private final SkillRepository skillRepository;
 
     public ForumPostResponse createPost(ForumPostCreateRequest request) {
         UUID currentUserId = com.skillbridge.shared.security.SecurityUtils.getCurrentUserId();
@@ -40,6 +42,8 @@ public class ForumService {
         entity.setAuthorId(currentUserId);
         entity.setTitle(request.getTitle());
         entity.setDescription(request.getDescription());
+        validateSkills(request.getSkillIds());
+        entity.setSkillIds(new java.util.LinkedHashSet<>(request.getSkillIds()));
         entity.setAvailabilityText(request.getAvailabilityText());
         entity.setActive(request.getActive() != null ? request.getActive() : true);
         entity.setLikeCount(0);
@@ -61,6 +65,10 @@ public class ForumService {
 
         if (request.getTitle() != null) entity.setTitle(request.getTitle());
         if (request.getDescription() != null) entity.setDescription(request.getDescription());
+        if (request.getSkillIds() != null) {
+            validateSkills(request.getSkillIds());
+            entity.setSkillIds(new java.util.LinkedHashSet<>(request.getSkillIds()));
+        }
         if (request.getAvailabilityText() != null) entity.setAvailabilityText(request.getAvailabilityText());
         if (request.getActive() != null) entity.setActive(request.getActive());
 
@@ -174,6 +182,12 @@ public class ForumService {
         if (post.getCommentCount() > 0) {
             post.setCommentCount(post.getCommentCount() - 1);
             postRepository.save(post);
+        }
+    }
+
+    private void validateSkills(java.util.List<UUID> skillIds) {
+        if (skillIds.stream().anyMatch(id -> !skillRepository.existsById(id))) {
+            throw new IllegalArgumentException("Every post skill must exist in the skill catalog");
         }
     }
 }

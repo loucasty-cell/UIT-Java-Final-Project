@@ -1,4 +1,8 @@
 spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   application:
     name: skillbridge-backend
 
@@ -89,6 +93,10 @@ management:
       enabled: true
 
 skillbridge:
+  storage:
+    provider: ${STORAGE_PROVIDER:filesystem}
+    filesystem:
+      base-path: ${CERTIFICATE_STORAGE_PATH:./storage/certificates}
   security:
     jwt:
       # No default — fail-fast if JWT_SECRET not set (enterprise: secrets via Vault/env, never committed)

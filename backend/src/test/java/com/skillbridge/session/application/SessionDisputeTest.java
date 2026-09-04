@@ -100,7 +100,7 @@ public class SessionDisputeTest {
                 new SessionMapper(null),
                 notificationService,
                 disputeRepository,
-                new AdminMapper(),
+                new AdminMapper(org.mockito.Mockito.mock(com.skillbridge.auth.infrastructure.persistence.UserRepository.class)),
                 (SessionConfirmationRepository) Proxy.newProxyInstance(SessionConfirmationRepository.class.getClassLoader(), new Class<?>[]{SessionConfirmationRepository.class}, (p, m, a) -> null),
                 (PlatformSettingRepository) Proxy.newProxyInstance(PlatformSettingRepository.class.getClassLoader(), new Class<?>[]{PlatformSettingRepository.class}, (p, m, a) -> Optional.empty())
         );
@@ -109,7 +109,7 @@ public class SessionDisputeTest {
 
         adminDisputeService = new AdminDisputeService(
                 disputeRepository,
-                new AdminMapper(),
+                new AdminMapper(org.mockito.Mockito.mock(com.skillbridge.auth.infrastructure.persistence.UserRepository.class)),
                 auditService,
                 sessionRepository,
                 requestRepository,
@@ -210,6 +210,7 @@ public class SessionDisputeTest {
 
     private static class FakeSwapSessionRepository implements SwapSessionRepository {
         private final Map<UUID, SwapSession> store = new HashMap<>();
+        @Override public long countByStatusIn(List<SwapSessionStatus> statuses) { return store.values().stream().filter(session -> statuses.contains(session.getStatus())).count(); }
 
         @Override public Optional<SwapSession> findById(UUID uuid) { return Optional.ofNullable(store.get(uuid)); }
         @Override public boolean existsById(UUID uuid) { return store.containsKey(uuid); }

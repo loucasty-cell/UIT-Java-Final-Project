@@ -11,7 +11,6 @@ import java.util.UUID;
 @Data
 public class FlagContentRequest {
 
-    @NotNull
     private UUID reporterId;
 
     @NotNull

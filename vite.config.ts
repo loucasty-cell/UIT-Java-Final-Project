@@ -9,7 +9,18 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 export default defineConfig({
   nitro: { preset: "node-server" },
   vite: {
-    server: { port: 3000, strictPort: true },
+    server: {
+      port: 3000,
+      strictPort: true,
+      proxy: {
+        "/api": {
+          target: "http://127.0.0.1:9095",
+          changeOrigin: true,
+          // Browser requests stay on the frontend origin, including LAN clients.
+          headers: { Origin: "http://localhost:3000" },
+        },
+      },
+    },
   },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).

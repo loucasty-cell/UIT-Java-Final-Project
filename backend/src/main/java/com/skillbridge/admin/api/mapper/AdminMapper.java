@@ -8,7 +8,9 @@ import org.springframework.stereotype.Component;
 import java.util.UUID;
 
 @Component
+@lombok.RequiredArgsConstructor
 public class AdminMapper {
+    private final com.skillbridge.auth.infrastructure.persistence.UserRepository userRepository;
 
     public UserSummaryResponse toUserSummary(UUID userId) {
         if (userId == null) {
@@ -16,6 +18,11 @@ public class AdminMapper {
         }
         UserSummaryResponse summary = new UserSummaryResponse();
         summary.setId(userId);
+        summary.setDisplayName(userId.toString());
+        userRepository.findById(userId).ifPresent(user -> {
+            summary.setDisplayName(user.getDisplayName() != null && !user.getDisplayName().isBlank()
+                    ? user.getDisplayName() : (user.getFirstName() + " " + user.getLastName()).trim());
+        });
         return summary;
     }
 

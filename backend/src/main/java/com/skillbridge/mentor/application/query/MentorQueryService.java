@@ -59,11 +59,9 @@ public class MentorQueryService {
         for (MentorOffering mo : activeOfferings) {
             mentorUserIds.add(mo.getMentorId());
         }
-
-        if (mentorUserIds.isEmpty()) {
-            List<User> allUsers = userRepository.findAll();
-            for (User u : allUsers) {
-                mentorUserIds.add(u.getId());
+        for (UserSkill skill : userSkillRepository.findAll()) {
+            if (skill.getDirection() == Direction.TEACH) {
+                mentorUserIds.add(skill.getUserId());
             }
         }
 
@@ -126,7 +124,9 @@ public class MentorQueryService {
                     modes.add(Mode.VOLUNTEER);
             }
             if (modes.isEmpty()) {
+                modes.add(Mode.POINTS);
                 modes.add(Mode.SKILL_SWAP);
+                modes.add(Mode.VOLUNTEER);
             }
 
             if (query != null && query.getMode() != null && !modes.contains(query.getMode())) {
@@ -146,7 +146,7 @@ public class MentorQueryService {
                     .map(MentorOffering::getPointCost)
                     .filter(Objects::nonNull)
                     .min(Integer::compareTo)
-                    .orElse(0);
+                    .orElse(10);
 
             List<SkillSummaryResponse> teachSkillDtos = teachSkills.stream()
                     .map(ts -> mentorMapper.toSkillSummary(ts.getSkillId()))

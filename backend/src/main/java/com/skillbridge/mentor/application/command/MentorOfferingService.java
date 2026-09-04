@@ -19,10 +19,20 @@ import java.util.UUID;
 public class MentorOfferingService {
     private final MentorOfferingRepository offeringRepository;
     private final MentorMapper mentorMapper;
+    private final com.skillbridge.user.infrastructure.persistence.UserSkillRepository userSkillRepository;
     private final com.skillbridge.auth.infrastructure.persistence.UserRoleRepository userRoleRepository;
 
     public MentorOfferingResponse createOffering(MentorOfferingCreateRequest request) {
         UUID currentUserId = com.skillbridge.shared.security.SecurityUtils.getCurrentUserId();
+
+        var skill = userSkillRepository.findByIdAndUserId(request.getTeachUserSkillId(), currentUserId)
+                .orElseThrow(() -> new IllegalArgumentException("Choose a teaching skill from your own portfolio"));
+        if (skill.getDirection() != com.skillbridge.shared.domain.model.Direction.TEACH) {
+            throw new IllegalArgumentException("The skill must be a teaching skill");
+        }
+        if (!Boolean.TRUE.equals(request.getPointsEnabled()) && !Boolean.TRUE.equals(request.getSkillSwapEnabled()) && !Boolean.TRUE.equals(request.getVolunteerEnabled())) {
+            throw new IllegalArgumentException("Choose at least one session mode");
+        }
 
         MentorOffering entity = new MentorOffering();
         entity.setId(UUID.randomUUID());

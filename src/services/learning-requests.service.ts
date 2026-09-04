@@ -14,7 +14,7 @@ export type LearningRequestDirection = "INCOMING" | "OUTGOING";
 
 export interface CreateLearningRequestDTO {
   mentorId: string;
-  mentorOfferingId: string;
+  mentorOfferingId?: string;
   requestedSkillId: string;
   mode: LearningRequestMode;
   /** Only required for SKILL_SWAP mode */
@@ -34,6 +34,7 @@ export interface LearningRequestResponse {
   mentorName?: string;
   mentorOfferingId: string;
   requestedSkillId: string;
+  requestedSkill?: { id: string; name: string; category: string };
   requestedSkillName?: string;
   mode: LearningRequestMode;
   offeredUserSkillId?: string;
@@ -93,14 +94,10 @@ export const learningRequestsService = {
     if (params?.size) searchParams.set("size", String(params.size));
 
     const query = searchParams.toString();
-    try {
-      const result = await apiClient<
-        LearningRequestResponse[] | { content: LearningRequestResponse[] }
-      >(`/api/v1/learning-requests${query ? `?${query}` : ""}`);
-      return Array.isArray(result) ? result : result.content || [];
-    } catch {
-      return [];
-    }
+    const result = await apiClient<
+      LearningRequestResponse[] | { content: LearningRequestResponse[] }
+    >(`/api/v1/learning-requests${query ? `?${query}` : ""}`);
+    return Array.isArray(result) ? result : result.content || [];
   },
 
   /**
@@ -115,16 +112,10 @@ export const learningRequestsService = {
    * Backend will: update status, create session record, notify learner.
    */
   acceptRequest: async (id: string, data?: AcceptRequestDTO): Promise<LearningRequestResponse> => {
-    try {
-      return await apiClient<LearningRequestResponse>(`/api/v1/learning-requests/${id}/accept`, {
-        method: "POST",
-        body: data ? JSON.stringify(data) : undefined,
-      });
-    } catch {
-      return apiClient<LearningRequestResponse>(`/api/requests/swaps/${id}/accept`, {
-        method: "POST",
-      });
-    }
+    return apiClient<LearningRequestResponse>(`/api/v1/learning-requests/${id}/accept`, {
+      method: "POST",
+      body: data ? JSON.stringify(data) : undefined,
+    });
   },
 
   /**
@@ -132,16 +123,10 @@ export const learningRequestsService = {
    * Backend will: refund escrow (if POINTS), notify learner.
    */
   rejectRequest: async (id: string, data?: RejectRequestDTO): Promise<LearningRequestResponse> => {
-    try {
-      return await apiClient<LearningRequestResponse>(`/api/v1/learning-requests/${id}/reject`, {
-        method: "POST",
-        body: data ? JSON.stringify(data) : undefined,
-      });
-    } catch {
-      return apiClient<LearningRequestResponse>(`/api/requests/swaps/${id}/reject`, {
-        method: "POST",
-      });
-    }
+    return apiClient<LearningRequestResponse>(`/api/v1/learning-requests/${id}/reject`, {
+      method: "POST",
+      body: data ? JSON.stringify(data) : undefined,
+    });
   },
 
   /**
@@ -149,14 +134,8 @@ export const learningRequestsService = {
    * Backend will: refund escrow (if POINTS), notify mentor.
    */
   cancelRequest: async (id: string): Promise<LearningRequestResponse> => {
-    try {
-      return await apiClient<LearningRequestResponse>(`/api/v1/learning-requests/${id}/cancel`, {
-        method: "POST",
-      });
-    } catch {
-      return apiClient<LearningRequestResponse>(`/api/requests/swaps/${id}/cancel`, {
-        method: "POST",
-      });
-    }
+    return apiClient<LearningRequestResponse>(`/api/v1/learning-requests/${id}/cancel`, {
+      method: "POST",
+    });
   },
 };

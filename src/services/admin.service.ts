@@ -13,7 +13,6 @@ import {
   AdminUserResponse,
   PageResponse,
   PaginationParams,
-  ResolveDisputeRequest,
 } from "@/types/api";
 
 export interface AccountWarningRequest {
@@ -32,9 +31,12 @@ export interface AccountWarningResponse {
 export interface ReportResponse {
   id: string;
   reporterId: string;
+  reporter?: { id: string; displayName: string };
   targetType: "FORUM_POST" | "FORUM_COMMENT" | "SESSION_MESSAGE" | "USER" | string;
   targetId: string;
   reason: string;
+  details?: string;
+  excerpt?: string;
   status: "OPEN" | "DISMISSED" | "ACTIONED" | string;
   createdAt: string;
 }
@@ -167,7 +169,18 @@ export const adminService = {
    * Resolve a disputed session with escrow allocation
    * POST /api/v1/admin/disputes/{disputeId}/resolve
    */
-  async resolveDispute(disputeId: string, data: ResolveDisputeRequest): Promise<void> {
+  async resolveDispute(
+    disputeId: string,
+    data: {
+      resolution:
+        | "RELEASE_TO_MENTOR"
+        | "REFUND_LEARNER"
+        | "CANCEL_NO_TRANSFER"
+        | "MARK_COMPLETED"
+        | "CANCEL_SWAP";
+      note: string;
+    },
+  ): Promise<void> {
     return api.post<void>(`/api/v1/admin/disputes/${disputeId}/resolve`, data);
   },
 

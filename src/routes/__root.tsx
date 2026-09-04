@@ -147,7 +147,12 @@ function RootComponent() {
 function AppContent() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { isAdmin } = useAuth();
-  if (["/login", "/login/", "/register", "/register/"].includes(pathname)) return <Outlet />;
+  if (
+    ["/login", "/login/", "/register", "/register/", "/admin-login", "/admin-login/"].includes(
+      pathname,
+    )
+  )
+    return <Outlet />;
   return (
     <AuthGate>
       <SidebarProvider>

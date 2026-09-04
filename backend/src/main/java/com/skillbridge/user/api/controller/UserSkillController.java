@@ -2,6 +2,7 @@ package com.skillbridge.user.api.controller;
 
 import com.skillbridge.shared.domain.model.Direction;
 import com.skillbridge.user.api.dto.request.UserSkillCreateRequest;
+import com.skillbridge.user.api.dto.request.CustomUserSkillCreateRequest;
 import com.skillbridge.user.api.dto.request.UserSkillUpdateRequest;
 import com.skillbridge.user.api.dto.response.UserSkillResponse;
 import com.skillbridge.user.application.command.UserSkillService;
@@ -29,6 +30,12 @@ public class UserSkillController {
     @ResponseStatus(HttpStatus.CREATED)
     public UserSkillResponse addSkill(@Valid @RequestBody UserSkillCreateRequest request) {
         return userSkillService.createUserSkill(request);
+    }
+
+    @PostMapping("/custom")
+    @ResponseStatus(HttpStatus.CREATED)
+    public UserSkillResponse addCustomSkill(@Valid @RequestBody CustomUserSkillCreateRequest request) {
+        return userSkillService.createCustomUserSkill(request);
     }
 
     @PatchMapping("/{id}")

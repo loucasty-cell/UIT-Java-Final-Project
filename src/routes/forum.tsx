@@ -1,9 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
-import { Calendar, Clock3, Flag, Gift, HandHeart, LoaderCircle, Plus, RefreshCw } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import {
+  Calendar,
+  Clock3,
+  Flag,
+  Gift,
+  HandHeart,
+  LoaderCircle,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/auth-context";
-import { useLiveRefresh } from "@/hooks/use-live-refresh";
 import { forumService } from "@/services/forum.service";
 import { learningRequestsService } from "@/services/learning-requests.service";
 import { moderationService } from "@/services/moderation.service";
@@ -42,28 +51,24 @@ const reportReasons = [
 ];
 function ForumPage() {
   const { user } = useAuth();
-  const [posts, setPosts] = useState<ForumPostSummaryResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [create, setCreate] = useState(false);
   const [booking, setBooking] = useState<ForumPostSummaryResponse | null>(null);
   const [reporting, setReporting] = useState<ForumPostSummaryResponse | null>(null);
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const p = await forumService.getPosts(undefined, undefined, { page: 0, size: 100 });
-      setPosts(p);
-      setError("");
-    } catch (f) {
-      setError(f instanceof Error ? f.message : "Unable to load community posts.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  useLiveRefresh(load);
-  useEffect(() => {
-    void load();
-  }, [load]);
+
+  const postsQuery = useQuery({
+    queryKey: ["forum-posts"],
+    queryFn: () => forumService.getPosts(undefined, undefined, { page: 0, size: 100 }),
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+
+  const loading = postsQuery.isLoading;
+  const error = postsQuery.error;
+  const posts = postsQuery.data ?? [];
+
+  const reload = async (silent = false) => {
+    if (!silent) await postsQuery.refetch();
+  };
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 p-4 sm:p-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -82,13 +87,15 @@ function ForumPage() {
       <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-primary/5 px-4 py-3 text-sm">
         <Gift className="h-4 w-4 text-primary" />
         <span className="font-medium">Every session here is free.</span>
-        <span className="text-muted-foreground">No points are held or charged when a learner requests one.</span>
+        <span className="text-muted-foreground">
+          No points are held or charged when a learner requests one.
+        </span>
       </div>
       {loading && <p role="status">Loading posts…</p>}
       {error && (
         <p role="alert" className="text-destructive">
-          {error}
-          <Button variant="link" onClick={() => void load()}>
+          {error instanceof Error ? error.message : "Unable to load community posts."}
+          <Button variant="link" onClick={() => void reload()}>
             Retry
           </Button>
         </p>
@@ -119,7 +126,7 @@ function ForumPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            <PostDiscussion post={post} reload={load} />
+            <PostDiscussion post={post} reload={reload} />
             <div className="flex flex-wrap gap-2 text-sm">
               <Badge className="gap-1" variant="secondary">
                 <Gift className="h-3.5 w-3.5" />
@@ -138,7 +145,9 @@ function ForumPage() {
             )}
             <div className="flex flex-wrap gap-2">
               <Button
-                disabled={post.author?.id === user?.id || !post.author?.id || !post.skillTags?.length}
+                disabled={
+                  post.author?.id === user?.id || !post.author?.id || !post.skillTags?.length
+                }
                 onClick={() => setBooking(post)}
               >
                 <HandHeart className="mr-2 h-4 w-4" />
@@ -152,7 +161,7 @@ function ForumPage() {
                 <Flag className="mr-2 h-4 w-4" />
                 Report Post
               </Button>
-              <Button variant="ghost" onClick={() => void load()}>
+              <Button variant="ghost" onClick={() => void reload()}>
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Refresh
               </Button>
@@ -165,7 +174,7 @@ function ForumPage() {
           </CardContent>
         </Card>
       ))}
-      <CreatePost open={create} close={() => setCreate(false)} reload={load} />
+      <CreatePost open={create} close={() => setCreate(false)} reload={reload} />
       <VolunteerRequest post={booking} close={() => setBooking(null)} />
       <PostReport post={reporting} close={() => setReporting(null)} />
     </div>
@@ -354,7 +363,8 @@ function VolunteerRequest({
         <DialogHeader>
           <DialogTitle>Request a free session</DialogTitle>
           <DialogDescription>
-            Request {post?.skillTags?.[0]?.name} help from {post?.author?.displayName}. This session costs 0 points.
+            Request {post?.skillTags?.[0]?.name} help from {post?.author?.displayName}. This session
+            costs 0 points.
           </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3">

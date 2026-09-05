@@ -29,16 +29,16 @@ export const mentorsService = {
    */
   async searchMentors(
     filters: MentorSearchFilters = {},
-  ): Promise<MentorSearchResponse[] | PageResponse<MentorSearchResponse>> {
+  ): Promise<MentorSearchResponse[]> {
     const res = await api.get<MentorSearchResponse[] | PageResponse<MentorSearchResponse>>(
       "/api/v1/mentors",
       { size: 100, ...filters },
     );
-    // If backend returns Page<MentorSummaryResponse>, res.content exists
+    // Normalize: if backend returns Page<MentorSummaryResponse>, extract content
     if (res && !Array.isArray(res) && Array.isArray(res.content)) {
       return res.content;
     }
-    return res;
+    return Array.isArray(res) ? res : [];
   },
 
   /**
@@ -104,8 +104,12 @@ export const mentorsService = {
   ): Promise<MentorOfferingResponse> {
     try {
       return await api.patch<MentorOfferingResponse>(`/api/v1/me/mentor-offerings/${id}`, data);
-    } catch {
-      return api.put<MentorOfferingResponse>(`/api/v1/me/mentor-offerings/${id}`, data);
+    } catch (primaryError) {
+      try {
+        return await api.put<MentorOfferingResponse>(`/api/v1/me/mentor-offerings/${id}`, data);
+      } catch (fallbackError) {
+        throw fallbackError instanceof Error ? fallbackError : primaryError;
+      }
     }
   },
 

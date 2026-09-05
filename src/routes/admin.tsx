@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import {
   AlertTriangle,
   Flag,
@@ -12,7 +13,6 @@ import {
 import { toast } from "sonner";
 import { adminService, type ReportResponse } from "@/services/admin.service";
 import { useAuth } from "@/context/auth-context";
-import { useLiveRefresh } from "@/hooks/use-live-refresh";
 import type { AdminDisputeResponse, AdminDashboardMetricsResponse } from "@/types/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,34 +33,38 @@ type Resolution =
 function AdminPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [metrics, setMetrics] = useState<AdminDashboardMetricsResponse | null>(null);
-  const [reports, setReports] = useState<ReportResponse[]>([]);
-  const [disputes, setDisputes] = useState<AdminDisputeResponse[]>([]);
-  const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [error, setError] = useState("");
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const [m, r, d] = await Promise.all([
-        adminService.getDashboardMetrics(),
-        adminService.getReports(undefined, undefined, { page: 0, size: 100 }),
-        adminService.getDisputes(undefined, { page: 0, size: 100 }),
-      ]);
-      setMetrics(m);
-      setReports(r.content || []);
-      setDisputes(d);
-      setError("");
-    } catch (f) {
-      setError(f instanceof Error ? f.message : "Could not load the admin portal.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  useLiveRefresh(load);
-  useEffect(() => {
-    void load();
-  }, [load]);
+
+  const metricsQuery = useQuery({
+    queryKey: ["admin-metrics"],
+    queryFn: () => adminService.getDashboardMetrics(),
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+
+  const reportsQuery = useQuery({
+    queryKey: ["admin-reports"],
+    queryFn: () => adminService.getReports(undefined, undefined, { page: 0, size: 100 }),
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+
+  const disputesQuery = useQuery({
+    queryKey: ["admin-disputes"],
+    queryFn: () => adminService.getDisputes(undefined, { page: 0, size: 100 }),
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+
+  const loading = metricsQuery.isLoading || reportsQuery.isLoading || disputesQuery.isLoading;
+  const error = metricsQuery.error ?? reportsQuery.error ?? disputesQuery.error;
+  const metrics = metricsQuery.data ?? null;
+  const reports = reportsQuery.data?.content ?? [];
+  const disputes = disputesQuery.data ?? [];
+
+  const reload = async (silent = false) => {
+    if (!silent) { await metricsQuery.refetch(); await reportsQuery.refetch(); await disputesQuery.refetch(); }
+  };
   const handleLogout = async () => {
     if (loggingOut) return;
     setLoggingOut(true);
@@ -103,8 +107,8 @@ function AdminPage() {
       {loading && <p role="status">Loading admin data…</p>}
       {error && (
         <p role="alert" className="text-destructive">
-          {error}{" "}
-          <Button variant="link" onClick={() => void load()}>
+          {error instanceof Error ? error.message : "Unable to load admin data."}
+          <Button variant="link" onClick={() => void reload()}>
             Retry
           </Button>
         </p>
@@ -132,13 +136,13 @@ function AdminPage() {
         </TabsList>
         <TabsContent value="sessions" className="space-y-3">
           {disputes.map((d) => (
-            <DisputeCard key={d.id} dispute={d} reload={load} />
+            <DisputeCard key={d.id} dispute={d} reload={reload} />
           ))}
           {!disputes.length && !loading && <Empty />}
         </TabsContent>
         <TabsContent value="content" className="space-y-3">
           {reports.map((r) => (
-            <ReportCard key={r.id} report={r} reload={load} />
+            <ReportCard key={r.id} report={r} reload={reload} />
           ))}
           {!reports.length && !loading && <Empty />}
         </TabsContent>

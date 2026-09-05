@@ -49,8 +49,12 @@ export const adminService = {
   async getDashboardMetrics(): Promise<AdminDashboardMetricsResponse> {
     try {
       return await api.get<AdminDashboardMetricsResponse>("/api/v1/admin/dashboard");
-    } catch {
-      return api.get<AdminDashboardMetricsResponse>("/api/v1/admin/dashboard/metrics");
+    } catch (primaryError) {
+      try {
+        return await api.get<AdminDashboardMetricsResponse>("/api/v1/admin/dashboard/metrics");
+      } catch (fallbackError) {
+        throw fallbackError instanceof Error ? fallbackError : primaryError;
+      }
     }
   },
 
@@ -75,11 +79,15 @@ export const adminService = {
         delta,
         reason,
       });
-    } catch {
-      await api.post<void>(`/api/v1/admin/users/${userId}/points/adjust`, {
-        delta,
-        reason,
-      });
+    } catch (primaryError) {
+      try {
+        await api.post<void>(`/api/v1/admin/users/${userId}/points/adjust`, {
+          delta,
+          reason,
+        });
+      } catch (fallbackError) {
+        throw fallbackError instanceof Error ? fallbackError : primaryError;
+      }
     }
   },
 
@@ -235,8 +243,12 @@ export const adminService = {
   ): Promise<AdminPlatformSettingsResponse> {
     try {
       return await api.patch<AdminPlatformSettingsResponse>("/api/v1/admin/settings", data);
-    } catch {
-      return api.put<AdminPlatformSettingsResponse>("/api/v1/admin/settings", data);
+    } catch (primaryError) {
+      try {
+        return await api.put<AdminPlatformSettingsResponse>("/api/v1/admin/settings", data);
+      } catch (fallbackError) {
+        throw fallbackError instanceof Error ? fallbackError : primaryError;
+      }
     }
   },
 
@@ -255,8 +267,12 @@ export const adminService = {
         "/api/v1/admin/audit-events",
         params,
       );
-    } catch {
-      return api.get<PageResponse<AdminAuditEventResponse>>("/api/v1/admin/audit-logs", params);
+    } catch (primaryError) {
+      try {
+        return await api.get<PageResponse<AdminAuditEventResponse>>("/api/v1/admin/audit-logs", params);
+      } catch (fallbackError) {
+        throw fallbackError instanceof Error ? fallbackError : primaryError;
+      }
     }
   },
 

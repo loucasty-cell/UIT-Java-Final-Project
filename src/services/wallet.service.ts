@@ -15,8 +15,12 @@ export const walletService = {
   async getBalance(): Promise<WalletBalanceResponse> {
     try {
       return await api.get<WalletBalanceResponse>("/api/v1/me/wallet");
-    } catch {
-      return api.get<WalletBalanceResponse>("/api/v1/me/wallet/balance");
+    } catch (primaryError) {
+      try {
+        return await api.get<WalletBalanceResponse>("/api/v1/me/wallet/balance");
+      } catch (fallbackError) {
+        throw fallbackError instanceof Error ? fallbackError : primaryError;
+      }
     }
   },
 
@@ -68,8 +72,12 @@ export const walletService = {
   async transferPoints(data: TransferPointsRequest): Promise<WalletTransactionResponse> {
     try {
       return await api.post<WalletTransactionResponse>("/api/v1/wallet/transfer", data);
-    } catch {
-      return api.post<WalletTransactionResponse>("/api/wallet/transfer", data);
+    } catch (primaryError) {
+      try {
+        return await api.post<WalletTransactionResponse>("/api/wallet/transfer", data);
+      } catch (fallbackError) {
+        throw fallbackError instanceof Error ? fallbackError : primaryError;
+      }
     }
   },
 };

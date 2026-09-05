@@ -120,7 +120,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const response = await request();
     if (current !== operation.current || revision !== getAuthRevision())
       throw new Error("Sign-in was cancelled. Please try again.");
-    saveSession(response);
+    try {
+      saveSession(response);
+    } catch (error) {
+      clearAuth();
+      throw error;
+    }
     setUser(response.user);
     setSessionError(null);
     setIsLoading(false);

@@ -134,8 +134,12 @@ export const forumService = {
     try {
       await api.post<void>(`/api/v1/forum/comments/${data.commentId}/mark-helpful`);
       return { success: true, pointsAwarded: data.points };
-    } catch {
-      return api.post<RewardCommentResponse>(`/api/v1/forum/posts/${postId}/reward`, data);
+    } catch (primaryError) {
+      try {
+        return await api.post<RewardCommentResponse>(`/api/v1/forum/posts/${postId}/reward`, data);
+      } catch (fallbackError) {
+        throw fallbackError instanceof Error ? fallbackError : primaryError;
+      }
     }
   },
 

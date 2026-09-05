@@ -1,4 +1,4 @@
-package com.skillbridge.mentor.application.query;
+﻿package com.skillbridge.mentor.application.query;
 
 import com.skillbridge.admin.domain.model.AccountStatus;
 import com.skillbridge.auth.domain.entity.User;
@@ -26,7 +26,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -41,112 +43,93 @@ public class MentorQueryService {
     private final MentorMapper mentorMapper;
 
     public Page<MentorSummaryResponse> searchMentors(MentorSearchQuery query) {
+        // 1. Get all active offerings
         List<MentorOffering> activeOfferings = mentorOfferingRepository.findByActiveTrue();
         Map<UUID, List<MentorOffering>> offeringsByMentor = activeOfferings.stream()
                 .collect(Collectors.groupingBy(MentorOffering::getMentorId, LinkedHashMap::new, Collectors.toList()));
 
+        List<UUID> mentorIds = new ArrayList<>(offeringsByMentor.keySet());
+        if (mentorIds.isEmpty()) {
+            return Page.empty();
+        }
+
+        // 2. Batch fetch all users in 1 query
+        Map<UUID, User> users = userRepository.findAllByIdIn(mentorIds).stream()
+                .filter(u -> u.getStatus() == AccountStatus.ACTIVE)
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
+        // 3. Batch fetch all skills for all mentors in 2 queries (TEACH + LEARN)
+        Map<UUID, List<UserSkill>> teachSkillsByUser = userSkillRepository
+                .findByUserIdInAndDirection(new ArrayList<>(users.keySet()), Direction.TEACH)
+                .stream()
+                .collect(Collectors.groupingBy(UserSkill::getUserId, LinkedHashMap::new, Collectors.toList()));
+
+        Map<UUID, List<UserSkill>> learnSkillsByUser = userSkillRepository
+                .findByUserIdInAndDirection(new ArrayList<>(users.keySet()), Direction.LEARN)
+                .stream()
+                .collect(Collectors.groupingBy(UserSkill::getUserId, LinkedHashMap::new, Collectors.toList()));
+
+        // 4. Batch fetch all reviews in 1 query
+        Map<UUID, List<Review>> reviewsByUser = reviewRepository
+                .findByRevieweeIdIn(new ArrayList<>(users.keySet()))
+                .stream()
+                .collect(Collectors.groupingBy(Review::getRevieweeId, LinkedHashMap::new, Collectors.toList()));
+
+        // 5. Build summaries from cached data
         List<MentorSummaryResponse> summaries = new ArrayList<>();
 
-        for (Map.Entry<UUID, List<MentorOffering>> entry : offeringsByMentor.entrySet()) {
-            UUID userId = entry.getKey();
-            User user = userRepository.findById(userId).orElse(null);
-            if (user == null || user.getStatus() != AccountStatus.ACTIVE) {
-                continue;
-            }
+        for (UUID userId : users.keySet()) {
+            User user = users.get(userId);
+            List<MentorOffering> offerings = offeringsByMentor.get(userId);
+            List<UserSkill> userTeachSkills = teachSkillsByUser.getOrDefault(userId, List.of());
+            List<UserSkill> userLearnSkills = learnSkillsByUser.getOrDefault(userId, List.of());
+            List<Review> userReviews = reviewsByUser.getOrDefault(userId, List.of());
 
-            List<UserSkill> learnSkills = userSkillRepository.findByUserIdAndDirectionOrderByCreatedAtDesc(userId,
-                    Direction.LEARN);
-            List<MentorOffering> offerings = entry.getValue();
-            List<UserSkill> postedTeachSkills = new ArrayList<>(offerings.stream()
+            // Build posted teach skills from offerings
+            Set<UUID> offeredSkillIds = offerings.stream()
                     .map(MentorOffering::getTeachUserSkillId)
-                    .map(userSkillRepository::findById)
-                    .flatMap(Optional::stream)
-                    .filter(skill -> skill.getUserId().equals(userId) && skill.getDirection() == Direction.TEACH)
-                    .collect(Collectors.toMap(UserSkill::getSkillId, skill -> skill, (first, ignored) -> first,
-                            LinkedHashMap::new))
-                    .values());
+                    .collect(Collectors.toSet());
+
+            List<UserSkill> postedTeachSkills = userTeachSkills.stream()
+                    .filter(skill -> offeredSkillIds.contains(skill.getId()))
+                    .collect(Collectors.toMap(UserSkill::getSkillId, skill -> skill, (first, ignored) -> first, LinkedHashMap::new))
+                    .values().stream().toList();
 
             if (postedTeachSkills.isEmpty()) {
                 continue;
             }
 
-            if (query != null && query.getEffectiveQuery() != null && !query.getEffectiveQuery().isBlank()) {
-                String qLower = query.getEffectiveQuery().toLowerCase(Locale.ROOT);
-                boolean matchesUser = (user.getDisplayName() != null
-                        && user.getDisplayName().toLowerCase(Locale.ROOT).contains(qLower))
-                        || (user.getFirstName() != null
-                                && user.getFirstName().toLowerCase(Locale.ROOT).contains(qLower))
-                        || (user.getLastName() != null && user.getLastName().toLowerCase(Locale.ROOT).contains(qLower))
-                        || (user.getBio() != null && user.getBio().toLowerCase(Locale.ROOT).contains(qLower))
-                        || (user.getMajor() != null && user.getMajor().toLowerCase(Locale.ROOT).contains(qLower));
+            // Build modes set
+            Set<Mode> modes = offerings.stream()
+                    .flatMap(o -> {
+                        Set<Mode> m = o.getModes();
+                        return m != null ? m.stream() : Stream.empty();
+                    })
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
 
-                boolean matchesSkill = postedTeachSkills.stream()
-                        .map(ts -> mentorMapper.toSkillSummary(ts.getSkillId()))
-                        .filter(Objects::nonNull)
-                        .anyMatch(skill -> skill.getName() != null
-                                && skill.getName().toLowerCase(Locale.ROOT).contains(qLower));
-
-                if (!matchesUser && !matchesSkill) {
-                    continue;
-                }
-            }
-
-            if (query != null && query.getSkillId() != null) {
-                boolean hasSkill = postedTeachSkills.stream()
-                        .anyMatch(ts -> ts.getSkillId().equals(query.getSkillId()));
-                if (!hasSkill) {
-                    continue;
-                }
-            }
-
-            if (query != null && query.getLevel() != null) {
-                boolean matchesLevel = postedTeachSkills.stream().anyMatch(ts -> ts.getLevel() == query.getLevel());
-                if (!matchesLevel) {
-                    continue;
-                }
-            }
-
-            Set<Mode> modes = new LinkedHashSet<>();
-            for (MentorOffering off : offerings) {
-                if (Boolean.TRUE.equals(off.getPointsEnabled()))
-                    modes.add(Mode.POINTS);
-                if (Boolean.TRUE.equals(off.getSkillSwapEnabled()))
-                    modes.add(Mode.SKILL_SWAP);
-                if (Boolean.TRUE.equals(off.getVolunteerEnabled()))
-                    modes.add(Mode.VOLUNTEER);
-            }
             if (modes.isEmpty()) {
-                continue;
+                modes.add(Mode.POINTS);
             }
 
-            if (query != null && query.getMode() != null && !modes.contains(query.getMode())) {
-                continue;
-            }
-
-            List<Review> reviews = reviewRepository.findByRevieweeId(userId);
-            double avgRating = reviews.isEmpty() ? 5.0
-                    : reviews.stream().mapToInt(Review::getRating).average().orElse(5.0);
-            int ratingCount = reviews.size();
-
-            if (query != null && query.getMinRating() != null && avgRating < query.getMinRating()) {
-                continue;
-            }
-
+            // Calculate min cost
             int minCost = offerings.stream()
-                    .map(MentorOffering::getPointCost)
-                    .filter(Objects::nonNull)
-                    .min(Integer::compareTo)
-                    .orElse(10);
+                    .mapToInt(MentorOffering::getPointCost)
+                    .min().orElse(0);
 
+            // Build skill DTOs
             List<SkillSummaryResponse> teachSkillDtos = postedTeachSkills.stream()
                     .map(ts -> mentorMapper.toSkillSummary(ts.getSkillId()))
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
 
-            List<SkillSummaryResponse> learnSkillDtos = learnSkills.stream()
+            List<SkillSummaryResponse> learnSkillDtos = userLearnSkills.stream()
                     .map(ls -> mentorMapper.toSkillSummary(ls.getSkillId()))
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
+
+            // Calculate rating
+            double avgRating = userReviews.isEmpty() ? 5.0 : userReviews.stream().mapToInt(Review::getRating).average().orElse(5.0);
+            int ratingCount = userReviews.size();
 
             MentorSummaryResponse response = new MentorSummaryResponse();
             response.setUser(mentorMapper.toUserSummary(userId, true));
@@ -172,11 +155,11 @@ public class MentorQueryService {
 
     public MentorDetailResponse getMentorDetail(UUID mentorId) {
         if (mentorId == null) {
-            throw new IllegalArgumentException("Mentor ID must not be null");
+            throw new IllegalArgumentException( Mentor ID must not be null);
         }
 
         User user = userRepository.findById(mentorId)
-                .orElseThrow(() -> new IllegalArgumentException("Mentor not found: " + mentorId));
+                .orElseThrow(() -> new IllegalArgumentException(Mentor not found:  + mentorId));
 
         List<MentorOffering> offerings = mentorOfferingRepository.findByMentorIdAndActiveTrue(mentorId);
         List<MentorOfferingResponse> offeringDtos = offerings.stream()

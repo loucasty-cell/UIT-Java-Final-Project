@@ -13,10 +13,10 @@ export const Route = createFileRoute("/register")({
 });
 
 function RegisterPage() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin } = useAuth();
   const { redirect } = Route.useSearch();
   const navigate = Route.useNavigate();
-  if (isAuthenticated) return <Navigate to={redirect} replace />;
+  if (isAuthenticated) return <Navigate to={isAdmin ? "/admin" : redirect} replace />;
   return (
     <main className="flex min-h-svh items-center justify-center bg-background px-5 py-8">
       <section

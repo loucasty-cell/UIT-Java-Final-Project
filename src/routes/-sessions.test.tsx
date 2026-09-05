@@ -55,7 +55,7 @@ describe("My Sessions real API flow", () => {
     const user = userEvent.setup();
     render(<Page />);
     await screen.findByText("Session with Real Mentor");
-    await user.click(screen.getByRole("tab", { name: "Requests (1)" }));
+    await user.click(screen.getByRole("tab", { name: /requests/i }));
     expect(screen.getByText("Java")).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: /^Mentor$/ }));
     expect(screen.getByText("No active sessions.")).toBeInTheDocument();

@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import { Coins, HandHeart, Handshake, LoaderCircle, Search, Star } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -39,28 +40,27 @@ export const Route = createFileRoute("/mentors")({
 function MentorsPage() {
   const { q } = Route.useSearch();
   const { user } = useAuth();
-  const [mentors, setMentors] = useState<MentorSearchResponse[]>([]);
   const [query, setQuery] = useState("");
-  useEffect(() => setQuery(q || ""), [q]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [selected, setSelected] = useState<MentorSearchResponse | null>(null);
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
+
+  const mentorsQuery = useQuery({
+    queryKey: ["mentors"],
+    queryFn: async () => {
       const result = await mentorsService.searchMentors();
-      const rows = Array.isArray(result) ? result : result.content;
-      setMentors(rows.filter((mentor) => mentor.user?.id && mentor.user.id !== user?.id));
-      setError("");
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Could not load mentors.");
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.id]);
-  useEffect(() => {
-    void load();
-  }, [load]);
+      return result.filter((mentor) => mentor.user?.id && mentor.user.id !== user?.id);
+    },
+    staleTime: 60000,
+  });
+
+  const loading = mentorsQuery.isLoading;
+  const error = mentorsQuery.error;
+  const mentors = mentorsQuery.data ?? [];
+
+  const reload = async (silent = false) => {
+    if (!silent) await mentorsQuery.refetch();
+  };
+
+  useEffect(() => setQuery(q || ""), [q]);
   const filtered = useMemo(() => {
     const value = query.trim().toLowerCase();
     return mentors.filter(
@@ -92,8 +92,8 @@ function MentorsPage() {
       {loading && <p role="status">Loading mentors…</p>}
       {error && (
         <p role="alert" className="text-destructive">
-          {error}{" "}
-          <Button variant="link" onClick={() => void load()}>
+          {error instanceof Error ? error.message : "Unable to load mentors."}
+          <Button variant="link" onClick={() => void reload()}>
             Retry
           </Button>
         </p>

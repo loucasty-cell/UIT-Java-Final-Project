@@ -17,9 +17,7 @@ export {
 
 const BASE_URL =
   import.meta.env?.VITE_API_BASE_URL ||
-  (import.meta.env.DEV && typeof window !== "undefined"
-    ? window.location.origin
-    : "http://localhost:9095");
+  (typeof window !== "undefined" ? window.location.origin : "http://localhost:9095");
 
 export class ApiError extends Error {
   constructor(

@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,4 +26,7 @@ public interface ReviewRepository extends JpaRepository<Review, UUID> {
     long countByReviewerId(UUID reviewerId);
 
     long countByRevieweeId(UUID revieweeId);
+    
+    /** Batch fetch reviews by reviewee IDs - avoids N+1 queries in mentor search */
+    List<Review> findByRevieweeIdIn(Collection<UUID> revieweeIds);
 }

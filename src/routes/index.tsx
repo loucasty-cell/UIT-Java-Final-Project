@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { BookOpen, CalendarCheck, Coins, Pencil, Users } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { sessionsService } from "@/services/sessions.service";
 import { skillsService } from "@/services/skills.service";
 import { walletService } from "@/services/wallet.service";
-import type { UserSkillResponse, WalletBalanceResponse } from "@/types/api";
+import type { UserSkillResponse } from "@/types/api";
 import { userDisplayName, userInitials } from "@/lib/auth-validation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -19,36 +19,14 @@ export const Route = createFileRoute("/")({
 });
 export function Profile() {
   const { user } = useAuth();
-  const [wallet, setWallet] = useState<WalletBalanceResponse | null>(null);
-  const [skills, setSkills] = useState<UserSkillResponse[]>([]);
-  const [active, setActive] = useState(0);
-  const [completed, setCompleted] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [w, s, sessions] = await Promise.all([
-        walletService.getBalance(),
-        skillsService.getUserSkills(),
-        sessionsService.listSessions(),
-      ]);
-      setWallet(w);
-      setSkills(s);
-      setActive(
-        sessions.filter((x) => ["ACCEPTED", "SCHEDULED", "STARTED"].includes(x.status)).length,
-      );
-      setCompleted(sessions.filter((x) => x.status === "COMPLETED").length);
-      setError("");
-    } catch (f) {
-      setError(f instanceof Error ? f.message : "Could not load your profile.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const wallet = useQuery({ queryKey: ["wallet"], queryFn: walletService.getBalance, staleTime: 30000 });
+  const skills = useQuery({ queryKey: ["skills"], queryFn: () => skillsService.getUserSkills(), staleTime: 60000 });
+  const sessions = useQuery({ queryKey: ["sessions"], queryFn: () => sessionsService.listSessions(), staleTime: 30000 });
+  const loading = wallet.isLoading || skills.isLoading || sessions.isLoading;
+  const error = wallet.error ?? skills.error ?? sessions.error;
+  const s = sessions.data ?? [];
+  const active = s.filter((x) => ["ACCEPTED", "SCHEDULED", "STARTED"].includes(x.status)).length;
+  const completed = s.filter((x) => x.status === "COMPLETED").length;
   const displayName = userDisplayName(user);
   const bio = user && "bio" in user ? user.bio : undefined;
   const major = user && "major" in user ? user.major : undefined;
@@ -60,8 +38,8 @@ export function Profile() {
       {loading && <p role="status">Loading profile…</p>}
       {error && (
         <p role="alert" className="text-destructive">
-          {error}
-          <Button variant="link" onClick={() => void load()}>
+          {error instanceof Error ? error.message : "Could not load your profile."}
+          <Button variant="link" onClick={() => { wallet.refetch(); skills.refetch(); sessions.refetch(); }}>
             Retry
           </Button>
         </p>
@@ -109,22 +87,22 @@ export function Profile() {
             <SkillCard
               title="Skills I can teach"
               icon={Users}
-              skills={skills.filter((s) => s.direction === "TEACH")}
+              skills={(skills.data ?? []).filter((s) => s.direction === "TEACH")}
             />
             <SkillCard
               title="Skills I want to learn"
               icon={BookOpen}
-              skills={skills.filter((s) => s.direction === "LEARN")}
+              skills={(skills.data ?? []).filter((s) => s.direction === "LEARN")}
             />
           </aside>
           <section aria-label="Account overview" className="min-w-0 space-y-6">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <Metric icon={Coins} label="Available points" value={wallet?.availablePoints ?? 0} />
-              <Metric icon={Coins} label="Points held" value={wallet?.heldPoints ?? 0} />
+              <Metric icon={Coins} label="Available points" value={wallet.data?.availablePoints ?? 0} />
+              <Metric icon={Coins} label="Points held" value={wallet.data?.heldPoints ?? 0} />
               <Metric icon={CalendarCheck} label="Active sessions" value={active} />
               <Metric icon={CalendarCheck} label="Completed sessions" value={completed} />
             </div>
-            <DashboardExtras skills={skills} />
+            <DashboardExtras skills={skills.data ?? []} />
           </section>
         </div>
       )}

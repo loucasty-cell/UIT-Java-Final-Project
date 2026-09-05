@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { CheckCircle2, Clock, ExternalLink, Flag, LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/auth-context";
-import { useLiveRefresh } from "@/hooks/use-live-refresh";
 import {
   learningRequestsService,
   type LearningRequestResponse,
@@ -41,43 +41,47 @@ const activeStatuses = new Set(["ACCEPTED", "SCHEDULED", "STARTED"]);
 
 function SessionsPage() {
   const { user } = useAuth();
-  const [sessions, setSessions] = useState<SessionResponse[]>([]);
-  const [learnerRequests, setLearnerRequests] = useState<LearningRequestResponse[]>([]);
-  const [mentorRequests, setMentorRequests] = useState<LearningRequestResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [complete, setComplete] = useState<SessionResponse | null>(null);
   const [report, setReport] = useState<SessionResponse | null>(null);
-  const load = useCallback(async () => {
-    try {
-      const [all, outgoing, incoming] = await Promise.all([
-        sessionsService.listSessions(),
-        learningRequestsService.listRequests("OUTGOING"),
-        learningRequestsService.listRequests("INCOMING"),
-      ]);
-      setSessions(all);
-      setLearnerRequests(outgoing);
-      setMentorRequests(incoming);
-      setError("");
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Unable to load sessions.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  useLiveRefresh(load);
-  useEffect(() => {
-    void load();
-  }, [load]);
+
+  const sessionsQuery = useQuery({
+    queryKey: ["sessions"],
+    queryFn: () => sessionsService.listSessions(),
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+
+  const learnerRequestsQuery = useQuery({
+    queryKey: ["learner-requests"],
+    queryFn: () => learningRequestsService.listRequests("OUTGOING"),
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+
+  const mentorRequestsQuery = useQuery({
+    queryKey: ["mentor-requests"],
+    queryFn: () => learningRequestsService.listRequests("INCOMING"),
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+
+  const loading = sessionsQuery.isLoading || learnerRequestsQuery.isLoading || mentorRequestsQuery.isLoading;
+  const error = sessionsQuery.error ?? learnerRequestsQuery.error ?? mentorRequestsQuery.error;
+  const sessions = sessionsQuery.data ?? [];
+  const learnerRequests = learnerRequestsQuery.data ?? [];
+  const mentorRequests = mentorRequestsQuery.data ?? [];
+
+  const reload = async (silent = false) => {
+    if (!silent) { await sessionsQuery.refetch(); await learnerRequestsQuery.refetch(); await mentorRequestsQuery.refetch(); }
+  };
+
   const byRole = useMemo(
     () => ({
       learner: sessions.filter(
-        (s) =>
-          s.learnerId === user?.id || s.requester?.id === user?.id || s.requesterId === user?.id,
+        (s) => s.learnerId === user?.id || s.requester?.id === user?.id || s.requesterId === user?.id,
       ),
       mentor: sessions.filter(
-        (s) =>
-          s.mentorId === user?.id || s.responder?.id === user?.id || s.responderId === user?.id,
+        (s) => s.mentorId === user?.id || s.responder?.id === user?.id || s.responderId === user?.id,
       ),
     }),
     [sessions, user?.id],
@@ -94,8 +98,8 @@ function SessionsPage() {
       {error && (
         <Alert variant="destructive">
           <AlertDescription>
-            {error}{" "}
-            <Button variant="link" onClick={() => void load()}>
+            {error instanceof Error ? error.message : "Unable to load sessions."}
+            <Button variant="link" onClick={() => void reload()}>
               Retry
             </Button>
           </AlertDescription>
@@ -111,7 +115,7 @@ function SessionsPage() {
             role="learner"
             sessions={byRole.learner}
             requests={learnerRequests}
-            reload={load}
+            reload={reload}
             onComplete={setComplete}
             onReport={setReport}
           />
@@ -119,14 +123,14 @@ function SessionsPage() {
             role="mentor"
             sessions={byRole.mentor}
             requests={mentorRequests}
-            reload={load}
+            reload={reload}
             onComplete={setComplete}
             onReport={setReport}
           />
         </Tabs>
       )}
-      <CompleteDialog session={complete} close={() => setComplete(null)} reload={load} />
-      <ReportDialog session={report} close={() => setReport(null)} reload={load} />
+      <CompleteDialog session={complete} close={() => setComplete(null)} reload={reload} />
+      <ReportDialog session={report} close={() => setReport(null)} reload={reload} />
     </div>
   );
 }
@@ -146,15 +150,14 @@ function RolePanel({
   onComplete: (s: SessionResponse) => void;
   onReport: (s: SessionResponse) => void;
 }) {
-  const [section, setSection] = useState("active");
   const active = sessions.filter((s) => activeStatuses.has(s.status));
   const completed = sessions.filter((s) => s.status === "COMPLETED");
   const disputed = sessions.filter((s) => s.status === "DISPUTED");
   const awaiting = sessions.filter((s) => s.status === "AWAITING_CONFIRMATION");
   const pending = requests.filter((r) => r.status === "PENDING");
-  useEffect(() => {
-    if (section === "active" && !active.length && pending.length) setSection("pending");
-  }, [active.length, pending.length, section]);
+  const [section, setSection] = useState(() =>
+    !active.length && pending.length ? "pending" : "active",
+  );
   return (
     <TabsContent value={role} className="mt-5">
       <Tabs value={section} onValueChange={setSection}>
@@ -436,7 +439,8 @@ function RequestCard({
           <DialogHeader>
             <DialogTitle>Accept request and send Google Meet link</DialogTitle>
             <DialogDescription>
-              The learner will find this link under My Sessions after you accept their {request.mode.toLowerCase()} request.
+              The learner will find this link under My Sessions after you accept their{" "}
+              {request.mode.toLowerCase()} request.
             </DialogDescription>
           </DialogHeader>
           <div>
@@ -450,9 +454,15 @@ function RequestCard({
               autoFocus
             />
           </div>
-          {acceptError && <p role="alert" className="text-sm text-destructive">{acceptError}</p>}
+          {acceptError && (
+            <p role="alert" className="text-sm text-destructive">
+              {acceptError}
+            </p>
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAcceptOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setAcceptOpen(false)}>
+              Cancel
+            </Button>
             <Button disabled={busy || !meetingUrl.trim()} onClick={() => void accept()}>
               {busy && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
               Accept and send link

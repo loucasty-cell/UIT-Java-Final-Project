@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, Save, ShieldCheck, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { authService } from "@/services/auth.service";
-import { getAccessToken } from "@/lib/api-client";
+import { skillsService } from "@/services/skills.service";
+import { ApiError, getAccessToken } from "@/lib/api-client";
 import { useAuth } from "@/context/auth-context";
 import { SettingsSkills } from "@/components/settings-skills";
+import { Certificates } from "@/components/dashboard-extras";
 import type { UpdateUserProfileRequest } from "@/types/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -22,11 +24,17 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 function SettingsPage() {
-  const { refreshProfile } = useAuth();
+  const { updateProfile } = useAuth();
+  const queryClient = useQueryClient();
   const signedIn = Boolean(getAccessToken());
   const profile = useQuery({
     queryKey: ["profile"],
     queryFn: authService.getProfile,
+    enabled: signedIn,
+  });
+  const portfolio = useQuery({
+    queryKey: ["settings-skills", "all"],
+    queryFn: () => skillsService.getUserSkills(),
     enabled: signedIn,
   });
   const fileRef = useRef<HTMLInputElement>(null);
@@ -45,12 +53,23 @@ function SettingsPage() {
       });
   }, [profile.data]);
   const update = useMutation({
-    mutationFn: () => authService.updateProfile(form),
-    onSuccess: async () => {
-      await refreshProfile();
+    mutationFn: () => {
+      if (profile.data?.version === undefined)
+        throw new Error("Your profile version is unavailable. Refresh and try again.");
+      return updateProfile(form, profile.data.version);
+    },
+    onSuccess: (updatedProfile) => {
+      queryClient.setQueryData(["profile"], updatedProfile);
       toast.success("Profile updated successfully.");
     },
-    onError: () => toast.error("Could not update your profile."),
+    onError: (failure) =>
+      toast.error(
+        failure instanceof ApiError && failure.message
+          ? failure.message
+          : failure instanceof Error
+            ? failure.message
+            : "Could not update your profile.",
+      ),
   });
   const setField = (key: keyof UpdateUserProfileRequest, value: string) =>
     setForm((current) => ({
@@ -101,16 +120,17 @@ function SettingsPage() {
         <p className="text-sm font-medium text-primary">Account</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Manage your profile, skills, security, and notifications.
+          Manage your profile, skills, certificates, security, and notifications.
         </p>
       </div>
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-5">
           <TabsTrigger value="profile">
             <UserRound className="mr-2 h-4 w-4" />
             Profile
           </TabsTrigger>
           <TabsTrigger value="skills">Skills</TabsTrigger>
+          <TabsTrigger value="certificates">Certificates</TabsTrigger>
           <TabsTrigger value="security">
             <ShieldCheck className="mr-2 h-4 w-4" />
             Security
@@ -216,7 +236,10 @@ function SettingsPage() {
                     onChange={(e) => setField("bio", e.target.value)}
                   />
                 </div>
-                <Button type="submit" disabled={update.isPending}>
+                <Button
+                  type="submit"
+                  disabled={update.isPending || profile.data?.version === undefined}
+                >
                   <Save className="mr-2 h-4 w-4" />
                   {update.isPending ? "Saving…" : "Save profile"}
                 </Button>
@@ -246,6 +269,14 @@ function SettingsPage() {
           <p className="mt-3 text-xs text-muted-foreground">
             These preferences are used to match you with suitable mentors and learners.
           </p>
+        </TabsContent>
+        <TabsContent value="certificates">
+          {portfolio.error && (
+            <p role="alert" className="mb-3 text-destructive">
+              Could not load your skills for certificate management.
+            </p>
+          )}
+          <Certificates skills={portfolio.data ?? []} editable />
         </TabsContent>
         <TabsContent value="security">
           <Card>

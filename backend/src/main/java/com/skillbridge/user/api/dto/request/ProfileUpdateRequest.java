@@ -10,6 +10,12 @@ import lombok.Setter;
 @Setter
 public class ProfileUpdateRequest {
 
+    @Size(min = 1, max = 100, message = "First name must be between 1 and 100 characters")
+    private String firstName;
+
+    @Size(min = 1, max = 100, message = "Last name must be between 1 and 100 characters")
+    private String lastName;
+
     @Size(max = 100, message = "Display name must not exceed 100 characters")
     private String displayName;
 

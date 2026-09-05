@@ -54,7 +54,8 @@ const destinations = new Set([
 type LoginDestination =
   "/" | "/mentors" | "/forum" | "/sessions" | "/admin" | "/wallet" | "/settings";
 export function safeLoginRedirect(value: unknown): LoginDestination {
-  return typeof value === "string" && destinations.has(value) ? (value as LoginDestination) : "/";
+  if (typeof value !== "string") return "/";
+  return destinations.has(value) ? (value as LoginDestination) : "/";
 }
 export function userDisplayName(
   user: { displayName?: string; firstName?: string; lastName?: string; email?: string } | null,

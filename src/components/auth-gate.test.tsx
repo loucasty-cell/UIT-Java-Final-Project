@@ -61,6 +61,14 @@ it("blocks a non-admin direct URL", () => {
   expect(screen.getByText("Access denied")).toBeVisible();
   expect(screen.queryByText("Private dashboard")).not.toBeInTheDocument();
 });
+it("keeps an administrator inside the admin portal", () => {
+  state.auth.isAuthenticated = true;
+  state.auth.isAdmin = true;
+  state.path = "/settings";
+  mount();
+  expect(screen.getByText("Redirect: /admin")).toBeVisible();
+  expect(screen.queryByText("Private dashboard")).not.toBeInTheDocument();
+});
 it("fails closed when the session cannot be checked", () => {
   state.auth.sessionError = "Offline";
   mount();

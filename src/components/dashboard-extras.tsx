@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 
 const selectClass = "h-11 w-full rounded-md border bg-background px-3";
+const collapsedTeachingPostCount = 3;
 export function SkillLevelSelect({
   value,
   onChange,
@@ -51,23 +52,23 @@ export function SkillLevelSelect({
   );
 }
 
-export function DashboardExtras({
-  skills,
-  reloadSkills,
-}: {
-  skills: UserSkillResponse[];
-  reloadSkills: () => Promise<void>;
-}) {
+export function DashboardExtras({ skills }: { skills: UserSkillResponse[] }) {
   return (
     <div className="space-y-6">
-      <TeachingPosts reloadSkills={reloadSkills} />
       <Certificates skills={skills} />
+      <TeachingPosts editable />
       <ActivityLog />
     </div>
   );
 }
 
-function Certificates({ skills }: { skills: UserSkillResponse[] }) {
+export function Certificates({
+  skills,
+  editable = false,
+}: {
+  skills: UserSkillResponse[];
+  editable?: boolean;
+}) {
   const { user } = useAuth();
   const [items, setItems] = useState<SkillCertificateResponse[]>([]);
   const [open, setOpen] = useState(false);
@@ -109,14 +110,16 @@ function Certificates({ skills }: { skills: UserSkillResponse[] }) {
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle>Certificates</CardTitle>
-        <Button
-          onClick={() => {
-            setError("");
-            setOpen(true);
-          }}
-        >
-          Upload certificate
-        </Button>
+        {editable && (
+          <Button
+            onClick={() => {
+              setError("");
+              setOpen(true);
+            }}
+          >
+            Upload certificate
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
@@ -134,39 +137,41 @@ function Certificates({ skills }: { skills: UserSkillResponse[] }) {
                 {c.skill?.name} · {Math.ceil(c.fileSize / 1024)} KB
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                disabled={busy}
-                onClick={() =>
-                  void action(async () => {
-                    if (!user) return;
-                    const blob = await skillsService.downloadCertificate(user.id, c.skill.id);
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = c.fileName;
-                    a.click();
-                    setTimeout(() => URL.revokeObjectURL(url), 1000);
-                  })
-                }
-              >
-                Download
-              </Button>
-              <Button
-                variant="outline"
-                disabled={busy}
-                onClick={() => {
-                  if (window.confirm(`Delete ${c.fileName}?`))
+            {editable && (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() =>
                     void action(async () => {
-                      await skillsService.deleteCertificate(c.skill.id);
-                      await load();
-                    });
-                }}
-              >
-                Delete
-              </Button>
-            </div>
+                      if (!user) return;
+                      const blob = await skillsService.downloadCertificate(user.id, c.skill.id);
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = c.fileName;
+                      a.click();
+                      setTimeout(() => URL.revokeObjectURL(url), 1000);
+                    })
+                  }
+                >
+                  Download
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => {
+                    if (window.confirm(`Delete ${c.fileName}?`))
+                      void action(async () => {
+                        await skillsService.deleteCertificate(c.skill.id);
+                        await load();
+                      });
+                  }}
+                >
+                  Delete
+                </Button>
+              </div>
+            )}
           </div>
         ))}
         {error && !open && (
@@ -174,60 +179,68 @@ function Certificates({ skills }: { skills: UserSkillResponse[] }) {
             {error}
           </p>
         )}
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Upload certificate</DialogTitle>
-              <DialogDescription>
-                PDF only, up to 5 MB. Add a skill to your portfolio first.
-              </DialogDescription>
-            </DialogHeader>
-            <div>
-              <Label htmlFor="certificate-skill">Certificate skill</Label>
-              <select
-                id="certificate-skill"
-                className={selectClass}
-                value={skillId}
-                onChange={(e) => setSkillId(e.target.value)}
-              >
-                <option value="">Choose your skill</option>
-                {uniqueSkills.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label htmlFor="certificate-file">PDF file</Label>
-              <Input
-                id="certificate-file"
-                type="file"
-                accept=".pdf,application/pdf"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-              />
-            </div>
-            {error && (
-              <p role="alert" className="text-destructive">
-                {error}
-              </p>
-            )}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-              <Button disabled={busy} onClick={() => void action(upload)}>
-                {busy ? "Uploading…" : "Upload"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        {editable && (
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Upload certificate</DialogTitle>
+                <DialogDescription>
+                  PDF only, up to 5 MB. Add a skill to your portfolio first.
+                </DialogDescription>
+              </DialogHeader>
+              <div>
+                <Label htmlFor="certificate-skill">Certificate skill</Label>
+                <select
+                  id="certificate-skill"
+                  className={selectClass}
+                  value={skillId}
+                  onChange={(e) => setSkillId(e.target.value)}
+                >
+                  <option value="">Choose your skill</option>
+                  {uniqueSkills.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="certificate-file">PDF file</Label>
+                <Input
+                  id="certificate-file"
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                />
+              </div>
+              {error && (
+                <p role="alert" className="text-destructive">
+                  {error}
+                </p>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
+                <Button disabled={busy} onClick={() => void action(upload)}>
+                  {busy ? "Uploading…" : "Upload"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-function TeachingPosts({ reloadSkills }: { reloadSkills: () => Promise<void> }) {
+export function TeachingPosts({
+  editable = false,
+  reloadSkills,
+}: {
+  editable?: boolean;
+  reloadSkills?: () => Promise<void>;
+}) {
   const [items, setItems] = useState<MentorOfferingResponse[]>([]);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -238,6 +251,7 @@ function TeachingPosts({ reloadSkills }: { reloadSkills: () => Promise<void> }) 
   const [cost, setCost] = useState("10");
   const [duration, setDuration] = useState("60");
   const [availability, setAvailability] = useState("");
+  const [showAll, setShowAll] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const load = useCallback(async () => {
@@ -273,7 +287,7 @@ function TeachingPosts({ reloadSkills }: { reloadSkills: () => Promise<void> }) 
       setName("");
       setAvailability("");
       await load();
-      await reloadSkills();
+      await reloadSkills?.();
       toast.success("Teaching post published in Find Mentors");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not publish teaching post.");
@@ -281,25 +295,28 @@ function TeachingPosts({ reloadSkills }: { reloadSkills: () => Promise<void> }) 
       setBusy(false);
     }
   };
+  const visibleItems = showAll ? items : items.slice(0, collapsedTeachingPostCount);
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle>My teaching posts</CardTitle>
-        <Button
-          onClick={() => {
-            setError("");
-            setOpen(true);
-          }}
-        >
-          Create teaching post
-        </Button>
+        {editable && (
+          <Button
+            onClick={() => {
+              setError("");
+              setOpen(true);
+            }}
+          >
+            Add teaching post
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
           Publish sessions for other members to book from Find Mentors.
         </p>
         {!items.length && <p>No teaching posts yet.</p>}
-        {items.map((item) => (
+        {visibleItems.map((item) => (
           <div
             key={item.id}
             className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
@@ -316,118 +333,127 @@ function TeachingPosts({ reloadSkills }: { reloadSkills: () => Promise<void> }) 
               <p className="text-sm text-muted-foreground">{item.availability}</p>
               <p>{item.active ? "Published" : "Hidden"}</p>
             </div>
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={async () => {
-                setBusy(true);
-                try {
-                  await mentorsService.updateOffering(item.id, { active: !item.active });
-                  await load();
-                } catch (e) {
-                  setError(e instanceof Error ? e.message : "Could not update post.");
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              {item.active ? "Hide post" : "Publish again"}
-            </Button>
+            {editable && (
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await mentorsService.updateOffering(item.id, { active: !item.active });
+                    await load();
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : "Could not update post.");
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                {item.active ? "Hide post" : "Publish again"}
+              </Button>
+            )}
           </div>
         ))}
+        {!showAll && items.length > collapsedTeachingPostCount && (
+          <Button variant="outline" className="w-full" onClick={() => setShowAll(true)}>
+            See more
+          </Button>
+        )}
         {error && !open && (
           <p role="alert" className="text-destructive">
             {error}
           </p>
         )}
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create teaching post</DialogTitle>
-              <DialogDescription>
-                Choose your skill, session length, and accepted modes.
-              </DialogDescription>
-            </DialogHeader>
-            <div>
-              <Label htmlFor="teaching-name">Teaching skill</Label>
-              <Input
-                id="teaching-name"
-                value={name}
-                maxLength={100}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter any skill"
-              />
-            </div>
-            <SkillLevelSelect id="teaching-level" value={level} onChange={setLevel} />
-            <div className="flex flex-wrap gap-4">
-              {(
-                [
-                  ["Points", points, setPoints],
-                  ["Exchange", exchange, setExchange],
-                  ["Volunteer", volunteer, setVolunteer],
-                ] as const
-              ).map(([label, checked, change]) => (
-                <label key={label} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={(e) => change(e.target.checked)}
-                  />
-                  {label}
-                </label>
-              ))}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+        {editable && (
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create teaching post</DialogTitle>
+                <DialogDescription>
+                  Choose your skill, session length, and accepted modes.
+                </DialogDescription>
+              </DialogHeader>
               <div>
-                <Label htmlFor="teaching-duration">Duration (minutes)</Label>
+                <Label htmlFor="teaching-name">Teaching skill</Label>
                 <Input
-                  id="teaching-duration"
-                  type="number"
-                  min={15}
-                  max={180}
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
+                  id="teaching-name"
+                  value={name}
+                  maxLength={100}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter any skill"
                 />
               </div>
-              {points && (
+              <SkillLevelSelect id="teaching-level" value={level} onChange={setLevel} />
+              <div className="flex flex-wrap gap-4">
+                {(
+                  [
+                    ["Points", points, setPoints],
+                    ["Exchange", exchange, setExchange],
+                    ["Volunteer", volunteer, setVolunteer],
+                  ] as const
+                ).map(([label, checked, change]) => (
+                  <label key={label} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => change(e.target.checked)}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="teaching-cost">Point cost</Label>
+                  <Label htmlFor="teaching-duration">Duration (minutes)</Label>
                   <Input
-                    id="teaching-cost"
+                    id="teaching-duration"
                     type="number"
-                    min={0}
-                    max={10000}
-                    value={cost}
-                    onChange={(e) => setCost(e.target.value)}
+                    min={15}
+                    max={180}
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
                   />
                 </div>
+                {points && (
+                  <div>
+                    <Label htmlFor="teaching-cost">Point cost</Label>
+                    <Input
+                      id="teaching-cost"
+                      type="number"
+                      min={0}
+                      max={10000}
+                      value={cost}
+                      onChange={(e) => setCost(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="teaching-availability">Availability</Label>
+                <Input
+                  id="teaching-availability"
+                  value={availability}
+                  maxLength={500}
+                  onChange={(e) => setAvailability(e.target.value)}
+                  placeholder="Weekdays after 5 PM"
+                />
+              </div>
+              {error && (
+                <p role="alert" className="text-destructive">
+                  {error}
+                </p>
               )}
-            </div>
-            <div>
-              <Label htmlFor="teaching-availability">Availability</Label>
-              <Input
-                id="teaching-availability"
-                value={availability}
-                maxLength={500}
-                onChange={(e) => setAvailability(e.target.value)}
-                placeholder="Weekdays after 5 PM"
-              />
-            </div>
-            {error && (
-              <p role="alert" className="text-destructive">
-                {error}
-              </p>
-            )}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-              <Button disabled={busy} onClick={() => void publish()}>
-                {busy ? "Publishing…" : "Publish teaching post"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
+                <Button disabled={busy} onClick={() => void publish()}>
+                  {busy ? "Publishing…" : "Publish teaching post"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </CardContent>
     </Card>
   );

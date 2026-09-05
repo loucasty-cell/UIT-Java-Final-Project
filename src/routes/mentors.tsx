@@ -14,9 +14,11 @@ import type { MentorSearchResponse, UserSkillResponse, MentorOfferingResponse } 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { userInitials } from "@/lib/auth-validation";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -108,18 +110,33 @@ function MentorsPage() {
         {filtered.map((mentor) => (
           <Card key={mentor.user.id}>
             <CardContent className="space-y-4 p-5">
-              <div>
-                <h2 className="font-semibold">{mentor.user.displayName}</h2>
-                <p className="text-xs text-muted-foreground">
-                  {mentor.user.major || "SkillBridge member"}
-                </p>
-                <p className="mt-1 flex items-center gap-1 text-sm">
-                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                  {mentor.ratingCount
-                    ? `${mentor.rating.toFixed(1)} (${mentor.ratingCount})`
-                    : "No reviews yet"}
-                </p>
-              </div>
+              <Link
+                to="/users/$userId"
+                params={{ userId: mentor.user.id }}
+                aria-label={`View ${mentor.user.displayName}'s profile`}
+                className="flex items-center gap-3 rounded-lg outline-none transition hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={mentor.user.avatarUrl} alt="" />
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {userInitials(mentor.user.displayName)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <h2 className="truncate font-semibold underline-offset-4 hover:underline">
+                    {mentor.user.displayName}
+                  </h2>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {mentor.user.major || "SkillBridge member"}
+                  </p>
+                  <p className="mt-1 flex items-center gap-1 text-sm text-foreground">
+                    <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                    {mentor.ratingCount
+                      ? `${mentor.rating.toFixed(1)} (${mentor.ratingCount})`
+                      : "No reviews yet"}
+                  </p>
+                </div>
+              </Link>
               <div className="flex flex-wrap gap-1">
                 {mentor.matchingTeachSkills.map((skill) => (
                   <Badge key={skill.id} variant="secondary">
@@ -181,7 +198,16 @@ function RequestDialog({
     ])
       .then(([mine, detail]) => {
         setMyTeach(mine);
-        setOfferings(detail.activeOfferings || []);
+        const activeOfferings = detail.activeOfferings || [];
+        const firstOffering = activeOfferings[0];
+        setOfferings(activeOfferings);
+        setOfferingId(firstOffering?.id || "");
+        if (firstOffering) {
+          setRequestedSkillId(firstOffering.skill.id);
+          setMode(firstOffering.modes[0]);
+        } else {
+          setError("This mentor has no published teaching posts available.");
+        }
       })
       .catch((failure: unknown) =>
         setError(failure instanceof Error ? failure.message : "Could not load skills."),
@@ -255,7 +281,6 @@ function RequestDialog({
                 }
               }}
             >
-              <option value="">General session request</option>
               {offerings.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.skill.name} · {o.duration} min · {o.price} points · {o.modes.join(", ")}
@@ -371,7 +396,13 @@ function RequestDialog({
             Cancel
           </Button>
           <Button
-            disabled={pending || !date || !time || (mode === "SKILL_SWAP" && !offered.trim())}
+            disabled={
+              pending ||
+              !selectedOffering ||
+              !date ||
+              !time ||
+              (mode === "SKILL_SWAP" && !offered.trim())
+            }
             onClick={() => void submit()}
           >
             {pending && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}Send Request

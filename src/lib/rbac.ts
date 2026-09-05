@@ -71,6 +71,6 @@ export function getRolesFromStorage(storageKey: string): AppRole[] {
  */
 export function getPostLoginRedirect(roles: AppRole[]): string {
   if (roles.includes("ADMIN")) return "/admin";
-  // MENTOR and USER both go to dashboard
+  // MENTOR and USER both go to their profile workspace
   return "/";
 }

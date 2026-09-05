@@ -1,11 +1,10 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  LayoutDashboard,
+  UserRound,
   Users,
   MessagesSquare,
   ClipboardList,
   CalendarClock,
-  Shield,
   Wallet,
   Settings,
 } from "lucide-react";
@@ -26,7 +25,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const mainItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Profile", url: "/", icon: UserRound },
   { title: "Find Mentors", url: "/mentors", icon: Users },
   { title: "Volunteer Forum", url: "/forum", icon: MessagesSquare },
   { title: "Learning Noticeboard", url: "/noticeboard", icon: ClipboardList },
@@ -34,9 +33,7 @@ const mainItems = [
   { title: "Wallet", url: "/wallet", icon: Wallet },
 ];
 
-const adminItems = [{ title: "Admin Portal", url: "/admin", icon: Shield }];
-
-export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
+export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (r) => r.location.pathname });
@@ -77,26 +74,6 @@ export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        {isAdmin && (
-          <SidebarGroup>
-            {!collapsed && <SidebarGroupLabel>Administration</SidebarGroupLabel>}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {adminItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
-                      <Link to={item.url}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
       </SidebarContent>
 
       <SidebarFooter>

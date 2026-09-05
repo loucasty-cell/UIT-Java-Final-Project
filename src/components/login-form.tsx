@@ -41,14 +41,19 @@ export function LoginForm({
     setPending(true);
     try {
       const response = await login(result.data);
-      if (
-        adminOnly &&
-        !response.user.roles.some((role) => role.replace(/^ROLE_/i, "").toUpperCase() === "ADMIN")
-      ) {
+      const isAdmin =
+        response.user?.roles?.some(
+          (role) => role.replace(/^ROLE_/i, "").toUpperCase() === "ADMIN",
+        ) ?? false;
+      if (adminOnly && !isAdmin) {
         await logout();
         throw new Error(
           "This account does not have administrator access. Use the user sign-in page.",
         );
+      }
+      if (!adminOnly && isAdmin) {
+        await logout();
+        throw new Error("Administrator accounts must use the administrator sign-in page.");
       }
       setPassword("");
       await onSuccess();

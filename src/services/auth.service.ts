@@ -68,14 +68,15 @@ export const authService = {
 
   /**
    * Update authenticated user profile
-   * PATCH /api/v1/me or PUT /api/v1/me/profile
+   * PATCH /api/v1/me with optimistic-lock version
    */
-  async updateProfile(data: UpdateUserProfileRequest): Promise<UserProfileResponse> {
-    try {
-      return await api.patch<UserProfileResponse>("/api/v1/me", data);
-    } catch {
-      return api.put<UserProfileResponse>("/api/v1/me/profile", data);
-    }
+  async updateProfile(
+    data: UpdateUserProfileRequest,
+    version: number,
+  ): Promise<UserProfileResponse> {
+    return api.patch<UserProfileResponse>("/api/v1/me", data, {
+      headers: { "If-Match": `"${version}"` },
+    });
   },
 
   /**

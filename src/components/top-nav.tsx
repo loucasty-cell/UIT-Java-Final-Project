@@ -232,7 +232,7 @@ export function TopNav() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link to="/settings" className="cursor-pointer">
+              <Link to="/" className="cursor-pointer">
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </Link>

@@ -22,6 +22,16 @@ function fill(email = "test@example.com", password = "Password123") {
   });
 }
 describe("login form validation", () => {
+  it("keeps administrator accounts out of the user sign-in flow", async () => {
+    const success = vi.fn();
+    login.mockResolvedValue({ user: { roles: ["USER", "ADMIN"] } });
+    render(<LoginForm onSuccess={success} />);
+    fill();
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(await screen.findByText(/must use the administrator sign-in page/)).toBeVisible();
+    expect(logout).toHaveBeenCalledOnce();
+    expect(success).not.toHaveBeenCalled();
+  });
   it("rejects a normal account at administrator sign in and revokes its session", async () => {
     const success = vi.fn();
     login.mockResolvedValue({ user: { roles: ["USER"] } });

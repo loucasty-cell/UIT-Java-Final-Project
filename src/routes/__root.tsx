@@ -88,22 +88,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Your SkillBridge dashboard: wallet balance, skills, certificates, and point activity.",
+          "Your SkillBridge profile: wallet balance, skills, certificates, and point activity.",
       },
       { name: "author", content: "SkillBridge" },
-      { property: "og:title", content: "Dashboard — SkillBridge" },
+      { property: "og:title", content: "Profile — SkillBridge" },
       {
         property: "og:description",
         content:
-          "Your SkillBridge dashboard: wallet balance, skills, certificates, and point activity.",
+          "Your SkillBridge profile: wallet balance, skills, certificates, and point activity.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Dashboard — SkillBridge" },
+      { name: "twitter:title", content: "Profile — SkillBridge" },
       {
         name: "twitter:description",
         content:
-          "Your SkillBridge dashboard: wallet balance, skills, certificates, and point activity.",
+          "Your SkillBridge profile: wallet balance, skills, certificates, and point activity.",
       },
     ],
     links: [
@@ -153,10 +153,18 @@ function AppContent() {
     )
   )
     return <Outlet />;
+  if (isAdmin)
+    return (
+      <AuthGate>
+        <main className="min-h-svh bg-background">
+          <Outlet />
+        </main>
+      </AuthGate>
+    );
   return (
     <AuthGate>
       <SidebarProvider>
-        <AppSidebar isAdmin={isAdmin} />
+        <AppSidebar />
         <SidebarInset className="bg-background">
           <TopNav />
           <main className="flex-1">

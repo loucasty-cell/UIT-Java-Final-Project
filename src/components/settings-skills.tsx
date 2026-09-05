@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { skillsService } from "@/services/skills.service";
 import type { SkillDirection, SkillLevel } from "@/types/api";
 import { SkillLevelSelect } from "@/components/dashboard-extras";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function SettingsSkills({ direction }: { direction: SkillDirection }) {
+  const queryClient = useQueryClient();
   const skills = useQuery({
     queryKey: ["settings-skills", direction],
     queryFn: () => skillsService.getUserSkills(direction),
@@ -21,7 +22,7 @@ export function SettingsSkills({ direction }: { direction: SkillDirection }) {
     setError("");
     try {
       await operation();
-      await skills.refetch();
+      await queryClient.invalidateQueries({ queryKey: ["settings-skills"] });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save skill.");
     } finally {

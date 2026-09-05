@@ -43,7 +43,7 @@ interface AuthContextType {
   login: (credentials: LoginRequest) => Promise<AuthResponse>;
   register: (data: RegisterRequest) => Promise<AuthResponse>;
   logout: () => Promise<void>;
-  updateProfile: (data: UpdateUserProfileRequest) => Promise<UserProfileResponse>;
+  updateProfile: (data: UpdateUserProfileRequest, version: number) => Promise<UserProfileResponse>;
   refreshProfile: () => Promise<void>;
 }
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -134,9 +134,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await authService.logout(refreshToken || undefined);
   };
 
-  const updateProfile = async (data: UpdateUserProfileRequest) => {
+  const updateProfile = async (data: UpdateUserProfileRequest, version: number) => {
     const current = operation.current;
-    const profile = await authService.updateProfile(data);
+    const profile = await authService.updateProfile(data, version);
     if (current === operation.current && getAccessToken()) setUser(profile);
     return profile;
   };

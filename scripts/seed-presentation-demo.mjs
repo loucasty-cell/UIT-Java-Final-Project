@@ -64,7 +64,7 @@ try {
       "POST",
       {
         email: emails[index],
-        firstName: `Demo ${firstName}`,
+        firstName,
         lastName: "Mentor",
         password: `Sb1!${randomBytes(20).toString("hex")}`,
       },
@@ -86,7 +86,7 @@ try {
         title,
         description,
         skillIds: [skill.skill.id],
-        availabilityText: "Free demo availability: weekday afternoons",
+        availabilityText: "Free availability: weekday afternoons",
         durationMinutes: 60,
         active: true,
       },
@@ -101,7 +101,7 @@ try {
     // Acceptance below uses the normal backend lifecycle rather than fabricated
     // session objects, so the cards remain interactive.
     localSql(`INSERT INTO learning_requests(id,learner_id,mentor_id,requested_skill_id,mode,point_cost,points_held,scheduled_start,duration_minutes,message,status,created_at,updated_at,source_forum_post_id)
-      VALUES(${q(id)},${q(owner)},${q(demo.account.user.id)},${q(demo.skill.skill.id)},'VOLUNTEER',0,false,date_trunc('day',now())+interval '${index + 2} days 8 hours',60,'[Demo] Presentation example: volunteer learning session.','PENDING',now(),now(),${q(demo.post.id)});`);
+      VALUES(${q(id)},${q(owner)},${q(demo.account.user.id)},${q(demo.skill.skill.id)},'VOLUNTEER',0,false,date_trunc('day',now())+interval '${index + 2} days 8 hours',60,'Presentation example: volunteer learning session.','PENDING',now(),now(),${q(demo.post.id)});`);
     requests.push(id);
   }
   const accepted = await call(`/learning-requests/${requests[1]}/accept`, demos[1].account, "POST");
@@ -122,7 +122,7 @@ try {
         mode: "VOLUNTEER",
         scheduledStart: new Date(Date.now() + 4 * 86400000).toISOString(),
         durationMinutes: 60,
-        message: "[Demo] Could you teach me this skill? Accept this example from your Mentor tab.",
+        message: "Could you teach me this skill? Accept this example from your Mentor tab.",
       },
       201,
     );

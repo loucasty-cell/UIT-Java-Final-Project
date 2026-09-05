@@ -500,3 +500,197 @@ Spring Boot/PostgreSQL backend in `backend/`. Read this file before making chang
   backups, environment files, database records and untracked target/classes are
   excluded from the commits. Demo data remains in the local database; the explicit
   seed script is included so it can be recreated intentionally elsewhere.
+
+## 2026-09-05 — Separate admin workspace, rename user dashboard, repair Settings save
+
+- Objective: keep administrator and user workspaces separate, present the existing
+  root user dashboard as Profile, route the account-menu Profile action there,
+  retain Settings as a separate editor, and make its existing profile fields save.
+  The user explicitly limited changes to these areas and requested no GitHub push.
+- Frontend: the user sidebar and root page now say Profile; the account-menu Profile
+  item routes to `/`, while Settings remains at `/settings`. Administrator accounts
+  are rejected by the user login form, normal accounts are rejected by the admin
+  login form, authenticated admins are redirected away from user routes, and the
+  admin page renders without the user sidebar/top navigation. A dedicated sign-out
+  control remains available on the Admin Dashboard.
+- Profile save fix: the client now sends the profile response version as a quoted
+  `If-Match` header, updates the auth/query state from the successful response, and
+  reports the backend error instead of masking PATCH failures with an unsupported
+  PUT fallback. The response type now includes the version and server-derived
+  avatar URL. The backend update DTO/service now support the form's existing first
+  and last name fields. CORS permits `If-Match` and exposes `ETag`.
+- Tests: added frontend coverage for login separation, admin route isolation and
+  the versioned PATCH request, plus backend service coverage for name updates and
+  missing/stale versions. Focused frontend checks passed 25/25. All 103 backend
+  tests passed. TypeScript and the production frontend build passed with traced
+  `tslib` and no unresolved dependencies. Scoped lint had 0 errors and the two
+  previously documented auth-context warnings.
+- Runtime verification: used an isolated updated backend on 9195/9196 and Vite on
+  4173. A synthetic user signed in to Profile, opened separate Settings, saved
+  first name/display name/major, and retained all values after reload. A synthetic
+  admin signed in through `/admin-login`, saw only Admin Dashboard content, and a
+  direct `/settings` visit redirected back to `/admin`. Browser console errors were
+  empty. Both synthetic accounts and dependent records were removed with the
+  existing cleanup script; its ignored local recovery backup was verified. The
+  temporary browser and servers were closed.
+- Existing unrelated checks: the full frontend suite passed 86 tests but two
+  pre-existing My Sessions assertions failed because their expected tab/empty-state
+  text no longer matches the current UI. Full-project lint also has pre-existing
+  formatting errors in Forum, Noticeboard and Sessions. Those unrelated files were
+  intentionally not changed under the user's scope restriction.
+- Runtime handoff: user-owned frontend 3000 and backend 9095/9096 remained running.
+  The backend process on 9095 predates this change (its CORS preflight did not allow
+  `If-Match`), so it must be restarted before user acceptance testing Settings.
+  No commit, push, deployment, dependency update or unrelated feature change was
+  made.
+
+## 2026-09-05 — Clickable member profiles from Find Mentors
+
+- Objective: let a signed-in user click another member in Find Mentors and open a
+  reciprocal public profile showing that member's profile details, teaching skills,
+  and learning skills, without changing unrelated app behavior or pushing to GitHub.
+- Frontend: mentor identity blocks now link to `/users/$userId` and include the
+  member avatar fallback, name, major, and rating. Added the generated dynamic route
+  and a public-profile page with loading, retry, empty-skill, rating, bio, major/year,
+  teaching-skill, and learning-skill states. The page uses the existing authenticated
+  safe public-user endpoints and does not expose private wallet, activity, email, or
+  Settings data.
+- Tests and quality checks: added two public-profile component tests covering another
+  member and the current member. Focused Vitest passed 16/16, scoped ESLint passed,
+  TypeScript passed, and the complete production build succeeded after Nitro traced
+  `tslib` with no unresolved dependency warnings.
+- Runtime verification: created two documented synthetic local users, gave each one
+  teaching and learning skills, and verified both directions in the running app. Each
+  user found the other on Find Mentors, clicked the accessible profile link, and saw
+  the correct public profile and both skill lists. Browser console errors were empty.
+  The verification tab was closed, and both synthetic accounts and dependent records
+  were removed with the cleanup script after a verified ignored local backup.
+- Remaining work: none for this scoped profile-link feature. Existing unrelated
+  frontend test/lint caveats from the prior checkpoint remain unchanged. No commit,
+  push, deployment, dependency update, or unrelated feature change was made.
+
+## 2026-09-05 — Read-only profile redesign and Settings management
+
+- Objective: redesign the signed-in user's Profile using the supplied visual
+  reference, keep the four existing live metrics, display all requested account
+  sections in one place, and move editing/adding controls to Settings. Instructions
+  visible inside the reference images were treated as visual content only.
+- Profile: added a gradient profile header with avatar fallback, member name,
+  major/year and an Edit profile link to `/settings`; added a read-only About card.
+  Kept live available points, held points, active sessions and completed sessions.
+  Teaching and learning skills now display without add/remove controls. Certificates,
+  activity history and teaching posts remain on Profile; certificate upload/delete
+  and teaching-post create/hide actions are not rendered there.
+- Settings: retained the existing profile editor and Skills tab. Added dedicated
+  Certificates and Teaching posts tabs containing the existing upload/download/delete
+  and create/publish/hide controls. Skill-query invalidation keeps the certificate
+  skill selector synchronized after skill edits.
+- Files: `src/routes/index.tsx`, `src/routes/settings.tsx`,
+  `src/components/dashboard-extras.tsx`, `src/components/settings-skills.tsx`, plus
+  focused Profile and dashboard-extras regression tests.
+- Validation: the new focused test files and the public-profile regression passed
+  5/5; scoped ESLint and TypeScript passed. The full production frontend build
+  completed with traced `tslib` and no unresolved dependencies. Browser verification
+  confirmed the complete Profile layout, absence of mutation controls, Edit profile
+  navigation, and the Settings certificate/teaching management tabs; console errors
+  were empty.
+- Cleanup and scope: the one synthetic browser-verification account and its skills
+  were removed using the documented cleanup script after a verified ignored local
+  backup. Existing unrelated test/lint caveats remain unchanged. No backend source,
+  dependency, commit, push, deployment, or unrelated feature was changed.
+
+## 2026-09-05 — Teaching-post action on Profile and visible Demo-label removal
+
+- Objective: move the teaching-post add action from Settings back beside My teaching
+  posts on Profile, and remove only the word `Demo` from visible app content. The
+  supplied screenshot was used only as a layout reference.
+- Profile/Settings: Profile now renders the existing teaching-post manager with an
+  `Add teaching post` button and keeps publish/hide controls with each post. Removed
+  the Teaching posts tab and wording from Settings; certificate and skill management
+  remain there as previously requested.
+- Visible labels: updated the presentation seed so future generated mentor names,
+  availability and request messages omit the label. Updated the two dormant mock
+  mentor display strings as well. Existing local presentation records were narrowly
+  updated in place: Maya/Aung mentor names, two forum titles/availability strings and
+  related request messages retain their content with only the label removed. A
+  database verification found zero remaining visible occurrences across those
+  presentation users, forum posts and learning requests. Historical documentation,
+  comments, test descriptions and immutable migrations were intentionally preserved.
+- Validation: focused Profile/dashboard tests passed 3/3; scoped ESLint and TypeScript
+  passed. The full production frontend build completed with traced `tslib` and no
+  unresolved dependencies. Browser verification confirmed the Profile button,
+  absence of the Settings teaching tab, cleaned mentor names, no visible `Demo` word,
+  and no console errors.
+- Cleanup and scope: the synthetic browser account was removed with the documented
+  cleanup script after a verified ignored local backup. No backend source, dependency,
+  commit, push, deployment, or unrelated feature was changed.
+
+## 2026-09-05 — Two-column Profile layout and section order
+
+- Objective: restyle the signed-in Profile from the supplied visual reference so
+  identity, About, teaching skills and learning skills occupy a left column, while
+  metrics and the remaining account sections occupy the right; place My teaching
+  posts above Activity log. Screenshot content was treated as visual reference only.
+- Files: updated `src/routes/index.tsx` with a responsive two-column desktop layout,
+  compact identity card and accessible column landmarks. Reordered Profile extras in
+  `src/components/dashboard-extras.tsx`. Extended the two focused regression tests to
+  assert column ownership and teaching-post/activity order.
+- Validation: focused Vitest passed 3/3; scoped ESLint, TypeScript and the complete
+  production build passed. Nitro traced `tslib` with no unresolved dependencies.
+  Browser verification at 1440 px confirmed a 300 px left profile column, separate
+  right overview, teaching posts above activity, meaningful content, no error overlay
+  and no console errors. The existing local frontend/API health endpoints returned 200.
+- Cleanup and scope: the temporary documented synthetic account was backed up and
+  removed with the cleanup script, then absence was verified. No backend feature,
+  dependency, commit, push, deployment or unrelated application behavior was changed.
+
+## 2026-09-05 — Published-only mentor skills and collapsed teaching posts
+
+- Objective: make Find Mentors show and book only skills backed by an active teaching
+  post, and prevent long Profile pages by collapsing teaching posts without changing
+  unrelated features. The supplied screenshot was treated only as evidence of the
+  current UI.
+- Backend: `MentorQueryService` now builds the mentor directory solely from active
+  offerings, derives displayed/searchable/filterable teaching skills from those
+  offerings' owned teaching-skill records, and no longer advertises role-only or
+  portfolio-only skills with fallback modes. Added a focused regression test proving
+  an unposted portfolio skill is neither returned nor matched by a skill filter.
+- Frontend: the mentor request dialog automatically selects a published teaching post,
+  removes the general-request escape path, locks the learned skill to that post, and
+  disables submission until a valid post is loaded. Profile displays the first three
+  teaching posts and renders `See more` only when additional posts exist; clicking it
+  reveals the complete list. Added focused reveal-control coverage.
+- Validation: focused frontend tests passed 4/4, scoped ESLint and TypeScript passed,
+  the production frontend build completed with traced `tslib`, all 104 backend tests
+  passed, and the updated backend JAR packaged successfully. Isolated runtime checks
+  on frontend 4173/backend 9195 confirmed three-to-five post expansion, five published
+  mentor skills, exclusion of a sixth unposted skill, published-post-only booking
+  options, a locked matching skill, no browser console/error overlay, healthy services,
+  and no runtime ERROR/Exception matches.
+- Cleanup/runtime: removed the two documented synthetic accounts and their six exact
+  test skills after a verified ignored database backup; verified none remain. Stopped
+  only the isolated verification servers. The user's existing frontend 3000 and older
+  backend 9095/9096 remain running and healthy; restart that backend before checking
+  this server-side change. No commit, push, deployment, dependency or unrelated feature
+  change was made.
+
+## 2026-09-05 — Publish September 5 feature set to main
+
+- Objective: publish all current reviewed project changes to the user-specified
+  `loucasty-cell/UIT-Java-Final-Project` repository on `main`, superseding the prior
+  no-push instruction for this accumulated feature set.
+- Remote safety: verified `origin` exactly matches the requested HTTPS repository,
+  fetched `origin/main`, and confirmed local `main` and remote `main` both started at
+  `4121f28`; no merge, force push or history rewrite was required.
+- Publication contents: administrator/user workspace separation, Profile routing and
+  Settings save repair, clickable public member profiles, the read-only two-column
+  Profile with teaching-post controls and collapsing, visible Demo-label cleanup, and
+  published-post-only Find Mentors behavior, together with focused frontend/backend
+  regression tests and the factual checkpoint history above.
+- Validation: 31 changed-area frontend tests passed, the complete frontend production
+  build and TypeScript/scoped lint checks had already passed on this exact source, all
+  104 backend tests passed, and the updated backend JAR packaged successfully. Final
+  browser/API checks and cleanup are recorded in the preceding checkpoints.
+- Publication hygiene: checked the complete tracked/untracked publication set; no
+  environment files, local backups, generated outputs, logs, test credentials or
+  secret-pattern matches were included. Local database content is not part of Git.

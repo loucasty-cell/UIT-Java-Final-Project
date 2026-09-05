@@ -30,7 +30,9 @@ public class UserProfileService {
         requireMatchingVersion(user, expectedVersion);
 
         // Step 3: Reject fully empty payloads so PATCH always carries at least one change
-        boolean hasAtLeastOneField = request.getDisplayName() != null
+        boolean hasAtLeastOneField = request.getFirstName() != null
+                || request.getLastName() != null
+                || request.getDisplayName() != null
                 || request.getMajor() != null
                 || request.getYearOfStudy() != null
                 || request.getBio() != null
@@ -41,6 +43,12 @@ public class UserProfileService {
         }
 
         // Step 4: Apply only the supplied fields; omitted fields keep their current values
+        if (request.getFirstName() != null) {
+            user.setFirstName(request.getFirstName().trim());
+        }
+        if (request.getLastName() != null) {
+            user.setLastName(request.getLastName().trim());
+        }
         if (request.getDisplayName() != null) {
             user.setDisplayName(request.getDisplayName());
         }

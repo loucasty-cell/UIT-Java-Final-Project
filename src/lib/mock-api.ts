@@ -290,7 +290,7 @@ function initDB(): MockDB {
     offerings: [
       {
         id: "off-1",
-        mentor: { id: "user-mentor", displayName: "Demo mentor" },
+        mentor: { id: "user-mentor", displayName: "Mentor" },
         skill: { id: "sk-react", name: "React", category: "Programming" },
         price: 50,
         modes: ["POINTS"],
@@ -634,7 +634,7 @@ export function handleMockApiRequest(
     if (method === "POST") {
       const newOffering: MentorOfferingResponse = {
         id: "off-" + Date.now(),
-        mentor: { id: db.users[0].id, displayName: "Demo mentor" },
+        mentor: { id: db.users[0].id, displayName: "Mentor" },
         skill: {
           id: body.skillId || "sk-react",
           name: body.skillName || "React",

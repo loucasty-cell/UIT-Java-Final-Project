@@ -1,8 +1,17 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, Flag, LoaderCircle, RefreshCw, ShieldCheck, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  Flag,
+  LoaderCircle,
+  LogOut,
+  RefreshCw,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 import { adminService, type ReportResponse } from "@/services/admin.service";
+import { useAuth } from "@/context/auth-context";
 import { useLiveRefresh } from "@/hooks/use-live-refresh";
 import type { AdminDisputeResponse, AdminDashboardMetricsResponse } from "@/types/api";
 import { Badge } from "@/components/ui/badge";
@@ -22,10 +31,13 @@ export const Route = createFileRoute("/admin")({ component: AdminPage });
 type Resolution =
   "RELEASE_TO_MENTOR" | "REFUND_LEARNER" | "CANCEL_NO_TRANSFER" | "MARK_COMPLETED" | "CANCEL_SWAP";
 function AdminPage() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [metrics, setMetrics] = useState<AdminDashboardMetricsResponse | null>(null);
   const [reports, setReports] = useState<ReportResponse[]>([]);
   const [disputes, setDisputes] = useState<AdminDisputeResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [error, setError] = useState("");
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -49,17 +61,44 @@ function AdminPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    const revoke = logout();
+    void navigate({ to: "/admin-login", replace: true });
+    try {
+      await revoke;
+      toast.success("You have signed out.");
+    } catch {
+      toast.warning(
+        "Signed out on this device. The server could not be reached to revoke the session.",
+      );
+    } finally {
+      setLoggingOut(false);
+    }
+  };
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-8">
-      <header>
-        <Badge>
-          <ShieldCheck className="mr-1 h-3 w-3" />
-          Admin only
-        </Badge>
-        <h1 className="mt-2 text-3xl font-bold">Admin Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Review reports, investigate issues, and resolve session disputes.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <Badge>
+            <ShieldCheck className="mr-1 h-3 w-3" />
+            Admin only
+          </Badge>
+          <h1 className="mt-2 text-3xl font-bold">Admin Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            Review reports, investigate issues, and resolve session disputes.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Signed in as {user?.email}</p>
+        </div>
+        <Button variant="outline" disabled={loggingOut} onClick={() => void handleLogout()}>
+          {loggingOut ? (
+            <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <LogOut className="mr-2 h-4 w-4" />
+          )}
+          Sign out
+        </Button>
       </header>
       {loading && <p role="status">Loading admin data…</p>}
       {error && (

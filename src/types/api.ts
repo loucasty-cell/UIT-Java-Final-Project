@@ -81,10 +81,12 @@ export interface UserProfileResponse {
   major?: string;
   yearOfStudy?: number;
   timezone?: string;
+  avatarUrl?: string;
   avatarObjectKey?: string;
   status: string;
   roles?: string[];
   accountStatus?: string;
+  version: number;
 }
 
 export interface UpdateUserProfileRequest {

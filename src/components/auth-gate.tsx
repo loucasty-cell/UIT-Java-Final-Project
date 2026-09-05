@@ -40,10 +40,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
           <h1 className="text-xl font-semibold">Access denied</h1>
           <p className="my-4">Your account does not have access to the admin portal.</p>
           <Link to="/" className="underline">
-            Return to dashboard
+            Return to profile
           </Link>
         </section>
       </main>
     );
+  if (isAdmin && pathname !== "/admin" && !pathname.startsWith("/admin/"))
+    return <Navigate to="/admin" replace />;
   return children;
 }

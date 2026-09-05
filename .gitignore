@@ -39,6 +39,8 @@ bun.lockb
 # ==========================================
 # Backend (most rules in backend/.gitignore)
 # ==========================================
+target/
+storage/
 backend/target/
 backend/.env
 backend/storage/

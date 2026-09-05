@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Users,
   MessagesSquare,
+  ClipboardList,
   CalendarClock,
   Shield,
   Wallet,
@@ -28,6 +29,7 @@ const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Find Mentors", url: "/mentors", icon: Users },
   { title: "Volunteer Forum", url: "/forum", icon: MessagesSquare },
+  { title: "Learning Noticeboard", url: "/noticeboard", icon: ClipboardList },
   { title: "My Sessions", url: "/sessions", icon: CalendarClock },
   { title: "Wallet", url: "/wallet", icon: Wallet },
 ];

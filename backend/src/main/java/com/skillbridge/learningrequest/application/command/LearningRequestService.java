@@ -3,6 +3,7 @@ package com.skillbridge.learningrequest.application.command;
 import com.skillbridge.auth.domain.entity.User;
 import com.skillbridge.auth.infrastructure.persistence.UserRepository;
 import com.skillbridge.learningrequest.api.dto.request.CreateLearningRequest;
+import com.skillbridge.learningrequest.api.dto.request.AcceptLearningRequest;
 import com.skillbridge.learningrequest.api.dto.request.RejectLearningRequest;
 import com.skillbridge.learningrequest.api.dto.response.LearningRequestResponse;
 import com.skillbridge.learningrequest.api.mapper.LearningRequestMapper;
@@ -189,6 +190,92 @@ public class LearningRequestService {
         return learningRequestMapper.toResponse(saved, learner, mentor, requestedSkill);
     }
 
+    /**
+     * A teacher's response to a Learning Noticeboard post is a pending session
+     * request. It therefore appears in My Sessions for both people and
+     * uses the same accept/decline and Google Meet-link flow as every other
+     * session mode.
+     */
+    public LearningRequestResponse createLearningNeedOfferRequest(
+            UUID learnerId,
+            UUID mentorId,
+            UUID skillId,
+            OffsetDateTime scheduledStart,
+            int durationMinutes,
+            String message,
+            UUID learningNeedOfferId,
+            SessionMode mode,
+            UUID offeredUserSkillId
+    ) {
+        User learner = userRepository.findById(learnerId)
+                .orElseThrow(() -> new IllegalArgumentException("Learner user not found"));
+        User mentor = userRepository.findById(mentorId)
+                .orElseThrow(() -> new IllegalArgumentException("Teacher user not found"));
+        Skill skill = skillRepository.findById(skillId)
+                .orElseThrow(() -> new IllegalArgumentException("Requested skill not found"));
+
+        if (mode == null) {
+            throw new IllegalArgumentException("Session mode is required");
+        }
+        int pointCost = 0;
+        boolean pointsHeld = false;
+        if (mode == SessionMode.POINTS) {
+            pointCost = 10;
+            Wallet learnerWallet = walletService.ensureWallet(learnerId);
+            if (learnerWallet.getAvailablePoints() < pointCost) {
+                throw new IllegalArgumentException("The learner does not have enough available points for this session");
+            }
+        } else if (mode == SessionMode.SKILL_SWAP) {
+            if (offeredUserSkillId == null) {
+                throw new IllegalArgumentException("The learner must choose a skill to exchange");
+            }
+            UserSkill exchangeSkill = userSkillRepository.findByIdAndUserId(offeredUserSkillId, learnerId)
+                    .orElseThrow(() -> new IllegalArgumentException("Exchange skill does not belong to the learner"));
+            if (exchangeSkill.getDirection() != Direction.TEACH) {
+                throw new IllegalArgumentException("Exchange skill must be in the learner's teaching portfolio");
+            }
+        }
+
+        scheduleConflictService.validateNoConflict(learnerId, scheduledStart, durationMinutes);
+        scheduleConflictService.validateNoConflict(mentorId, scheduledStart, durationMinutes);
+
+        LearningRequest entity = new LearningRequest();
+        entity.setId(UUID.randomUUID());
+        entity.setLearnerId(learnerId);
+        entity.setMentorId(mentorId);
+        entity.setRequestedSkillId(skillId);
+        entity.setMode(mode);
+        entity.setPointCost(pointCost);
+        entity.setPointsHeld(false);
+        entity.setScheduledStart(scheduledStart);
+        entity.setDurationMinutes(durationMinutes);
+        entity.setMessage(message);
+        entity.setLearningNeedOfferId(learningNeedOfferId);
+        entity.setStatus(LearningRequestStatus.PENDING);
+
+        if (pointCost > 0) {
+            walletService.holdPoints(
+                    learnerId,
+                    mentorId,
+                    pointCost,
+                    "LEARNING_REQUEST",
+                    entity.getId(),
+                    "HOLD:LR:" + entity.getId());
+            pointsHeld = true;
+        }
+        entity.setPointsHeld(pointsHeld);
+
+        LearningRequest saved = learningRequestRepository.save(entity);
+        notificationService.notifyUser(
+                learnerId,
+                "Teaching offer received",
+                "A teacher offered a " + mode.name().replace('_', ' ').toLowerCase() + " "
+                        + durationMinutes + "-minute " + skill.getName() + " session. Review it under My Sessions.",
+                "LEARNING_REQUEST",
+                saved.getId());
+        return learningRequestMapper.toResponse(saved, learner, mentor, skill);
+    }
+
     @Transactional(readOnly = true)
     public List<LearningRequestResponse> getLearningRequests(String direction, LearningRequestStatus status) {
         UUID currentUserId = SecurityUtils.getCurrentUserId();
@@ -228,7 +315,7 @@ public class LearningRequestService {
         return learningRequestMapper.toResponse(entity, learner, mentor, skill);
     }
 
-    public LearningRequestResponse acceptLearningRequest(UUID id) {
+    public LearningRequestResponse acceptLearningRequest(UUID id, AcceptLearningRequest acceptRequest) {
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         LearningRequest entity = learningRequestRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Learning request not found: " + id));
@@ -287,6 +374,7 @@ public class LearningRequestService {
         session.setDurationMinutes(entity.getDurationMinutes());
         session.setScheduledEnd(entity.getScheduledStart().plusMinutes(entity.getDurationMinutes()));
         session.setMode(entity.getMode());
+        session.setMeetingUrl(acceptRequest.getMeetingUrl().trim());
         session.setNotes(entity.getMessage());
         session.setCreatedAt(now);
         session.setUpdatedAt(now);
@@ -300,7 +388,7 @@ public class LearningRequestService {
         notificationService.notifyUser(
                 entity.getLearnerId(),
                 "Learning Request Accepted",
-                "Your learning request was accepted! Session scheduled for " + entity.getScheduledStart(),
+                "Your learning request was accepted! The Google Meet link is ready in My Sessions.",
                 "SWAP_SESSION",
                 savedSession.getId());
 

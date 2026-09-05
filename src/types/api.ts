@@ -428,6 +428,7 @@ export interface ForumPostSummaryResponse {
   author?: { id: string; displayName: string; major?: string; avatarUrl?: string };
   skillTags?: GlobalCatalogSkill[];
   availability?: string;
+  durationMinutes?: number;
   timestamp?: string;
   skillIds: string[];
   skills?: string[];
@@ -453,6 +454,7 @@ export interface CreateForumPostRequest {
   description: string;
   skillIds: string[];
   availabilityText?: string;
+  durationMinutes: number;
   active?: boolean;
 }
 
@@ -477,6 +479,37 @@ export interface RewardCommentResponse {
   transactionId?: string;
   pointsAwarded: number;
   message?: string;
+}
+
+// ==========================================
+// 9b. Learning Noticeboard
+// ==========================================
+
+export interface LearningNeedResponse {
+  id: string;
+  learnerId: string;
+  learnerName: string;
+  skillId: string;
+  skillName: string;
+  title: string;
+  description: string;
+  availabilityText?: string;
+  durationMinutes: number;
+  allowedModes: Array<"POINTS" | "SKILL_SWAP" | "VOLUNTEER">;
+  exchangeSkillName?: string;
+  offerCount: number;
+  offeredByMe: boolean;
+  createdAt: string;
+}
+
+export interface CreateLearningNeedRequest {
+  skillId: string;
+  title: string;
+  description: string;
+  availabilityText?: string;
+  durationMinutes: number;
+  allowedModes: Array<"POINTS" | "SKILL_SWAP" | "VOLUNTEER">;
+  exchangeUserSkillId?: string;
 }
 
 // ==========================================

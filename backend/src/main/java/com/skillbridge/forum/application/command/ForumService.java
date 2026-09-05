@@ -45,6 +45,7 @@ public class ForumService {
         validateSkills(request.getSkillIds());
         entity.setSkillIds(new java.util.LinkedHashSet<>(request.getSkillIds()));
         entity.setAvailabilityText(request.getAvailabilityText());
+        entity.setDurationMinutes(request.getDurationMinutes());
         entity.setActive(request.getActive() != null ? request.getActive() : true);
         entity.setLikeCount(0);
         entity.setCommentCount(0);
@@ -70,6 +71,7 @@ public class ForumService {
             entity.setSkillIds(new java.util.LinkedHashSet<>(request.getSkillIds()));
         }
         if (request.getAvailabilityText() != null) entity.setAvailabilityText(request.getAvailabilityText());
+        if (request.getDurationMinutes() != null) entity.setDurationMinutes(request.getDurationMinutes());
         if (request.getActive() != null) entity.setActive(request.getActive());
 
         entity.setUpdatedAt(OffsetDateTime.now());

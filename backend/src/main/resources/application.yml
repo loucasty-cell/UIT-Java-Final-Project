@@ -46,6 +46,9 @@ spring:
     baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
     baseline-version: ${FLYWAY_BASELINE_VERSION:0}
     validate-on-migrate: ${FLYWAY_VALIDATE_ON_MIGRATE:true}
+    # The shared Neon database contains V28 from an older branch that is not in
+    # this checkout. Keep its applied schema while allowing current migrations.
+    ignore-migration-patterns: ${FLYWAY_IGNORE_MIGRATION_PATTERNS:*:missing}
     clean-disabled: ${FLYWAY_CLEAN_DISABLED:true}
     # V4.1 (skills catalog) was added after V5 had already shipped to databases,
     # so it must be allowed to apply out of version order on existing schemas.

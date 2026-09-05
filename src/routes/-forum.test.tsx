@@ -22,22 +22,26 @@ beforeEach(() => {
 it("explains short descriptions, then publishes a manually entered skill", async () => {
   const user = userEvent.setup();
   render(<Page />);
-  await user.click(screen.getByRole("button", { name: "Post Volunteer Session" }));
-  await user.type(screen.getByLabelText("Title"), "Java for beginner");
-  await user.type(screen.getByLabelText("Skill"), "Hand lettering");
-  await user.type(screen.getByLabelText("Description"), "HI");
-  await user.click(screen.getByRole("button", { name: "Publish" }));
+  await user.click(screen.getByRole("button", { name: "Offer a free session" }));
+  await user.type(screen.getByLabelText("Session title"), "Java for beginner");
+  await user.type(screen.getByLabelText("Skill to teach"), "Hand lettering");
+  await user.type(screen.getByLabelText("What will learners practise?"), "HI");
+  await user.click(screen.getByRole("button", { name: "Publish free session" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("at least 20 characters");
   expect(forumService.createPost).not.toHaveBeenCalled();
-  await user.clear(screen.getByLabelText("Description"));
+  await user.clear(screen.getByLabelText("What will learners practise?"));
   await user.type(
-    screen.getByLabelText("Description"),
+    screen.getByLabelText("What will learners practise?"),
     "Learn hand lettering with practical exercises.",
   );
-  await user.click(screen.getByRole("button", { name: "Publish" }));
+  await user.click(screen.getByRole("button", { name: "Publish free session" }));
   await waitFor(() =>
     expect(forumService.createPost).toHaveBeenCalledWith(
-      expect.objectContaining({ skillIds: ["skill-id"], title: "Java for beginner" }),
+      expect.objectContaining({
+        durationMinutes: 60,
+        skillIds: ["skill-id"],
+        title: "Java for beginner",
+      }),
     ),
   );
   expect(skillsService.ensureTeachingSkill).toHaveBeenCalledWith("Hand lettering");

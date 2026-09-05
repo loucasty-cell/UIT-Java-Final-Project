@@ -46,16 +46,16 @@ try {
     [
       0,
       "Maya",
-      "Java",
-      "[Demo] Java basics for beginners",
-      "Practise Java variables, loops, and simple classes with a friendly step-by-step lesson. This is a presentation example.",
+      "Python",
+      "Free Python basics study session",
+      "A friendly free session for learners who want to practise Python variables, loops, and simple functions step by step.",
     ],
     [
       1,
       "Aung",
-      "MySQL",
-      "[Demo] Write your first SQL queries",
-      "Learn SELECT, WHERE, and JOIN using a small example database. Bring your questions to this free presentation session.",
+      "React",
+      "Free React component clinic",
+      "Bring a React component or question and learn practical state, props, and component composition techniques in a free session.",
     ],
   ]) {
     const account = await call(
@@ -86,7 +86,8 @@ try {
         title,
         description,
         skillIds: [skill.skill.id],
-        availabilityText: "Demo availability: weekday afternoons",
+        availabilityText: "Free demo availability: weekday afternoons",
+        durationMinutes: 60,
         active: true,
       },
       201,
@@ -142,7 +143,7 @@ try {
     (publicMentors.content || publicMentors).some((m) => m.user.id === demos[1].account.user.id),
   );
   console.log(
-    `Added 2 labelled demo mentors, 2 volunteer posts, 1 outgoing pending request, 1 active session${incoming ? ", and 1 incoming mentor request" : ""} to the existing account. Existing account points unchanged.`,
+    `Added 2 labelled demo mentors and free-session posts, 1 outgoing pending request, 1 active session${incoming ? ", and 1 incoming mentor request" : ""} to the existing account. Existing account points unchanged.`,
   );
 } finally {
   for (const account of accounts)

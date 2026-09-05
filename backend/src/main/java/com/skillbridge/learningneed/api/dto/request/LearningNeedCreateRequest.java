@@ -1,23 +1,23 @@
-package com.skillbridge.forum.api.dto.request;
+package com.skillbridge.learningneed.api.dto.request;
 
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import com.skillbridge.shared.domain.model.SessionMode;
 import lombok.Data;
 
 import java.util.List;
 import java.util.UUID;
 
 @Data
-public class ForumPostCreateRequest {
+public class LearningNeedCreateRequest {
+    @NotNull
+    private UUID skillId;
+
     @NotNull
     @Size(min = 5, max = 150)
     private String title;
-
-    @NotNull
-    @Size(min = 1, max = 10)
-    private List<UUID> skillIds;
 
     @NotNull
     @Size(min = 20, max = 5000)
@@ -31,5 +31,9 @@ public class ForumPostCreateRequest {
     @Max(480)
     private Integer durationMinutes = 60;
 
-    private Boolean active = true;
+    @NotNull
+    @Size(min = 1, max = 3)
+    private List<SessionMode> allowedModes = List.of(SessionMode.VOLUNTEER);
+
+    private UUID exchangeUserSkillId;
 }

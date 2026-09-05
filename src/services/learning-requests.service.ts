@@ -46,6 +46,7 @@ export interface LearningRequestResponse {
   pointCostSnapshot?: number;
   sessionId?: string;
   meetingUrl?: string;
+  learningNeedOfferId?: string;
   createdAt: string;
   updatedAt: string;
 }

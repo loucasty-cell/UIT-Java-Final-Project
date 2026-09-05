@@ -66,6 +66,9 @@ public class LearningRequest {
     @JoinColumn(name = "source_forum_post_id", insertable = false, updatable = false)
     private ForumPost sourceForumPost;
 
+    @Column(name = "learning_need_offer_id")
+    private UUID learningNeedOfferId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "mode", nullable = false, length = 20)
     private SessionMode mode;

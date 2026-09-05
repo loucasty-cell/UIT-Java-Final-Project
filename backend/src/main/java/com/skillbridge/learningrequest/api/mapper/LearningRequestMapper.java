@@ -37,6 +37,7 @@ public class LearningRequestMapper {
                 .requestedSkill(skillSummary)
                 .offeredUserSkillId(entity.getOfferedUserSkillId())
                 .sourceForumPostId(entity.getSourceForumPostId())
+                .learningNeedOfferId(entity.getLearningNeedOfferId())
                 .mode(entity.getMode())
                 .pointCost(entity.getPointCost())
                 .pointsHeld(entity.getPointsHeld())

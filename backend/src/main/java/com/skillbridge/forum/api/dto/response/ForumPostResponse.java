@@ -16,6 +16,7 @@ public class ForumPostResponse {
     private String description;
     private List<SkillSummaryResponse> skillTags;
     private String availability;
+    private Integer durationMinutes;
     private Integer likeCount;
     private Integer commentCount;
     private Boolean likedByMe;

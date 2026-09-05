@@ -42,6 +42,9 @@ public class ForumPost {
     @Column(name = "availability_text", length = 500)
     private String availabilityText;
 
+    @Column(name = "duration_minutes", nullable = false)
+    private Integer durationMinutes = 60;
+
     @Column(name = "active", nullable = false)
     private Boolean active;
 

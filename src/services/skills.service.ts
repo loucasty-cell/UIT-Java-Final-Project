@@ -50,6 +50,17 @@ export const skillsService = {
     );
   },
 
+  async ensureLearningSkill(
+    name: string,
+    level: SkillLevel = "INTERMEDIATE",
+  ): Promise<UserSkillResponse> {
+    const owned = await this.getUserSkills("LEARN");
+    return (
+      owned.find((item) => item.skill.name.toLowerCase() === name.trim().toLowerCase()) ||
+      this.addCustomUserSkill(name.trim(), "LEARN", level)
+    );
+  },
+
   /**
    * Update skill proficiency level
    * PATCH /api/v1/me/skills/{id}

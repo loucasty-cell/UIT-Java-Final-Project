@@ -1,6 +1,8 @@
 package com.skillbridge.forum.api.dto.request;
 
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.Data;
 
 import java.util.List;
@@ -19,6 +21,10 @@ public class ForumPostUpdateRequest {
 
     @Size(max = 500)
     private String availabilityText;
+
+    @Min(15)
+    @Max(480)
+    private Integer durationMinutes;
 
     private Boolean active;
 }

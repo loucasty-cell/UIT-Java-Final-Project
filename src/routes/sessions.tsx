@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -151,12 +152,17 @@ function RolePanel({
   const disputed = sessions.filter((s) => s.status === "DISPUTED");
   const awaiting = sessions.filter((s) => s.status === "AWAITING_CONFIRMATION");
   const pending = requests.filter((r) => r.status === "PENDING");
+  useEffect(() => {
+    if (section === "active" && !active.length && pending.length) setSection("pending");
+  }, [active.length, pending.length, section]);
   return (
     <TabsContent value={role} className="mt-5">
       <Tabs value={section} onValueChange={setSection}>
         <TabsList className="flex h-auto flex-wrap">
           <TabsTrigger value="active">Active ({active.length})</TabsTrigger>
-          <TabsTrigger value="pending">Requests ({pending.length})</TabsTrigger>
+          <TabsTrigger value="pending">
+            {role === "learner" ? "Offers & requests" : "Requests"} ({pending.length})
+          </TabsTrigger>
           <TabsTrigger value="completed">Completed ({completed.length})</TabsTrigger>
           <TabsTrigger value="awaiting">Awaiting confirmation ({awaiting.length})</TabsTrigger>
           <TabsTrigger value="disputed">Reported ({disputed.length})</TabsTrigger>
@@ -177,7 +183,10 @@ function RolePanel({
           {pending.map((r) => (
             <RequestCard key={r.id} request={r} role={role} reload={reload} />
           ))}
-          <Empty show={!pending.length} text="No pending requests." />
+          <Empty
+            show={!pending.length}
+            text={role === "learner" ? "No pending offers or requests." : "No pending requests."}
+          />
         </TabsContent>
         <TabsContent value="completed" className="space-y-3">
           {completed.map((s) => (
@@ -343,17 +352,39 @@ function RequestCard({
   reload: () => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
+  const [acceptOpen, setAcceptOpen] = useState(false);
+  const [meetingUrl, setMeetingUrl] = useState("");
+  const [acceptError, setAcceptError] = useState("");
   const act = async (action: "accept" | "reject" | "cancel") => {
     setBusy(true);
     try {
-      if (action === "accept") await learningRequestsService.acceptRequest(request.id);
-      else if (action === "reject")
+      if (action === "reject")
         await learningRequestsService.rejectRequest(request.id, { reason: "Declined by mentor" });
       else await learningRequestsService.cancelRequest(request.id);
       toast.success(`Request ${action}ed`);
       await reload();
     } catch (f) {
       toast.error(f instanceof Error ? f.message : "Request could not be updated.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const accept = async () => {
+    const value = meetingUrl.trim();
+    if (!/^https:\/\/meet\.google\.com\/\S+$/i.test(value)) {
+      setAcceptError("Paste a valid Google Meet link starting with https://meet.google.com/.");
+      return;
+    }
+    setBusy(true);
+    setAcceptError("");
+    try {
+      await learningRequestsService.acceptRequest(request.id, { meetingUrl: value });
+      toast.success("Request accepted and Google Meet link sent");
+      setMeetingUrl("");
+      setAcceptOpen(false);
+      await reload();
+    } catch (failure) {
+      setAcceptError(failure instanceof Error ? failure.message : "Request could not be accepted.");
     } finally {
       setBusy(false);
     }
@@ -367,9 +398,13 @@ function RequestCard({
               {request.requestedSkill?.name || request.requestedSkillName || "Learning session"}
             </h3>
             <p className="text-sm text-muted-foreground">
-              {role === "learner"
-                ? `Requested from ${request.mentorName || "mentor"}`
-                : `Requested by ${request.learnerName || "learner"}`}{" "}
+              {request.learningNeedOfferId
+                ? role === "learner"
+                  ? `Teaching offer from ${request.mentorName || "mentor"}`
+                  : `You offered to teach ${request.learnerName || "learner"}`
+                : role === "learner"
+                  ? `Requested from ${request.mentorName || "mentor"}`
+                  : `Requested by ${request.learnerName || "learner"}`}{" "}
               · {request.mode.replace("SKILL_SWAP", "Skill exchange")}
             </p>
           </div>
@@ -382,7 +417,7 @@ function RequestCard({
         <div className="flex gap-2">
           {role === "mentor" ? (
             <>
-              <Button disabled={busy} onClick={() => void act("accept")}>
+              <Button disabled={busy} onClick={() => setAcceptOpen(true)}>
                 Accept
               </Button>
               <Button disabled={busy} variant="outline" onClick={() => void act("reject")}>
@@ -391,11 +426,40 @@ function RequestCard({
             </>
           ) : (
             <Button disabled={busy} variant="outline" onClick={() => void act("cancel")}>
-              Cancel request
+              {request.learningNeedOfferId ? "Decline offer" : "Cancel request"}
             </Button>
           )}
         </div>
       </CardContent>
+      <Dialog open={acceptOpen} onOpenChange={(open) => !open && setAcceptOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Accept request and send Google Meet link</DialogTitle>
+            <DialogDescription>
+              The learner will find this link under My Sessions after you accept their {request.mode.toLowerCase()} request.
+            </DialogDescription>
+          </DialogHeader>
+          <div>
+            <Label htmlFor={`meeting-link-${request.id}`}>Google Meet link</Label>
+            <Input
+              id={`meeting-link-${request.id}`}
+              type="url"
+              value={meetingUrl}
+              onChange={(event) => setMeetingUrl(event.target.value)}
+              placeholder="https://meet.google.com/abc-defg-hij"
+              autoFocus
+            />
+          </div>
+          {acceptError && <p role="alert" className="text-sm text-destructive">{acceptError}</p>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAcceptOpen(false)}>Cancel</Button>
+            <Button disabled={busy || !meetingUrl.trim()} onClick={() => void accept()}>
+              {busy && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+              Accept and send link
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

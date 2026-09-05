@@ -15,6 +15,7 @@ import { Route as AdminLoginRouteImport } from './routes/admin-login'
 import { Route as ForumRouteImport } from './routes/forum'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MentorsRouteImport } from './routes/mentors'
+import { Route as NoticeboardRouteImport } from './routes/noticeboard'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SessionsRouteImport } from './routes/sessions'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -50,6 +51,11 @@ const MentorsRoute = MentorsRouteImport.update({
   path: '/mentors',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NoticeboardRoute = NoticeboardRouteImport.update({
+  id: '/noticeboard',
+  path: '/noticeboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/forum': typeof ForumRoute
   '/login': typeof LoginRoute
   '/mentors': typeof MentorsRoute
+  '/noticeboard': typeof NoticeboardRoute
   '/register': typeof RegisterRoute
   '/sessions': typeof SessionsRoute
   '/settings': typeof SettingsRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/forum': typeof ForumRoute
   '/login': typeof LoginRoute
   '/mentors': typeof MentorsRoute
+  '/noticeboard': typeof NoticeboardRoute
   '/register': typeof RegisterRoute
   '/sessions': typeof SessionsRoute
   '/settings': typeof SettingsRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/forum': typeof ForumRoute
   '/login': typeof LoginRoute
   '/mentors': typeof MentorsRoute
+  '/noticeboard': typeof NoticeboardRoute
   '/register': typeof RegisterRoute
   '/sessions': typeof SessionsRoute
   '/settings': typeof SettingsRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/forum'
     | '/login'
     | '/mentors'
+    | '/noticeboard'
     | '/register'
     | '/sessions'
     | '/settings'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/forum'
     | '/login'
     | '/mentors'
+    | '/noticeboard'
     | '/register'
     | '/sessions'
     | '/settings'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/forum'
     | '/login'
     | '/mentors'
+    | '/noticeboard'
     | '/register'
     | '/sessions'
     | '/settings'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   ForumRoute: typeof ForumRoute
   LoginRoute: typeof LoginRoute
   MentorsRoute: typeof MentorsRoute
+  NoticeboardRoute: typeof NoticeboardRoute
   RegisterRoute: typeof RegisterRoute
   SessionsRoute: typeof SessionsRoute
   SettingsRoute: typeof SettingsRoute
@@ -204,6 +217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MentorsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/noticeboard': {
+      id: '/noticeboard'
+      path: '/noticeboard'
+      fullPath: '/noticeboard'
+      preLoaderRoute: typeof NoticeboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/register': {
       id: '/register'
       path: '/register'
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   ForumRoute: ForumRoute,
   LoginRoute: LoginRoute,
   MentorsRoute: MentorsRoute,
+  NoticeboardRoute: NoticeboardRoute,
   RegisterRoute: RegisterRoute,
   SessionsRoute: SessionsRoute,
   SettingsRoute: SettingsRoute,

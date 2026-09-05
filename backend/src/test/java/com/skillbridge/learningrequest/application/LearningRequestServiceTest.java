@@ -3,6 +3,7 @@ package com.skillbridge.learningrequest.application;
 import com.skillbridge.auth.domain.entity.User;
 import com.skillbridge.auth.infrastructure.persistence.UserRepository;
 import com.skillbridge.learningrequest.api.dto.request.CreateLearningRequest;
+import com.skillbridge.learningrequest.api.dto.request.AcceptLearningRequest;
 import com.skillbridge.learningrequest.api.dto.request.RejectLearningRequest;
 import com.skillbridge.learningrequest.api.dto.response.LearningRequestResponse;
 import com.skillbridge.learningrequest.api.mapper.LearningRequestMapper;
@@ -175,6 +176,32 @@ public class LearningRequestServiceTest {
     }
 
     @Test
+    void createsVolunteerRequestForLearningNeedOffer() {
+        UUID offerId = UUID.randomUUID();
+        OffsetDateTime proposedStart = OffsetDateTime.now().plusDays(2);
+        User learner = new User();
+        learner.setId(learnerId);
+        User mentor = new User();
+        mentor.setId(mentorId);
+        Skill skill = Skill.builder().id(skillId).name("PostgreSQL").build();
+
+        when(userRepository.findById(learnerId)).thenReturn(Optional.of(learner));
+        when(userRepository.findById(mentorId)).thenReturn(Optional.of(mentor));
+        when(skillRepository.findById(skillId)).thenReturn(Optional.of(skill));
+        when(learningRequestRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        LearningRequestResponse response = service.createLearningNeedOfferRequest(
+                learnerId, mentorId, skillId, proposedStart, 60, "Happy to help", offerId,
+                SessionMode.VOLUNTEER, null);
+
+        assertEquals(SessionMode.VOLUNTEER, response.getMode());
+        assertEquals(offerId, response.getLearningNeedOfferId());
+        assertEquals(0, response.getPointCost());
+        verify(notificationService).notifyUser(eq(learnerId), eq("Teaching offer received"), any(),
+                eq("LEARNING_REQUEST"), eq(response.getId()));
+    }
+
+    @Test
     void mentorAcceptsRequestCreatesScheduledSession() {
         TestAuthContext.loginAs(mentorId);
 
@@ -203,7 +230,9 @@ public class LearningRequestServiceTest {
         });
         when(learningRequestRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        LearningRequestResponse response = service.acceptLearningRequest(requestId);
+        AcceptLearningRequest accept = new AcceptLearningRequest();
+        accept.setMeetingUrl("https://meet.google.com/abc-defg-hij");
+        LearningRequestResponse response = service.acceptLearningRequest(requestId, accept);
 
         assertEquals(LearningRequestStatus.ACCEPTED, response.getStatus());
         assertNotNull(response.getSessionId());

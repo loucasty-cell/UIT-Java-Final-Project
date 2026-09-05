@@ -1,6 +1,7 @@
 package com.skillbridge.learningrequest.api.controller;
 
 import com.skillbridge.learningrequest.api.dto.request.CreateLearningRequest;
+import com.skillbridge.learningrequest.api.dto.request.AcceptLearningRequest;
 import com.skillbridge.learningrequest.api.dto.request.RejectLearningRequest;
 import com.skillbridge.learningrequest.api.dto.response.LearningRequestResponse;
 import com.skillbridge.learningrequest.application.command.LearningRequestService;
@@ -50,8 +51,11 @@ public class LearningRequestController {
 
     @PostMapping("/{id}/accept")
     @Operation(summary = "Mentor accepts learning request and automatically schedules session")
-    public ResponseEntity<LearningRequestResponse> acceptLearningRequest(@PathVariable("id") UUID id) {
-        LearningRequestResponse response = learningRequestService.acceptLearningRequest(id);
+    public ResponseEntity<LearningRequestResponse> acceptLearningRequest(
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody AcceptLearningRequest request
+    ) {
+        LearningRequestResponse response = learningRequestService.acceptLearningRequest(id, request);
         return ResponseEntity.ok(response);
     }
 

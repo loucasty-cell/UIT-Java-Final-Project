@@ -1,7 +1,5 @@
 # SkillBridge — Database ER Diagram & Workflow Specification (ER_Diagram)
 
-> **Canonical Document:** This file is synchronized with [ER_Diagram.md](ER_Diagram.md).
-
 Single source of truth for the **actual** PostgreSQL schema, Mermaid entity-relationship diagrams, and domain workflow lifecycles in SkillBridge. Every table, column, key, constraint, and relationship below is verified against the Flyway migrations (`backend/src/main/resources/db/migration/V1`–`V33`), JPA entity mappings, and backend domain services.
 
 ## Conventions

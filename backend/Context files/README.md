@@ -18,5 +18,6 @@ Read the guide first, then use the focused files:
 10. [TESTING_MATRIX.md](TESTING_MATRIX.md) - current coverage plus required future layers.
 11. [CLEAN_CODE_STANDARDS.md](CLEAN_CODE_STANDARDS.md) - implementation quality rules.
 12. [REQUIRED_SKILLS.md](REQUIRED_SKILLS.md) - contributor competencies.
+13. [ER_Diagram.md](ER_Diagram.md) - canonical database ER diagrams (Mermaid) and domain workflow lifecycle maps.
 
 When documents overlap: API_CONTRACT is the single source of truth for routes, AUTHENTICATION_AUTHORIZATION for access decisions, TESTING_MATRIX for verification. Update the relevant contract documents before changing behavior.

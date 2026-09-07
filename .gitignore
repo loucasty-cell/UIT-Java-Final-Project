@@ -1,30 +1,76 @@
-# Logs
-logs
+# ==========================================
+# Frontend & Node / Vite / Bun / TanStack
+# ==========================================
+node_modules/
+dist/
+dist-ssr/
+.output/
+.vinxi/
+.tanstack/
+.tanstack/**
+.nitro/
+.vite/
+*.local
+
+# ==========================================
+# Testing & E2E (Playwright, Vitest)
+# ==========================================
+/test-results/
+/playwright-report/
+/playwright/.cache/
+.vitest/
+coverage/
+
+# Wrangler / Cloudflare
+.wrangler/
+.dev.vars
+
+# Frontend Logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+bun.lock
+bun.lockb
 
-node_modules
-dist
-dist-ssr
-.output
-.vinxi
-.tanstack/**
-.nitro
-*.local
+# ==========================================
+# Backend (most rules in backend/.gitignore)
+# ==========================================
+target/
+storage/
+backend/target/
+backend/.env
+backend/storage/
+backend/node/
 
-# Wrangler / Cloudflare
-.wrangler/
-.dev.vars
+# ==========================================
+# Environment Variables
+# ==========================================
+.env
+.env.*
+!.env.example
+!.env.production.example
 
-# Editor directories and files
+# Backend env files are managed in backend/.gitignore
+backend/.env.*
+!backend/.env.example
+!backend/.env.production.example
+!backend/.env.staging
+
+# ==========================================
+# IDE & Operating System
+# ==========================================
+.idea/
+*.iml
 .vscode/*
 !.vscode/extensions.json
-.idea
+!.vscode/launch.json
+!.vscode/tasks.json
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj

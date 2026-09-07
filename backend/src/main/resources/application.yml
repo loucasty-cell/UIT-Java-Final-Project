@@ -1,0 +1,118 @@
+spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+  application:
+    name: skillbridge-backend
+
+  # Load the developer's private .env file from the project root (KEY=value lines).
+  # "optional:" means the app still boots fine when .env is absent (e.g. in CI).
+  # Real OS environment variables always take precedence over .env values.
+  config:
+    import: "optional:file:.env[.properties]"
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/skillbridge?sslmode=disable}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: SkillBridgePool
+      maximum-pool-size: ${DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE:10}
+      minimum-idle: ${DATASOURCE_HIKARI_MINIMUM_IDLE:2}
+      connection-timeout: ${DATASOURCE_HIKARI_CONNECTION_TIMEOUT:10000}
+      idle-timeout: ${DATASOURCE_HIKARI_IDLE_TIMEOUT:600000}
+      max-lifetime: ${DATASOURCE_HIKARI_MAX_LIFETIME:1740000}
+      keepalive-time: ${DATASOURCE_HIKARI_KEEPALIVE_TIME:30000}
+      validation-timeout: 3000
+      leak-detection-threshold: ${DATASOURCE_HIKARI_LEAK_DETECTION_THRESHOLD:10000}
+      register-mbeans: true
+      auto-commit: false
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc.time_zone: UTC
+
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
+    baseline-version: ${FLYWAY_BASELINE_VERSION:0}
+    validate-on-migrate: ${FLYWAY_VALIDATE_ON_MIGRATE:true}
+    # The shared Neon database contains V28 from an older branch that is not in
+    # this checkout. Keep its applied schema while allowing current migrations.
+    ignore-migration-patterns: ${FLYWAY_IGNORE_MIGRATION_PATTERNS:*:missing}
+    clean-disabled: ${FLYWAY_CLEAN_DISABLED:true}
+    # V4.1 (skills catalog) was added after V5 had already shipped to databases,
+    # so it must be allowed to apply out of version order on existing schemas.
+    # Keep true until all envs have passed V4.1, then set FLYWAY_OUT_OF_ORDER=false.
+    out-of-order: ${FLYWAY_OUT_OF_ORDER:true}
+
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+server:
+  # 9095: uncommon port chosen to avoid clashes with 3000/5173 (frontends), 5432 (Postgres),
+  # and 8080/8081 (other common local web servers)
+  port: ${SERVER_PORT:9095}
+  shutdown: graceful
+  error:
+    include-message: on_param
+    include-binding-errors: always
+    include-stacktrace: never
+
+management:
+  server:
+    port: ${MANAGEMENT_SERVER_PORT:9096}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
+      show-components: when_authorized
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  health:
+    db:
+      enabled: true
+    ping:
+      enabled: true
+
+skillbridge:
+  storage:
+    provider: ${STORAGE_PROVIDER:filesystem}
+    filesystem:
+      base-path: ${CERTIFICATE_STORAGE_PATH:./storage/certificates}
+  security:
+    jwt:
+      # No default — fail-fast if JWT_SECRET not set (enterprise: secrets via Vault/env, never committed)
+      secret: ${JWT_SECRET:}
+      issuer: ${JWT_ISSUER:skillbridge}
+      clock-skew-seconds: ${JWT_CLOCK_SKEW_SECONDS:60}
+      access-token-minutes: ${ACCESS_TOKEN_MINUTES:15}
+      refresh-token-days: ${REFRESH_TOKEN_DAYS:7}
+    bcrypt-strength: ${BCRYPT_STRENGTH:12}
+  registration-bonus-points: ${REGISTRATION_BONUS_POINTS:30}
+  helpful-reward: ${HELPFUL_REWARD:5}
+  escrow-auto-release-hours: ${ESCROW_AUTO_RELEASE_HOURS:18}
+  cors:
+    # Wildcard pattern allows frontend on any localhost port during development (8081, 8080, 5173, 3000, etc.)
+    # For production, set FRONTEND_ORIGINS env var to specific domains (e.g., https://app.skillbridge.com)
+    allowed-origins: ${FRONTEND_ORIGINS:http://localhost:8081,http://localhost:8080,http://localhost:5173,http://localhost:3000,http://localhost:*,http://127.0.0.1:8081,http://127.0.0.1:8080,http://127.0.0.1:*}

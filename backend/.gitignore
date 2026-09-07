@@ -1,0 +1,42 @@
+# Java / Spring Boot / Maven
+target/
+*.class
+*.ctxt
+.mtj.tmp/
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+replay_pid*
+/storage/
+.mvn/wrapper/maven-wrapper.jar
+
+# Environment Variables
+.env
+.env.*
+!.env.example
+!.env.staging
+!.env.production.example
+
+# Maven classpath artifacts (e.g., from dependency:build-classpath)
+cp.txt
+
+# IDE
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+logs/
+*.log

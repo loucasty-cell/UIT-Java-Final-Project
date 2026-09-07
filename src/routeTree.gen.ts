@@ -11,9 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AdminLoginRouteImport } from './routes/admin-login'
 import { Route as ForumRouteImport } from './routes/forum'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as MentorsRouteImport } from './routes/mentors'
+import { Route as NoticeboardRouteImport } from './routes/noticeboard'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SessionsRouteImport } from './routes/sessions'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as WalletRouteImport } from './routes/wallet'
+import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -25,9 +32,19 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/admin-login',
+  path: '/admin-login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ForumRoute = ForumRouteImport.update({
   id: '/forum',
   path: '/forum',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MentorsRoute = MentorsRouteImport.update({
@@ -35,48 +52,138 @@ const MentorsRoute = MentorsRouteImport.update({
   path: '/mentors',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NoticeboardRoute = NoticeboardRouteImport.update({
+  id: '/noticeboard',
+  path: '/noticeboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SessionsRoute = SessionsRouteImport.update({
   id: '/sessions',
   path: '/sessions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WalletRoute = WalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UsersUserIdRoute = UsersUserIdRouteImport.update({
+  id: '/users/$userId',
+  path: '/users/$userId',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/admin-login': typeof AdminLoginRoute
   '/forum': typeof ForumRoute
+  '/login': typeof LoginRoute
   '/mentors': typeof MentorsRoute
+  '/noticeboard': typeof NoticeboardRoute
+  '/register': typeof RegisterRoute
   '/sessions': typeof SessionsRoute
+  '/settings': typeof SettingsRoute
+  '/wallet': typeof WalletRoute
+  '/users/$userId': typeof UsersUserIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/admin-login': typeof AdminLoginRoute
   '/forum': typeof ForumRoute
+  '/login': typeof LoginRoute
   '/mentors': typeof MentorsRoute
+  '/noticeboard': typeof NoticeboardRoute
+  '/register': typeof RegisterRoute
   '/sessions': typeof SessionsRoute
+  '/settings': typeof SettingsRoute
+  '/wallet': typeof WalletRoute
+  '/users/$userId': typeof UsersUserIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/admin-login': typeof AdminLoginRoute
   '/forum': typeof ForumRoute
+  '/login': typeof LoginRoute
   '/mentors': typeof MentorsRoute
+  '/noticeboard': typeof NoticeboardRoute
+  '/register': typeof RegisterRoute
   '/sessions': typeof SessionsRoute
+  '/settings': typeof SettingsRoute
+  '/wallet': typeof WalletRoute
+  '/users/$userId': typeof UsersUserIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/forum' | '/mentors' | '/sessions'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/admin-login'
+    | '/forum'
+    | '/login'
+    | '/mentors'
+    | '/noticeboard'
+    | '/register'
+    | '/sessions'
+    | '/settings'
+    | '/wallet'
+    | '/users/$userId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/forum' | '/mentors' | '/sessions'
-  id: '__root__' | '/' | '/admin' | '/forum' | '/mentors' | '/sessions'
+  to:
+    | '/'
+    | '/admin'
+    | '/admin-login'
+    | '/forum'
+    | '/login'
+    | '/mentors'
+    | '/noticeboard'
+    | '/register'
+    | '/sessions'
+    | '/settings'
+    | '/wallet'
+    | '/users/$userId'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/admin-login'
+    | '/forum'
+    | '/login'
+    | '/mentors'
+    | '/noticeboard'
+    | '/register'
+    | '/sessions'
+    | '/settings'
+    | '/wallet'
+    | '/users/$userId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  AdminLoginRoute: typeof AdminLoginRoute
   ForumRoute: typeof ForumRoute
+  LoginRoute: typeof LoginRoute
   MentorsRoute: typeof MentorsRoute
+  NoticeboardRoute: typeof NoticeboardRoute
+  RegisterRoute: typeof RegisterRoute
   SessionsRoute: typeof SessionsRoute
+  SettingsRoute: typeof SettingsRoute
+  WalletRoute: typeof WalletRoute
+  UsersUserIdRoute: typeof UsersUserIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -95,11 +202,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin-login': {
+      id: '/admin-login'
+      path: '/admin-login'
+      fullPath: '/admin-login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/forum': {
       id: '/forum'
       path: '/forum'
       fullPath: '/forum'
       preLoaderRoute: typeof ForumRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mentors': {
@@ -109,11 +230,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MentorsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/noticeboard': {
+      id: '/noticeboard'
+      path: '/noticeboard'
+      fullPath: '/noticeboard'
+      preLoaderRoute: typeof NoticeboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sessions': {
       id: '/sessions'
       path: '/sessions'
       fullPath: '/sessions'
       preLoaderRoute: typeof SessionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wallet': {
+      id: '/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof WalletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/users/$userId': {
+      id: '/users/$userId'
+      path: '/users/$userId'
+      fullPath: '/users/$userId'
+      preLoaderRoute: typeof UsersUserIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -122,9 +278,16 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  AdminLoginRoute: AdminLoginRoute,
   ForumRoute: ForumRoute,
+  LoginRoute: LoginRoute,
   MentorsRoute: MentorsRoute,
+  NoticeboardRoute: NoticeboardRoute,
+  RegisterRoute: RegisterRoute,
   SessionsRoute: SessionsRoute,
+  SettingsRoute: SettingsRoute,
+  WalletRoute: WalletRoute,
+  UsersUserIdRoute: UsersUserIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

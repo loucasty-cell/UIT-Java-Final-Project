@@ -1,0 +1,32 @@
+package com.skillbridge.review.infrastructure.persistence;
+
+import com.skillbridge.review.domain.entity.Review;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
+
+@Repository
+public interface ReviewRepository extends JpaRepository<Review, UUID> {
+
+    boolean existsBySessionIdAndReviewerId(UUID sessionId, UUID reviewerId);
+
+    List<Review> findBySessionId(UUID sessionId);
+
+    List<Review> findByRevieweeId(UUID revieweeId);
+
+    Page<Review> findByRevieweeIdOrderByCreatedAtDesc(UUID revieweeId, Pageable pageable);
+
+    List<Review> findBySkillId(UUID skillId);
+
+    long countByReviewerId(UUID reviewerId);
+
+    long countByRevieweeId(UUID revieweeId);
+    
+    /** Batch fetch reviews by reviewee IDs - avoids N+1 queries in mentor search */
+    List<Review> findByRevieweeIdIn(Collection<UUID> revieweeIds);
+}

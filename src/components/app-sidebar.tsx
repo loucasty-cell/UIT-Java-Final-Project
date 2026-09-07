@@ -1,5 +1,13 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Users, MessagesSquare, CalendarClock, Shield } from "lucide-react";
+import {
+  UserRound,
+  Users,
+  MessagesSquare,
+  ClipboardList,
+  CalendarClock,
+  Wallet,
+  Settings,
+} from "lucide-react";
 
 import { BrandLogo } from "@/components/brand-logo";
 import {
@@ -15,18 +23,17 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Badge } from "@/components/ui/badge";
 
 const mainItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Profile", url: "/", icon: UserRound },
   { title: "Find Mentors", url: "/mentors", icon: Users },
   { title: "Volunteer Forum", url: "/forum", icon: MessagesSquare },
+  { title: "Learning Noticeboard", url: "/noticeboard", icon: ClipboardList },
   { title: "My Sessions", url: "/sessions", icon: CalendarClock },
+  { title: "Wallet", url: "/wallet", icon: Wallet },
 ];
 
-const adminItems = [{ title: "Admin Portal", url: "/admin", icon: Shield }];
-
-export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
+export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (r) => r.location.pathname });
@@ -67,40 +74,19 @@ export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        {isAdmin && (
-          <SidebarGroup>
-            {!collapsed && <SidebarGroupLabel>Administration</SidebarGroupLabel>}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {adminItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
-                      <Link to={item.url}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
       </SidebarContent>
 
       <SidebarFooter>
-        {!collapsed ? (
-          <div className="flex items-center justify-between gap-2 px-3 py-2">
-            <span className="text-xs text-sidebar-foreground/75">Semester</span>
-            <Badge
-              variant="secondary"
-              className="rounded-full border-0 bg-sidebar-accent text-sidebar-accent-foreground"
-            >
-              Fall 2026
-            </Badge>
-          </div>
-        ) : null}
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={isActive("/settings")} tooltip="Settings">
+              <Link to="/settings">
+                <Settings className="h-4 w-4" />
+                <span>Settings</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   );

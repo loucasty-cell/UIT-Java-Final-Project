@@ -6,6 +6,7 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  useRouterState,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
@@ -15,6 +16,8 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { TopNav } from "@/components/top-nav";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider, useAuth } from "@/context/auth-context";
+import { AuthGate } from "@/components/auth-gate";
 
 function NotFoundComponent() {
   return (
@@ -85,22 +88,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Your SkillBridge dashboard: wallet balance, skills, certificates, and point activity.",
+          "Your SkillBridge profile: wallet balance, skills, certificates, and point activity.",
       },
       { name: "author", content: "SkillBridge" },
-      { property: "og:title", content: "Dashboard — SkillBridge" },
+      { property: "og:title", content: "Profile — SkillBridge" },
       {
         property: "og:description",
         content:
-          "Your SkillBridge dashboard: wallet balance, skills, certificates, and point activity.",
+          "Your SkillBridge profile: wallet balance, skills, certificates, and point activity.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Dashboard — SkillBridge" },
+      { name: "twitter:title", content: "Profile — SkillBridge" },
       {
         name: "twitter:description",
         content:
-          "Your SkillBridge dashboard: wallet balance, skills, certificates, and point activity.",
+          "Your SkillBridge profile: wallet balance, skills, certificates, and point activity.",
       },
     ],
     links: [
@@ -133,16 +136,42 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <AppContent />
+        <Toaster />
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
+
+function AppContent() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const { isAdmin } = useAuth();
+  if (
+    ["/login", "/login/", "/register", "/register/", "/admin-login", "/admin-login/"].includes(
+      pathname,
+    )
+  )
+    return <Outlet />;
+  if (isAdmin)
+    return (
+      <AuthGate>
+        <main className="min-h-svh bg-background">
+          <Outlet />
+        </main>
+      </AuthGate>
+    );
+  return (
+    <AuthGate>
       <SidebarProvider>
-        <AppSidebar isAdmin />
+        <AppSidebar />
         <SidebarInset className="bg-background">
           <TopNav />
           <main className="flex-1">
             <Outlet />
           </main>
         </SidebarInset>
-        <Toaster />
       </SidebarProvider>
-    </QueryClientProvider>
+    </AuthGate>
   );
 }

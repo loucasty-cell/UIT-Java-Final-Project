@@ -1,0 +1,6 @@
+{
+  "name": "SkillBridge",
+  "description": "Peer-to-peer student skill swap and mentorship platform with points, session bookings, and forum.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -56,4 +56,15 @@ public class MentorOffering {
     @Version
     @Column(name = "version", nullable = false)
     private Long version;
+
+    public java.util.Set<com.skillbridge.shared.domain.model.Mode> getModes() {
+        java.util.Set<com.skillbridge.shared.domain.model.Mode> modes = new java.util.LinkedHashSet<>();
+        if (Boolean.TRUE.equals(pointsEnabled))
+            modes.add(com.skillbridge.shared.domain.model.Mode.POINTS);
+        if (Boolean.TRUE.equals(skillSwapEnabled))
+            modes.add(com.skillbridge.shared.domain.model.Mode.SKILL_SWAP);
+        if (Boolean.TRUE.equals(volunteerEnabled))
+            modes.add(com.skillbridge.shared.domain.model.Mode.VOLUNTEER);
+        return modes;
+    }
 }

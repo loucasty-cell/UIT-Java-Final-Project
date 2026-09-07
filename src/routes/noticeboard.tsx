@@ -57,7 +57,10 @@ function NoticeboardPage() {
   const teachSkills = teachSkillsQuery.data ?? [];
 
   const reload = async (silent = false) => {
-    if (!silent) { await needsQuery.refetch(); await teachSkillsQuery.refetch(); }
+    if (!silent) {
+      await needsQuery.refetch();
+      await teachSkillsQuery.refetch();
+    }
   };
 
   const filteredNeeds = useMemo(() => {

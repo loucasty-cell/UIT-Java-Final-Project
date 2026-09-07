@@ -1,4 +1,4 @@
-﻿-- Performance indexes for frequently queried columns
+-- Performance indexes for frequently queried columns
 -- Migration V34: Database performance optimization
 
 -- User skills lookup by user and direction
@@ -13,11 +13,11 @@ CREATE INDEX IF NOT EXISTS idx_mentor_offerings_active
 CREATE INDEX IF NOT EXISTS idx_learning_requests_direction_status 
     ON learning_requests(learner_id, mentor_id, status);
 
--- Sessions lookup by user
-CREATE INDEX IF NOT EXISTS idx_sessions_learner 
-    ON sessions(learner_id, status);
-CREATE INDEX IF NOT EXISTS idx_sessions_mentor 
-    ON sessions(mentor_id, status);
+-- Swap sessions lookup by user and status
+CREATE INDEX IF NOT EXISTS idx_swap_sessions_requester_status 
+    ON swap_sessions(requester_id, status);
+CREATE INDEX IF NOT EXISTS idx_swap_sessions_responder_status 
+    ON swap_sessions(responder_id, status);
 
 -- Reviews by reviewee
 CREATE INDEX IF NOT EXISTS idx_reviews_reviewee 
@@ -29,19 +29,19 @@ CREATE INDEX IF NOT EXISTS idx_forum_posts_created
 
 -- Wallet transactions lookup
 CREATE INDEX IF NOT EXISTS idx_wallet_transactions_user_created 
-    ON point_transactions(user_id, created_at DESC);
+    ON point_ledger(user_id, created_at DESC);
 
 -- Notifications by user and read status
 CREATE INDEX IF NOT EXISTS idx_notifications_user_read 
-    ON notifications(user_id, read, created_at DESC);
+    ON notifications(user_id, read_at, created_at DESC);
 
 -- Mentor applications status
 CREATE INDEX IF NOT EXISTS idx_mentor_applications_status 
     ON mentor_applications(status);
 
 -- Admin audit events
-CREATE INDEX IF NOT EXISTS idx_admin_audit_events_created 
-    ON admin_audit_events(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_events_timestamp 
+    ON admin_audit_events(timestamp DESC);
 
 -- Disputes by status
 CREATE INDEX IF NOT EXISTS idx_disputes_status 

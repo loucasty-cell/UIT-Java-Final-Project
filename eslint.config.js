@@ -6,8 +6,20 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  // Agent tooling is a separate package, not application source.
-  { ignores: ["dist", ".output", ".vinxi", ".agents/**"] },
+  // Agent tooling, backend, and build artifacts are not frontend source.
+  {
+    ignores: [
+      "dist",
+      ".output",
+      ".vinxi",
+      ".agents/**",
+      "backend/**",
+      "target/**",
+      "storage/**",
+      ".wrangler/**",
+      ".tanstack/**",
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

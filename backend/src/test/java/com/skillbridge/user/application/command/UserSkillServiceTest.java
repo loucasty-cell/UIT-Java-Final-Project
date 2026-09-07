@@ -163,7 +163,22 @@ public class UserSkillServiceTest {
         @Override
         public boolean existsByUserIdAndSkillIdAndDirection(UUID userId, UUID skillId, Direction direction) {
             return store.values().stream()
-                    .anyMatch(us -> us.getUserId().equals(userId) && us.getSkillId().equals(skillId) && us.getDirection() == direction);
+                    .anyMatch(us -> us.getUserId().equals(userId) && us.getSkillId().equals(skillId)
+                            && us.getDirection() == direction);
+        }
+
+        @Override
+        public List<UserSkill> findByUserIdIn(Collection<UUID> userIds) {
+            return store.values().stream()
+                    .filter(us -> userIds.contains(us.getUserId()))
+                    .toList();
+        }
+
+        @Override
+        public List<UserSkill> findByUserIdInAndDirection(Collection<UUID> userIds, Direction direction) {
+            return store.values().stream()
+                    .filter(us -> userIds.contains(us.getUserId()) && us.getDirection() == direction)
+                    .toList();
         }
 
         @Override
@@ -181,35 +196,144 @@ public class UserSkillServiceTest {
             return entity;
         }
 
-        @Override public Optional<UserSkill> findById(UUID uuid) { return Optional.ofNullable(store.get(uuid)); }
-        @Override public boolean existsById(UUID uuid) { return store.containsKey(uuid); }
-        @Override public List<UserSkill> findAll() { return new ArrayList<>(store.values()); }
-        @Override public List<UserSkill> findAllById(Iterable<UUID> uuids) { return List.of(); }
-        @Override public long count() { return store.size(); }
-        @Override public void deleteById(UUID uuid) { store.remove(uuid); }
-        @Override public void delete(UserSkill entity) { store.remove(entity.getId()); }
-        @Override public void deleteAllById(Iterable<? extends UUID> uuids) {}
-        @Override public void deleteAll(Iterable<? extends UserSkill> entities) {}
-        @Override public void deleteAll() { store.clear(); }
-        @Override public void flush() {}
-        @Override public <S extends UserSkill> S saveAndFlush(S entity) { return save(entity); }
-        @Override public <S extends UserSkill> List<S> saveAllAndFlush(Iterable<S> entities) { return List.of(); }
-        @Override public void deleteAllInBatch(Iterable<UserSkill> entities) {}
-        @Override public void deleteAllByIdInBatch(Iterable<UUID> uuids) {}
-        @Override public void deleteAllInBatch() {}
-        @Override public UserSkill getOne(UUID uuid) { return store.get(uuid); }
-        @Override public UserSkill getById(UUID uuid) { return store.get(uuid); }
-        @Override public UserSkill getReferenceById(UUID uuid) { return store.get(uuid); }
-        @Override public <S extends UserSkill> Optional<S> findOne(Example<S> example) { return Optional.empty(); }
-        @Override public <S extends UserSkill> List<S> findAll(Example<S> example) { return List.of(); }
-        @Override public <S extends UserSkill> List<S> findAll(Example<S> example, Sort sort) { return List.of(); }
-        @Override public <S extends UserSkill> Page<S> findAll(Example<S> example, Pageable pageable) { return Page.empty(); }
-        @Override public <S extends UserSkill> long count(Example<S> example) { return 0; }
-        @Override public <S extends UserSkill> boolean exists(Example<S> example) { return false; }
-        @Override public <S extends UserSkill, R> R findBy(Example<S> example, Function<FluentQuery.FetchableFluentQuery<S>, R> queryFunction) { return null; }
-        @Override public <S extends UserSkill> List<S> saveAll(Iterable<S> entities) { return List.of(); }
-        @Override public List<UserSkill> findAll(Sort sort) { return List.of(); }
-        @Override public Page<UserSkill> findAll(Pageable pageable) { return Page.empty(); }
+        @Override
+        public Optional<UserSkill> findById(UUID uuid) {
+            return Optional.ofNullable(store.get(uuid));
+        }
+
+        @Override
+        public boolean existsById(UUID uuid) {
+            return store.containsKey(uuid);
+        }
+
+        @Override
+        public List<UserSkill> findAll() {
+            return new ArrayList<>(store.values());
+        }
+
+        @Override
+        public List<UserSkill> findAllById(Iterable<UUID> uuids) {
+            return List.of();
+        }
+
+        @Override
+        public long count() {
+            return store.size();
+        }
+
+        @Override
+        public void deleteById(UUID uuid) {
+            store.remove(uuid);
+        }
+
+        @Override
+        public void delete(UserSkill entity) {
+            store.remove(entity.getId());
+        }
+
+        @Override
+        public void deleteAllById(Iterable<? extends UUID> uuids) {
+        }
+
+        @Override
+        public void deleteAll(Iterable<? extends UserSkill> entities) {
+        }
+
+        @Override
+        public void deleteAll() {
+            store.clear();
+        }
+
+        @Override
+        public void flush() {
+        }
+
+        @Override
+        public <S extends UserSkill> S saveAndFlush(S entity) {
+            return save(entity);
+        }
+
+        @Override
+        public <S extends UserSkill> List<S> saveAllAndFlush(Iterable<S> entities) {
+            return List.of();
+        }
+
+        @Override
+        public void deleteAllInBatch(Iterable<UserSkill> entities) {
+        }
+
+        @Override
+        public void deleteAllByIdInBatch(Iterable<UUID> uuids) {
+        }
+
+        @Override
+        public void deleteAllInBatch() {
+        }
+
+        @Override
+        public UserSkill getOne(UUID uuid) {
+            return store.get(uuid);
+        }
+
+        @Override
+        public UserSkill getById(UUID uuid) {
+            return store.get(uuid);
+        }
+
+        @Override
+        public UserSkill getReferenceById(UUID uuid) {
+            return store.get(uuid);
+        }
+
+        @Override
+        public <S extends UserSkill> Optional<S> findOne(Example<S> example) {
+            return Optional.empty();
+        }
+
+        @Override
+        public <S extends UserSkill> List<S> findAll(Example<S> example) {
+            return List.of();
+        }
+
+        @Override
+        public <S extends UserSkill> List<S> findAll(Example<S> example, Sort sort) {
+            return List.of();
+        }
+
+        @Override
+        public <S extends UserSkill> Page<S> findAll(Example<S> example, Pageable pageable) {
+            return Page.empty();
+        }
+
+        @Override
+        public <S extends UserSkill> long count(Example<S> example) {
+            return 0;
+        }
+
+        @Override
+        public <S extends UserSkill> boolean exists(Example<S> example) {
+            return false;
+        }
+
+        @Override
+        public <S extends UserSkill, R> R findBy(Example<S> example,
+                Function<FluentQuery.FetchableFluentQuery<S>, R> queryFunction) {
+            return null;
+        }
+
+        @Override
+        public <S extends UserSkill> List<S> saveAll(Iterable<S> entities) {
+            return List.of();
+        }
+
+        @Override
+        public List<UserSkill> findAll(Sort sort) {
+            return List.of();
+        }
+
+        @Override
+        public Page<UserSkill> findAll(Pageable pageable) {
+            return Page.empty();
+        }
     }
 }
-

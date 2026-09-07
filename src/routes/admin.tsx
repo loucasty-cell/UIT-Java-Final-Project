@@ -63,7 +63,11 @@ function AdminPage() {
   const disputes = disputesQuery.data ?? [];
 
   const reload = async (silent = false) => {
-    if (!silent) { await metricsQuery.refetch(); await reportsQuery.refetch(); await disputesQuery.refetch(); }
+    if (!silent) {
+      await metricsQuery.refetch();
+      await reportsQuery.refetch();
+      await disputesQuery.refetch();
+    }
   };
   const handleLogout = async () => {
     if (loggingOut) return;

@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Profile } from "./index";
 
@@ -81,7 +82,13 @@ describe("profile display", () => {
   });
 
   it("renders the requested read-only profile and routes editing to Settings", async () => {
-    render(<Profile />);
+    render(
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <Profile />
+      </QueryClientProvider>,
+    );
 
     expect(await screen.findByText("Maya Chen")).toBeVisible();
     const profileDetails = screen.getByRole("complementary", { name: "Profile details" });

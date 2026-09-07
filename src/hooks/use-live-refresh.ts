@@ -15,13 +15,9 @@ interface UseLiveRefreshOptions {
  */
 export function useLiveRefresh(
   refresh: (silent?: boolean) => Promise<void>,
-  options: UseLiveRefreshOptions = {}
+  options: UseLiveRefreshOptions = {},
 ) {
-  const {
-    intervalMs = 60000,
-    refetchOnFocus = true,
-    refetchOnVisibility = true,
-  } = options;
+  const { intervalMs = 60000, refetchOnFocus = true, refetchOnVisibility = true } = options;
 
   useEffect(() => {
     const update = () => {

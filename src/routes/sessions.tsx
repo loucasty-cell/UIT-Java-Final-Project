@@ -65,23 +65,30 @@ function SessionsPage() {
     refetchInterval: 60000,
   });
 
-  const loading = sessionsQuery.isLoading || learnerRequestsQuery.isLoading || mentorRequestsQuery.isLoading;
+  const loading =
+    sessionsQuery.isLoading || learnerRequestsQuery.isLoading || mentorRequestsQuery.isLoading;
   const error = sessionsQuery.error ?? learnerRequestsQuery.error ?? mentorRequestsQuery.error;
   const sessions = sessionsQuery.data ?? [];
   const learnerRequests = learnerRequestsQuery.data ?? [];
   const mentorRequests = mentorRequestsQuery.data ?? [];
 
   const reload = async (silent = false) => {
-    if (!silent) { await sessionsQuery.refetch(); await learnerRequestsQuery.refetch(); await mentorRequestsQuery.refetch(); }
+    if (!silent) {
+      await sessionsQuery.refetch();
+      await learnerRequestsQuery.refetch();
+      await mentorRequestsQuery.refetch();
+    }
   };
 
   const byRole = useMemo(
     () => ({
       learner: sessions.filter(
-        (s) => s.learnerId === user?.id || s.requester?.id === user?.id || s.requesterId === user?.id,
+        (s) =>
+          s.learnerId === user?.id || s.requester?.id === user?.id || s.requesterId === user?.id,
       ),
       mentor: sessions.filter(
-        (s) => s.mentorId === user?.id || s.responder?.id === user?.id || s.responderId === user?.id,
+        (s) =>
+          s.mentorId === user?.id || s.responder?.id === user?.id || s.responderId === user?.id,
       ),
     }),
     [sessions, user?.id],

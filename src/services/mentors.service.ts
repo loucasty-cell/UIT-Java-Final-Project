@@ -27,9 +27,7 @@ export const mentorsService = {
    * Search and filter mentors
    * GET /api/v1/mentors?skillId={}&search={}&minRating={}
    */
-  async searchMentors(
-    filters: MentorSearchFilters = {},
-  ): Promise<MentorSearchResponse[]> {
+  async searchMentors(filters: MentorSearchFilters = {}): Promise<MentorSearchResponse[]> {
     const res = await api.get<MentorSearchResponse[] | PageResponse<MentorSearchResponse>>(
       "/api/v1/mentors",
       { size: 100, ...filters },

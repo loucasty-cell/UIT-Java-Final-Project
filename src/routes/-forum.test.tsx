@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import type { ComponentType } from "react";
@@ -11,6 +12,15 @@ vi.mock("@/services/forum.service", () => ({
 }));
 vi.mock("@/services/skills.service", () => ({ skillsService: { ensureTeachingSkill: vi.fn() } }));
 const Page = Route.options.component as ComponentType;
+function renderPage() {
+  return render(
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      <Page />
+    </QueryClientProvider>,
+  );
+}
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(forumService.getPosts).mockResolvedValue([]);
@@ -21,7 +31,7 @@ beforeEach(() => {
 });
 it("explains short descriptions, then publishes a manually entered skill", async () => {
   const user = userEvent.setup();
-  render(<Page />);
+  renderPage();
   await user.click(screen.getByRole("button", { name: "Offer a free session" }));
   await user.type(screen.getByLabelText("Session title"), "Java for beginner");
   await user.type(screen.getByLabelText("Skill to teach"), "Hand lettering");

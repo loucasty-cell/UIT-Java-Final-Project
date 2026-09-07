@@ -19,9 +19,21 @@ export const Route = createFileRoute("/")({
 });
 export function Profile() {
   const { user } = useAuth();
-  const wallet = useQuery({ queryKey: ["wallet"], queryFn: walletService.getBalance, staleTime: 30000 });
-  const skills = useQuery({ queryKey: ["skills"], queryFn: () => skillsService.getUserSkills(), staleTime: 60000 });
-  const sessions = useQuery({ queryKey: ["sessions"], queryFn: () => sessionsService.listSessions(), staleTime: 30000 });
+  const wallet = useQuery({
+    queryKey: ["wallet"],
+    queryFn: walletService.getBalance,
+    staleTime: 30000,
+  });
+  const skills = useQuery({
+    queryKey: ["skills"],
+    queryFn: () => skillsService.getUserSkills(),
+    staleTime: 60000,
+  });
+  const sessions = useQuery({
+    queryKey: ["sessions"],
+    queryFn: () => sessionsService.listSessions(),
+    staleTime: 30000,
+  });
   const loading = wallet.isLoading || skills.isLoading || sessions.isLoading;
   const error = wallet.error ?? skills.error ?? sessions.error;
   const s = sessions.data ?? [];
@@ -39,7 +51,14 @@ export function Profile() {
       {error && (
         <p role="alert" className="text-destructive">
           {error instanceof Error ? error.message : "Could not load your profile."}
-          <Button variant="link" onClick={() => { wallet.refetch(); skills.refetch(); sessions.refetch(); }}>
+          <Button
+            variant="link"
+            onClick={() => {
+              wallet.refetch();
+              skills.refetch();
+              sessions.refetch();
+            }}
+          >
             Retry
           </Button>
         </p>
@@ -97,7 +116,11 @@ export function Profile() {
           </aside>
           <section aria-label="Account overview" className="min-w-0 space-y-6">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <Metric icon={Coins} label="Available points" value={wallet.data?.availablePoints ?? 0} />
+              <Metric
+                icon={Coins}
+                label="Available points"
+                value={wallet.data?.availablePoints ?? 0}
+              />
               <Metric icon={Coins} label="Points held" value={wallet.data?.heldPoints ?? 0} />
               <Metric icon={CalendarCheck} label="Active sessions" value={active} />
               <Metric icon={CalendarCheck} label="Completed sessions" value={completed} />

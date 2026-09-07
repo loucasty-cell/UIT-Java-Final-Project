@@ -269,7 +269,10 @@ export const adminService = {
       );
     } catch (primaryError) {
       try {
-        return await api.get<PageResponse<AdminAuditEventResponse>>("/api/v1/admin/audit-logs", params);
+        return await api.get<PageResponse<AdminAuditEventResponse>>(
+          "/api/v1/admin/audit-logs",
+          params,
+        );
       } catch (fallbackError) {
         throw fallbackError instanceof Error ? fallbackError : primaryError;
       }

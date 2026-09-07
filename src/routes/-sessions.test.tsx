@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ComponentType } from "react";
@@ -20,6 +21,15 @@ vi.mock("@/services/learning-requests.service", () => ({
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 const Page = Route.options.component as ComponentType;
+function renderPage() {
+  return render(
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      <Page />
+    </QueryClientProvider>,
+  );
+}
 const scheduled = {
   id: "session-1",
   learnerId: "learner-1",
@@ -53,7 +63,7 @@ describe("My Sessions real API flow", () => {
   });
   it("shows outgoing requests under Learner and keeps Mentor separate", async () => {
     const user = userEvent.setup();
-    render(<Page />);
+    renderPage();
     await screen.findByText("Session with Real Mentor");
     await user.click(screen.getByRole("tab", { name: /requests/i }));
     expect(screen.getByText("Java")).toBeInTheDocument();
@@ -63,7 +73,7 @@ describe("My Sessions real API flow", () => {
   });
   it("removes a confirmed session from Active after the API succeeds", async () => {
     const user = userEvent.setup();
-    render(<Page />);
+    renderPage();
     await screen.findByText("Session with Real Mentor");
     vi.mocked(sessionsService.completeSession).mockResolvedValue({
       id: "session-1",
@@ -83,7 +93,7 @@ describe("My Sessions real API flow", () => {
   });
   it("does not pretend completion succeeded when the backend rejects it", async () => {
     const user = userEvent.setup();
-    render(<Page />);
+    renderPage();
     await screen.findByText("Session with Real Mentor");
     vi.mocked(sessionsService.completeSession).mockRejectedValue(new Error("Unavailable"));
     await user.click(screen.getByRole("button", { name: "Complete Session" }));

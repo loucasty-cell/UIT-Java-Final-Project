@@ -167,6 +167,20 @@ public class UserSkillServiceTest {
         }
 
         @Override
+        public List<UserSkill> findByUserIdIn(Collection<UUID> userIds) {
+            return store.values().stream()
+                    .filter(us -> userIds.contains(us.getUserId()))
+                    .toList();
+        }
+
+        @Override
+        public List<UserSkill> findByUserIdInAndDirection(Collection<UUID> userIds, Direction direction) {
+            return store.values().stream()
+                    .filter(us -> userIds.contains(us.getUserId()) && us.getDirection() == direction)
+                    .toList();
+        }
+
+        @Override
         public <S extends UserSkill> S save(S entity) {
             if (entity.getId() == null) {
                 entity.setId(UUID.randomUUID());

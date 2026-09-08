@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: skillbridge
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: skillbridge-postgres
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FLYWAY_ENABLED
+        value: "true"
+      - key: FLYWAY_CLEAN_DISABLED
+        value: "true"
+      - key: FLYWAY_VALIDATE_ON_MIGRATE
+        value: "true"
+      - key: FLYWAY_OUT_OF_ORDER
+        value: "true"
+
+databases:
+  - name: skillbridge-postgres
+    databaseName: skillbridge
+    user: skillbridge
+    plan: free

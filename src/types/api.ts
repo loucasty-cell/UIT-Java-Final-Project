@@ -1,6 +1,6 @@
 /**
  * SkillBridge Backend API Types & DTOs
- * Base URL: http://localhost:9095
+ * Base URL: configured by VITE_API_BASE_URL or the current browser origin.
  */
 
 // ==========================================

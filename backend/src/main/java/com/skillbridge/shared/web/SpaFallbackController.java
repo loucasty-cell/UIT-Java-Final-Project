@@ -14,18 +14,23 @@ public class SpaFallbackController {
     @RequestMapping(value = {
             "/",
             "/browse", "/browse/**",
+            "/admin-login", "/admin-login/**",
             "/mentors", "/mentors/**",
             "/forum", "/forum/**",
+            "/noticeboard", "/noticeboard/**",
             "/sessions", "/sessions/**",
+            "/settings", "/settings/**",
             "/wallet", "/wallet/**",
             "/watchlist", "/watchlist/**",
             "/profile", "/profile/**",
             "/me/**",
             "/skill/**",
+            "/users", "/users/**",
             "/mentor-application", "/mentor-application/**",
             "/instructor", "/instructor/**",
             "/admin", "/admin/**",
-            "/login"
+            "/login", "/login/**",
+            "/register", "/register/**"
     })
     public String forward() {
         return "forward:/index.html";

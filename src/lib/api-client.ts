@@ -15,9 +15,17 @@ export {
   STORAGE_KEYS,
 } from "./auth-session";
 
-const BASE_URL =
-  import.meta.env?.VITE_API_BASE_URL ||
-  (typeof window !== "undefined" ? window.location.origin : "http://localhost:9095");
+function resolveBaseUrl() {
+  if (import.meta.env?.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL;
+  if (typeof window !== "undefined") return window.location.origin;
+  if (typeof process !== "undefined") {
+    const env = process.env.VITE_API_BASE_URL || process.env.FRONTEND_URL;
+    if (env) return env;
+  }
+  throw new Error("VITE_API_BASE_URL must be set when no browser origin is available.");
+}
+
+const BASE_URL = resolveBaseUrl();
 
 export class ApiError extends Error {
   constructor(

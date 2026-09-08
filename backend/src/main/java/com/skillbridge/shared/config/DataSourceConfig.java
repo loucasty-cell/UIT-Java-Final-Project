@@ -32,17 +32,20 @@ public class DataSourceConfig {
     ) {
         String rawUrl = env.getProperty("DATABASE_URL");
         if (rawUrl == null || rawUrl.isBlank()) {
-            rawUrl = env.getProperty("spring.datasource.url", "jdbc:postgresql://localhost:5432/skillbridge?sslmode=disable");
+            rawUrl = env.getProperty("spring.datasource.url");
+        }
+        if (rawUrl == null || rawUrl.isBlank()) {
+            throw new IllegalStateException("DATABASE_URL or spring.datasource.url must be set");
         }
 
         String username = env.getProperty("DATABASE_USERNAME");
         if (username == null || username.isBlank()) {
-            username = env.getProperty("spring.datasource.username", "postgres");
+            username = env.getProperty("spring.datasource.username");
         }
 
         String password = env.getProperty("DATABASE_PASSWORD");
         if (password == null || password.isBlank()) {
-            password = env.getProperty("spring.datasource.password", "postgres");
+            password = env.getProperty("spring.datasource.password");
         }
 
         String trimmed = rawUrl.trim();
@@ -93,6 +96,13 @@ public class DataSourceConfig {
             }
         } else if (!cleanJdbcUrl.startsWith("jdbc:")) {
             cleanJdbcUrl = "jdbc:" + cleanJdbcUrl;
+        }
+
+        if (username == null || username.isBlank()) {
+            throw new IllegalStateException("DATABASE_USERNAME, spring.datasource.username, or embedded DATABASE_URL user must be set");
+        }
+        if (password == null || password.isBlank()) {
+            throw new IllegalStateException("DATABASE_PASSWORD, spring.datasource.password, or embedded DATABASE_URL password must be set");
         }
 
         HikariConfig config = new HikariConfig();

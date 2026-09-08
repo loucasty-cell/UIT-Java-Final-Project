@@ -3,6 +3,7 @@ package com.skillbridge.shared.security;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -34,6 +35,32 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    private static final String[] STATIC_ASSET_PATHS = {
+            "/", "/index.html", "/favicon.ico", "/favicon.png", "/skillbridge-logo.png",
+            "/assets/**", "/*.js", "/*.css", "/*.map", "/*.png", "/*.jpg", "/*.jpeg",
+            "/*.gif", "/*.svg", "/*.webp", "/*.ico", "/*.txt", "/*.webmanifest"
+    };
+
+    private static final String[] SPA_ROUTE_PATHS = {
+            "/admin", "/admin/**",
+            "/admin-login", "/admin-login/**",
+            "/browse", "/browse/**",
+            "/forum", "/forum/**",
+            "/instructor", "/instructor/**",
+            "/login", "/login/**",
+            "/mentor-application", "/mentor-application/**",
+            "/mentors", "/mentors/**",
+            "/noticeboard", "/noticeboard/**",
+            "/profile", "/profile/**",
+            "/register", "/register/**",
+            "/sessions", "/sessions/**",
+            "/settings", "/settings/**",
+            "/skill", "/skill/**",
+            "/users", "/users/**",
+            "/wallet", "/wallet/**",
+            "/watchlist", "/watchlist/**"
+    };
+
     // Configured frontend allowed origins for CORS preflight and access control
     @Value("${skillbridge.cors.allowed-origins:http://localhost:3000}")
     private String allowedOrigins;
@@ -63,15 +90,17 @@ public class SecurityConfig {
                 .headers(headers -> headers
                         .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000))
                         .frameOptions(frame -> frame.deny())
-                        .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none'"))
+                        .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"))
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authz -> authz
+                        .requestMatchers(HttpMethod.GET, STATIC_ASSET_PATHS).permitAll()
+                        .requestMatchers(HttpMethod.GET, SPA_ROUTE_PATHS).permitAll()
                         .requestMatchers("/api/v1/auth/**", "/actuator/health", "/actuator/health/**", "/actuator/info")
                         .permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                         .permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/skills/**",
+                        .requestMatchers(HttpMethod.GET, "/api/v1/skills/**",
                                 "/api/skills/**", "/api/v1/mentors/**", "/api/v1/forum/**", "/api/requests/**")
                         .permitAll()
                         .requestMatchers("/api/v1/admin/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN")

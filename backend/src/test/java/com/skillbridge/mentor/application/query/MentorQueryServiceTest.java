@@ -77,13 +77,12 @@ class MentorQueryServiceTest {
         userSummary.setDisplayName("Java Mentor");
 
         when(offeringRepository.findByActiveTrue()).thenReturn(List.of(javaPost));
-        when(userRepository.findById(mentorId)).thenReturn(Optional.of(mentor));
-        when(userSkillRepository.findById(javaUserSkillId)).thenReturn(Optional.of(postedJava));
-        when(userSkillRepository.findByUserIdAndDirectionOrderByCreatedAtDesc(mentorId, Direction.TEACH))
+        when(userRepository.findAllByIdIn(List.of(mentorId))).thenReturn(List.of(mentor));
+        when(userSkillRepository.findByUserIdInAndDirection(List.of(mentorId), Direction.TEACH))
                 .thenReturn(List.of(postedJava, unpostedReact));
-        when(userSkillRepository.findByUserIdAndDirectionOrderByCreatedAtDesc(mentorId, Direction.LEARN))
+        when(userSkillRepository.findByUserIdInAndDirection(List.of(mentorId), Direction.LEARN))
                 .thenReturn(List.of());
-        when(reviewRepository.findByRevieweeId(mentorId)).thenReturn(List.of());
+        when(reviewRepository.findByRevieweeIdIn(List.of(mentorId))).thenReturn(List.of());
         when(mentorMapper.toSkillSummary(javaSkillId)).thenReturn(javaSummary);
         when(mentorMapper.toUserSummary(mentorId, true)).thenReturn(userSummary);
 

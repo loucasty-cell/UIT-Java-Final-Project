@@ -1,4 +1,4 @@
-﻿package com.skillbridge.mentor.application.query;
+package com.skillbridge.mentor.application.query;
 
 import com.skillbridge.admin.domain.model.AccountStatus;
 import com.skillbridge.auth.domain.entity.User;
@@ -28,7 +28,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -95,20 +94,40 @@ public class MentorQueryService {
                     .collect(Collectors.toMap(UserSkill::getSkillId, skill -> skill, (first, ignored) -> first, LinkedHashMap::new))
                     .values().stream().toList();
 
+            if (query != null && query.getSkillId() != null
+                    && postedTeachSkills.stream().noneMatch(skill -> query.getSkillId().equals(skill.getSkillId()))) {
+                continue;
+            }
+
+            if (query != null && query.getLevel() != null
+                    && postedTeachSkills.stream().noneMatch(skill -> query.getLevel() == skill.getLevel())) {
+                continue;
+            }
+
             if (postedTeachSkills.isEmpty()) {
                 continue;
             }
 
             // Build modes set
-            Set<Mode> modes = offerings.stream()
-                    .flatMap(o -> {
-                        Set<Mode> m = o.getModes();
-                        return m != null ? m.stream() : Stream.empty();
-                    })
-                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            Set<Mode> modes = new LinkedHashSet<>();
+            for (MentorOffering offering : offerings) {
+                if (Boolean.TRUE.equals(offering.getPointsEnabled())) {
+                    modes.add(Mode.POINTS);
+                }
+                if (Boolean.TRUE.equals(offering.getSkillSwapEnabled())) {
+                    modes.add(Mode.SKILL_SWAP);
+                }
+                if (Boolean.TRUE.equals(offering.getVolunteerEnabled())) {
+                    modes.add(Mode.VOLUNTEER);
+                }
+            }
 
             if (modes.isEmpty()) {
                 modes.add(Mode.POINTS);
+            }
+
+            if (query != null && query.getMode() != null && !modes.contains(query.getMode())) {
+                continue;
             }
 
             // Calculate min cost
@@ -130,6 +149,10 @@ public class MentorQueryService {
             // Calculate rating
             double avgRating = userReviews.isEmpty() ? 5.0 : userReviews.stream().mapToInt(Review::getRating).average().orElse(5.0);
             int ratingCount = userReviews.size();
+
+            if (query != null && query.getMinRating() != null && avgRating < query.getMinRating()) {
+                continue;
+            }
 
             MentorSummaryResponse response = new MentorSummaryResponse();
             response.setUser(mentorMapper.toUserSummary(userId, true));
@@ -155,11 +178,11 @@ public class MentorQueryService {
 
     public MentorDetailResponse getMentorDetail(UUID mentorId) {
         if (mentorId == null) {
-            throw new IllegalArgumentException( Mentor ID must not be null);
+            throw new IllegalArgumentException("Mentor ID must not be null");
         }
 
         User user = userRepository.findById(mentorId)
-                .orElseThrow(() -> new IllegalArgumentException(Mentor not found:  + mentorId));
+                .orElseThrow(() -> new IllegalArgumentException("Mentor not found: " + mentorId));
 
         List<MentorOffering> offerings = mentorOfferingRepository.findByMentorIdAndActiveTrue(mentorId);
         List<MentorOfferingResponse> offeringDtos = offerings.stream()

@@ -10,6 +10,7 @@ public class ReviewResponse {
     private UUID id;
     private UUID sessionId;
     private UUID reviewerId;
+    private String reviewerName;
     private UUID revieweeId;
     private UUID skillId;
     private Integer rating;

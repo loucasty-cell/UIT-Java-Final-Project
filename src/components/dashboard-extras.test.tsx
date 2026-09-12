@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Certificates, DashboardExtras } from "./dashboard-extras";
@@ -7,6 +7,7 @@ import { Certificates, DashboardExtras } from "./dashboard-extras";
 const state = vi.hoisted(() => ({
   getCertificates: vi.fn(),
   getOfferings: vi.fn(),
+  deleteOffering: vi.fn(),
   getTransactions: vi.fn(),
 }));
 
@@ -17,7 +18,7 @@ vi.mock("@/services/skills.service", () => ({
   skillsService: { getMyCertificates: state.getCertificates },
 }));
 vi.mock("@/services/mentors.service", () => ({
-  mentorsService: { getMyOfferings: state.getOfferings },
+  mentorsService: { getMyOfferings: state.getOfferings, deleteOffering: state.deleteOffering },
 }));
 vi.mock("@/services/wallet.service", () => ({
   walletService: { getTransactions: state.getTransactions, exportTransactionsCsv: vi.fn() },
@@ -54,6 +55,7 @@ describe("profile extras", () => {
       },
     ]);
     state.getTransactions.mockResolvedValue({ content: [], last: true });
+    state.deleteOffering.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -70,12 +72,25 @@ describe("profile extras", () => {
     expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add teaching post" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Hide post" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Remove post" })).toBeVisible();
     expect(
       screen
         .getByText("My teaching posts")
         .compareDocumentPosition(screen.getByText("Activity log")) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it("removes a teaching post after confirmation", async () => {
+    const user = userEvent.setup();
+    render(<DashboardExtras skills={skills} />);
+
+    await user.click(await screen.findByRole("button", { name: "Remove post" }));
+    expect(screen.getByText("Remove teaching post?")).toBeVisible();
+    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Remove post" }));
+
+    expect(state.deleteOffering).toHaveBeenCalledWith("offering-1");
+    expect(screen.queryByText("Weekends")).not.toBeInTheDocument();
   });
 
   it("keeps certificate management controls in Settings mode", async () => {

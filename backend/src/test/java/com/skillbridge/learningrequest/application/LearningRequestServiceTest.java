@@ -35,6 +35,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.time.OffsetDateTime;
+import java.time.LocalTime;
+import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -173,6 +175,52 @@ public class LearningRequestServiceTest {
                 .when(scheduleConflictService).validateNoConflict(eq(mentorId), any(), anyInt());
 
         assertThrows(ScheduleConflictException.class, () -> service.createLearningRequest(request));
+    }
+
+    @Test
+    void rejectsRequestOutsidePublishedOfferingAvailability() {
+        UUID offeringId = UUID.randomUUID();
+        UUID teachingUserSkillId = UUID.randomUUID();
+        OffsetDateTime requestedStart = OffsetDateTime.now().plusDays(2).withHour(14).withMinute(0).withSecond(0)
+                .withNano(0);
+
+        CreateLearningRequest request = new CreateLearningRequest();
+        request.setMentorId(mentorId);
+        request.setMentorOfferingId(offeringId);
+        request.setRequestedSkillId(skillId);
+        request.setMode(SessionMode.VOLUNTEER);
+        request.setScheduledStart(requestedStart);
+        request.setDurationMinutes(60);
+
+        User learner = new User();
+        learner.setId(learnerId);
+        User mentor = new User();
+        mentor.setId(mentorId);
+        Skill skill = Skill.builder().id(skillId).name("Java").build();
+        UserSkill teachingSkill = new UserSkill();
+        teachingSkill.setId(teachingUserSkillId);
+        teachingSkill.setSkillId(skillId);
+
+        MentorOffering offering = new MentorOffering();
+        offering.setId(offeringId);
+        offering.setMentorId(mentorId);
+        offering.setTeachUserSkillId(teachingUserSkillId);
+        offering.setActive(true);
+        offering.setVolunteerEnabled(true);
+        offering.setAvailabilitySlots(new LinkedHashSet<>(java.util.Set.of(
+                new com.skillbridge.mentor.domain.entity.MentorAvailabilitySlot(
+                        requestedStart.toLocalDate(), LocalTime.of(9, 0)))));
+
+        when(userRepository.findById(learnerId)).thenReturn(Optional.of(learner));
+        when(userRepository.findById(mentorId)).thenReturn(Optional.of(mentor));
+        when(skillRepository.findById(skillId)).thenReturn(Optional.of(skill));
+        when(mentorOfferingRepository.findById(offeringId)).thenReturn(Optional.of(offering));
+        when(userSkillRepository.findById(teachingUserSkillId)).thenReturn(Optional.of(teachingSkill));
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> service.createLearningRequest(request));
+
+        assertEquals("Choose one of the mentor's published times for that date", error.getMessage());
     }
 
     @Test

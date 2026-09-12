@@ -4,11 +4,17 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Column;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -43,6 +49,10 @@ public class MentorOffering {
 
     @Column(name = "availability_text", length = 500)
     private String availabilityText;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "mentor_offering_availability", joinColumns = @JoinColumn(name = "offering_id"))
+    private Set<MentorAvailabilitySlot> availabilitySlots = new LinkedHashSet<>();
 
     @Column(name = "active", nullable = false)
     private Boolean active;

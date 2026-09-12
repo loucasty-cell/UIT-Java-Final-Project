@@ -3,6 +3,7 @@ package com.skillbridge.mentor.api.dto.response;
 import com.skillbridge.shared.api.dto.response.SkillSummaryResponse;
 import com.skillbridge.shared.api.dto.response.UserSummaryResponse;
 import com.skillbridge.shared.domain.model.Mode;
+import com.skillbridge.mentor.domain.entity.MentorAvailabilitySlot;
 import lombok.Data;
 
 import java.time.OffsetDateTime;
@@ -18,6 +19,7 @@ public class MentorOfferingResponse {
     private List<Mode> modes;
     private Integer duration;
     private String availability;
+    private List<MentorAvailabilitySlot> availabilitySlots;
     private Boolean active;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;

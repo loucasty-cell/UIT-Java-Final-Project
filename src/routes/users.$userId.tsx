@@ -4,7 +4,7 @@ import { ArrowLeft, BookOpen, GraduationCap, Star, UserRound } from "lucide-reac
 import { authService } from "@/services/auth.service";
 import { useAuth } from "@/context/auth-context";
 import { userDisplayName, userInitials } from "@/lib/auth-validation";
-import type { PublicUserSkillResponse, SkillDirection } from "@/types/api";
+import type { PublicUserSkillResponse, ReviewResponse, SkillDirection } from "@/types/api";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,8 +31,13 @@ export function PublicUserProfile({ userId }: { userId: string }) {
       return { profile, skills };
     },
   });
+  const reviewsResult = useQuery({
+    queryKey: ["public-user-reviews", userId],
+    queryFn: () => authService.getPublicReviews(userId),
+  });
   const profile = result.data?.profile;
   const skills = result.data?.skills ?? [];
+  const reviews = reviewsResult.data?.content ?? [];
   const displayName = userDisplayName(profile ?? null);
   const teaching = skills.filter((skill) => skill.direction === "TEACH");
   const learning = skills.filter((skill) => skill.direction === "LEARN");
@@ -124,9 +129,84 @@ export function PublicUserProfile({ userId }: { userId: string }) {
               direction="LEARN"
             />
           </div>
+
+          <ReviewsList
+            reviews={reviews}
+            isLoading={reviewsResult.isPending}
+            hasError={reviewsResult.isError}
+          />
         </>
       )}
     </div>
+  );
+}
+
+function ReviewsList({
+  reviews,
+  isLoading,
+  hasError,
+}: {
+  reviews: ReviewResponse[];
+  isLoading: boolean;
+  hasError: boolean;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          <h2 className="flex items-center gap-2 text-lg">
+            <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+            Reviews
+          </h2>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading && <p className="text-sm text-muted-foreground">Loading reviews…</p>}
+        {hasError && (
+          <p className="text-sm text-muted-foreground">Reviews are not available right now.</p>
+        )}
+        {!isLoading && !hasError && !reviews.length && (
+          <p className="text-sm text-muted-foreground">This member has no reviews yet.</p>
+        )}
+        {!isLoading &&
+          !hasError &&
+          reviews.map((review) => <ReviewCard key={review.id} review={review} />)}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ReviewCard({ review }: { review: ReviewResponse }) {
+  const reviewer = review.reviewerName?.trim() || "SkillBridge member";
+  const reviewDate = review.createdAt
+    ? new Date(review.createdAt).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : null;
+
+  return (
+    <article className="rounded-lg border p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="font-medium">{reviewer}</p>
+          {reviewDate && <p className="text-xs text-muted-foreground">{reviewDate}</p>}
+        </div>
+        <div className="flex items-center gap-1" aria-label={`${review.rating} out of 5 stars`}>
+          {[1, 2, 3, 4, 5].map((star) => (
+            <Star
+              key={star}
+              className={`h-4 w-4 ${star <= review.rating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/35"}`}
+            />
+          ))}
+          <span className="ml-1 text-sm font-medium">{review.rating}/5</span>
+        </div>
+      </div>
+      <p className="mt-3 whitespace-pre-wrap text-sm leading-6">
+        {review.feedback?.trim() || "No written feedback provided."}
+      </p>
+    </article>
   );
 }
 

@@ -1,5 +1,6 @@
 package com.skillbridge.review.application;
 
+import com.skillbridge.auth.domain.entity.User;
 import com.skillbridge.auth.infrastructure.persistence.UserRepository;
 import com.skillbridge.review.api.dto.request.SubmitReviewRequest;
 import com.skillbridge.review.api.dto.response.ReviewResponse;
@@ -21,7 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -144,6 +147,10 @@ public class ReviewService {
         }
         Page<Review> page = reviewRepository.findByRevieweeIdOrderByCreatedAtDesc(mentorId, pageable);
         RatingStats userStats = stats(reviewRepository.findByRevieweeId(mentorId));
+        Map<UUID, String> reviewerNames = userRepository.findAllByIdIn(
+                        page.getContent().stream().map(Review::getReviewerId).distinct().toList())
+                .stream()
+                .collect(Collectors.toMap(User::getId, this::displayName));
 
         return PageResponse.from(page, review -> {
             RatingStats skillStats = stats(reviewRepository.findBySkillId(review.getSkillId()));
@@ -152,9 +159,17 @@ public class ReviewService {
                     userStats.averageRating(),
                     userStats.reviewCount(),
                     skillStats.averageRating(),
-                    skillStats.reviewCount()
+                    skillStats.reviewCount(),
+                    reviewerNames.get(review.getReviewerId())
             );
         });
+    }
+
+    private String displayName(User user) {
+        if (user.getDisplayName() != null && !user.getDisplayName().isBlank()) {
+            return user.getDisplayName();
+        }
+        return (user.getFirstName() + " " + user.getLastName()).trim();
     }
 
     private void validateParticipant(SwapSession session, UUID userId, String message) {

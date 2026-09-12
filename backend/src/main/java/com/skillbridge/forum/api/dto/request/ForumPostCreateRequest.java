@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import com.skillbridge.mentor.domain.entity.MentorAvailabilitySlot;
 
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +26,9 @@ public class ForumPostCreateRequest {
 
     @Size(max = 500)
     private String availabilityText;
+
+    @jakarta.validation.Valid
+    private List<MentorAvailabilitySlot> availabilitySlots;
 
     @NotNull
     @Min(15)

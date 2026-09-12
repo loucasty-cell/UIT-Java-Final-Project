@@ -45,6 +45,7 @@ public class ForumService {
         validateSkills(request.getSkillIds());
         entity.setSkillIds(new java.util.LinkedHashSet<>(request.getSkillIds()));
         entity.setAvailabilityText(request.getAvailabilityText());
+        entity.setAvailabilitySlots(new java.util.LinkedHashSet<>(validateAvailability(request.getAvailabilitySlots())));
         entity.setDurationMinutes(request.getDurationMinutes());
         entity.setActive(request.getActive() != null ? request.getActive() : true);
         entity.setLikeCount(0);
@@ -91,6 +92,20 @@ public class ForumService {
         // Soft delete per requirements
         entity.setActive(false);
         postRepository.save(entity);
+    }
+
+    private java.util.List<com.skillbridge.mentor.domain.entity.MentorAvailabilitySlot> validateAvailability(
+            java.util.List<com.skillbridge.mentor.domain.entity.MentorAvailabilitySlot> slots) {
+        if (slots == null || slots.isEmpty()) {
+            throw new IllegalArgumentException("Add at least one available date and time");
+        }
+        for (var slot : slots) {
+            if (slot == null || slot.getDate() == null || slot.getTime() == null
+                    || slot.getDate().isBefore(java.time.LocalDate.now())) {
+                throw new IllegalArgumentException("Each availability entry needs a future date and time");
+            }
+        }
+        return slots;
     }
 
     public ForumEngagementResponse likePost(UUID postId) {

@@ -14,6 +14,24 @@ public class ReviewMapper {
             double skillAverageRating,
             long skillReviewCount
     ) {
+        return toResponse(
+                review,
+                revieweeAverageRating,
+                revieweeReviewCount,
+                skillAverageRating,
+                skillReviewCount,
+                null
+        );
+    }
+
+    public ReviewResponse toResponse(
+            Review review,
+            double revieweeAverageRating,
+            long revieweeReviewCount,
+            double skillAverageRating,
+            long skillReviewCount,
+            String reviewerName
+    ) {
         if (review == null) {
             return null;
         }
@@ -21,6 +39,7 @@ public class ReviewMapper {
         response.setId(review.getId());
         response.setSessionId(review.getSessionId());
         response.setReviewerId(review.getReviewerId());
+        response.setReviewerName(reviewerName);
         response.setRevieweeId(review.getRevieweeId());
         response.setSkillId(review.getSkillId());
         response.setRating(review.getRating());

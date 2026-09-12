@@ -10,6 +10,7 @@ import {
 } from "@/services/learning-requests.service";
 import { sessionsService } from "@/services/sessions.service";
 import { reviewsService } from "@/services/reviews.service";
+import { formatPublishedSessionTime } from "@/lib/mentor-availability";
 import type { SessionResponse } from "@/types/api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -249,7 +250,11 @@ function SessionCard({
   complete?: () => void;
   report?: () => void;
 }) {
-  const when = session.scheduledStart || session.createdAt;
+  const when = session.scheduledStart
+    ? formatPublishedSessionTime(session.scheduledStart)
+    : session.createdAt
+      ? new Date(session.createdAt).toLocaleString()
+      : "To be arranged";
   return (
     <Card>
       <CardHeader>
@@ -267,7 +272,7 @@ function SessionCard({
             <b>Mode:</b> {session.mode?.replace("SKILL_SWAP", "Skill exchange") || "Session"}
           </span>
           <span>
-            <b>When:</b> {when ? new Date(when).toLocaleString() : "To be arranged"}
+            <b>When:</b> {when}
           </span>
         </div>
         {session.status === "COMPLETED" && <SessionReview session={session} role={role} />}
@@ -422,7 +427,7 @@ function RequestCard({
         </div>
         <p className="text-sm">
           <Clock className="mr-1 inline h-4 w-4" />
-          {new Date(request.scheduledStart).toLocaleString()}
+          {formatPublishedSessionTime(request.scheduledStart)}
         </p>
         <div className="flex gap-2">
           {role === "mentor" ? (

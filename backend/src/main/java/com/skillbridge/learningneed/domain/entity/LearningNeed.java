@@ -1,14 +1,21 @@
 package com.skillbridge.learningneed.domain.entity;
 
+import com.skillbridge.mentor.domain.entity.MentorAvailabilitySlot;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -33,6 +40,10 @@ public class LearningNeed {
 
     @Column(name = "availability_text", length = 500)
     private String availabilityText;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "learning_need_availability", joinColumns = @JoinColumn(name = "learning_need_id"))
+    private Set<MentorAvailabilitySlot> availabilitySlots = new LinkedHashSet<>();
 
     @Column(name = "duration_minutes", nullable = false)
     private Integer durationMinutes;

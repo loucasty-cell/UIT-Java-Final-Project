@@ -77,6 +77,7 @@ public class LearningNeedService {
         need.setTitle(request.getTitle().trim());
         need.setDescription(request.getDescription().trim());
         need.setAvailabilityText(request.getAvailabilityText() == null ? null : request.getAvailabilityText().trim());
+        need.setAvailabilitySlots(new java.util.LinkedHashSet<>(validateAvailability(request.getAvailabilitySlots())));
         need.setDurationMinutes(request.getDurationMinutes());
         need.setAllowedModes(allowedModes.stream().map(Enum::name).collect(java.util.stream.Collectors.joining(",")));
         need.setExchangeUserSkillId(allowedModes.contains(SessionMode.SKILL_SWAP) ? request.getExchangeUserSkillId() : null);
@@ -112,6 +113,7 @@ public class LearningNeedService {
         if (!allowedModes.contains(request.getMode())) {
             throw new IllegalArgumentException("Choose one of the session modes selected by the learner");
         }
+        request.setProposedStart(validateSelectedAvailability(need, request));
         LearningNeedOffer offer = new LearningNeedOffer();
         offer.setId(UUID.randomUUID());
         offer.setLearningNeedId(needId);
@@ -153,6 +155,7 @@ public class LearningNeedService {
         response.setTitle(need.getTitle());
         response.setDescription(need.getDescription());
         response.setAvailabilityText(need.getAvailabilityText());
+        response.setAvailabilitySlots(need.getAvailabilitySlots().stream().toList());
         response.setDurationMinutes(need.getDurationMinutes());
         response.setAllowedModes(allowedModes(need));
         if (need.getExchangeUserSkillId() != null) {
@@ -168,6 +171,35 @@ public class LearningNeedService {
 
     private String skillName(UUID skillId) {
         return skillRepository.findById(skillId).map(Skill::getName).orElse("Skill");
+    }
+
+    private List<com.skillbridge.mentor.domain.entity.MentorAvailabilitySlot> validateAvailability(
+            List<com.skillbridge.mentor.domain.entity.MentorAvailabilitySlot> slots) {
+        if (slots == null || slots.isEmpty()) {
+            throw new IllegalArgumentException("Add at least one available date and time");
+        }
+        for (var slot : slots) {
+            if (slot == null || slot.getDate() == null || slot.getTime() == null
+                    || slot.getDate().isBefore(java.time.LocalDate.now())) {
+                throw new IllegalArgumentException("Each availability entry needs a future date and time");
+            }
+        }
+        return slots;
+    }
+
+    private OffsetDateTime validateSelectedAvailability(LearningNeed need, TeachingOfferCreateRequest request) {
+        var selectedDate = request.getAvailabilityDate() != null
+                ? request.getAvailabilityDate()
+                : request.getProposedStart().toLocalDate();
+        var selectedTime = request.getAvailabilityTime() != null
+                ? request.getAvailabilityTime()
+                : request.getProposedStart().toLocalTime();
+        boolean published = need.getAvailabilitySlots().stream().anyMatch(slot ->
+                slot.getDate().equals(selectedDate) && slot.getTime().equals(selectedTime));
+        if (!published) {
+            throw new IllegalArgumentException("Choose one of the learner's published times for that date");
+        }
+        return OffsetDateTime.of(selectedDate, selectedTime, request.getProposedStart().getOffset());
     }
 
     private List<SessionMode> allowedModes(LearningNeed need) {

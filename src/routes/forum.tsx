@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Calendar,
   Clock3,
@@ -39,6 +39,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { AvailabilityEditor, availabilitySlotsFromDates, type AvailabilityDate } from "@/components/availability-editor";
+import { availableDates, availableTimes, availabilitySummary, localDateTimeWithOffset } from "@/lib/mentor-availability";
 
 export const Route = createFileRoute("/forum")({ component: ForumPage });
 const reportReasons = [
@@ -193,7 +195,7 @@ function CreatePost({
   const [description, setDescription] = useState("");
   const [skillName, setSkillName] = useState("");
   const [error, setError] = useState("");
-  const [availability, setAvailability] = useState("");
+  const [availabilityDates, setAvailabilityDates] = useState<AvailabilityDate[]>([]);
   const [durationMinutes, setDurationMinutes] = useState("60");
   const [busy, setBusy] = useState(false);
   const submit = async () => {
@@ -205,6 +207,11 @@ function CreatePost({
     const duration = Number(durationMinutes);
     if (!Number.isInteger(duration) || duration < 15 || duration > 480)
       return setError("Choose a whole number of minutes from 15 to 480.");
+    const availabilitySlots = availabilitySlotsFromDates(availabilityDates);
+    if (!availabilitySlots.length || availabilityDates.some((entry) => !entry.date || !entry.times.length || entry.times.some((time) => !time)))
+      return setError("Add at least one available date and time.");
+    if (new Set(availabilitySlots.map((slot) => `${slot.date}-${slot.time}`)).size !== availabilitySlots.length)
+      return setError("Add each available time only once per date.");
     setBusy(true);
     try {
       const teachingSkill = await skillsService.ensureTeachingSkill(skillName);
@@ -212,7 +219,8 @@ function CreatePost({
         title: title.trim(),
         description: description.trim(),
         skillIds: [teachingSkill.skill.id],
-        availabilityText: availability.trim() || undefined,
+        availabilityText: availabilitySummary(availabilitySlots),
+        availabilitySlots,
         durationMinutes: duration,
         active: true,
       });
@@ -221,7 +229,7 @@ function CreatePost({
       setTitle("");
       setDescription("");
       setSkillName("");
-      setAvailability("");
+      setAvailabilityDates([]);
       setDurationMinutes("60");
       await reload();
     } catch (f) {
@@ -232,7 +240,7 @@ function CreatePost({
   };
   return (
     <Dialog open={open} onOpenChange={(v) => !v && close()}>
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Offer a free session</DialogTitle>
           <DialogDescription>
@@ -273,16 +281,7 @@ function CreatePost({
             At least 20 characters ({description.trim().length}/20).
           </p>
         </div>
-        <div>
-          <Label htmlFor="post-availability">Availability</Label>
-          <Input
-            id="post-availability"
-            value={availability}
-            onChange={(e) => setAvailability(e.target.value)}
-            placeholder="Example: Weekdays after 5 PM"
-            maxLength={500}
-          />
-        </div>
+        <AvailabilityEditor value={availabilityDates} onChange={setAvailabilityDates} idPrefix="post-availability" />
         <div>
           <Label htmlFor="post-duration">Session length (minutes)</Label>
           <Input
@@ -325,6 +324,9 @@ function VolunteerRequest({
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const availabilitySlots = post?.availabilitySlots ?? [];
+  const bookableDates = useMemo(() => availableDates(availabilitySlots), [availabilitySlots]);
+  const bookableTimes = useMemo(() => availableTimes(availabilitySlots, date), [availabilitySlots, date]);
   const submit = async () => {
     if (!post?.author?.id || !post.skillTags?.[0]) return;
     const scheduledStart = new Date(`${date}T${time}`);
@@ -339,7 +341,9 @@ function VolunteerRequest({
         mentorId: post.author.id,
         requestedSkillId: post.skillTags[0].id,
         mode: "VOLUNTEER",
-        scheduledStart: scheduledStart.toISOString(),
+        scheduledStart: localDateTimeWithOffset(date, time),
+        availabilityDate: date,
+        availabilityTime: time,
         durationMinutes: post.durationMinutes || 60,
         message: message.trim() || undefined,
         sourceForumPostId: post.id,
@@ -367,27 +371,35 @@ function VolunteerRequest({
             costs 0 points.
           </DialogDescription>
         </DialogHeader>
+        <p className="rounded-md bg-muted px-3 py-2 text-sm">
+          Available: {availabilitySlots.length ? availabilitySummary(availabilitySlots) : "No dates published"}
+        </p>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Date</Label>
-            <Input
+            <select
               aria-label="Volunteer session date"
-              type="date"
-              min={new Date().toISOString().slice(0, 10)}
               value={date}
-              onChange={(e) => setDate(e.target.value)}
-              onInput={(e) => setDate(e.currentTarget.value)}
-            />
+              disabled={!availabilitySlots.length}
+              className="h-11 w-full rounded-md border bg-background px-3"
+              onChange={(e) => { setDate(e.target.value); setTime(""); }}
+            >
+              <option value="">Select an available date</option>
+              {bookableDates.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+            </select>
           </div>
           <div>
             <Label>Time</Label>
-            <Input
+            <select
               aria-label="Volunteer session time"
-              type="time"
               value={time}
+              disabled={!date}
+              className="h-11 w-full rounded-md border bg-background px-3"
               onChange={(e) => setTime(e.target.value)}
-              onInput={(e) => setTime(e.currentTarget.value)}
-            />
+            >
+              <option value="">Select an available time</option>
+              {bookableTimes.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
           </div>
         </div>
         <Textarea
@@ -404,7 +416,7 @@ function VolunteerRequest({
           <Button variant="outline" onClick={close}>
             Cancel
           </Button>
-          <Button disabled={busy || !date || !time} onClick={() => void submit()}>
+          <Button disabled={busy || !date || !time || !availabilitySlots.length} onClick={() => void submit()}>
             Send Request
           </Button>
         </DialogFooter>

@@ -5,6 +5,11 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+import com.skillbridge.mentor.domain.entity.MentorAvailabilitySlot;
+import jakarta.validation.Valid;
+
+import java.util.List;
+
 @Data
 public class MentorOfferingUpdateRequest {
     @Min(0)
@@ -18,5 +23,7 @@ public class MentorOfferingUpdateRequest {
     private Integer duration;
     @Size(max = 500)
     private String availabilityText;
+    @Valid
+    private List<MentorAvailabilitySlot> availabilitySlots;
     private Boolean active;
 }

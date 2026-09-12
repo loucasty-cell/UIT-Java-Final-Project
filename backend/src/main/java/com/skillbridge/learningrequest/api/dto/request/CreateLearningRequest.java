@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -28,6 +30,12 @@ public class CreateLearningRequest {
     @NotNull(message = "Scheduled start time is required")
     @Future(message = "Scheduled start time must be in the future")
     private OffsetDateTime scheduledStart;
+
+    /** Exact date/time entry chosen from the selected mentor offering. */
+    private LocalDate availabilityDate;
+
+    /** Exact date/time entry chosen from the selected mentor offering. */
+    private LocalTime availabilityTime;
 
     @jakarta.validation.constraints.Min(15)
     @jakarta.validation.constraints.Max(480)

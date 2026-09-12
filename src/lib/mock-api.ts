@@ -295,6 +295,11 @@ function initDB(): MockDB {
         price: 50,
         modes: ["POINTS"],
         duration: 60,
+        availabilitySlots: [
+          { date: new Date(Date.now() + 86400000 * 2).toISOString().slice(0, 10), time: "09:00" },
+          { date: new Date(Date.now() + 86400000 * 2).toISOString().slice(0, 10), time: "15:00" },
+          { date: new Date(Date.now() + 86400000 * 7).toISOString().slice(0, 10), time: "10:00" },
+        ],
         active: true,
       },
     ],
@@ -408,6 +413,8 @@ interface MockRequestBody {
   offeredUserSkillId?: string;
   durationMinutes?: number;
   motivation?: string;
+  availabilityText?: string;
+  availabilitySlots?: MentorOfferingResponse["availabilitySlots"];
 }
 
 export function handleMockApiRequest(
@@ -627,7 +634,13 @@ export function handleMockApiRequest(
       };
     }
 
-    return mentor;
+    const mentorUserId = mentor.userId;
+    return {
+      ...mentor,
+      activeOfferings: db.offerings.filter(
+        (offering) => offering.active && offering.mentor.id === mentorUserId,
+      ),
+    };
   }
 
   if (cleanPath === "/api/v1/me/mentor-offerings") {
@@ -643,6 +656,8 @@ export function handleMockApiRequest(
         price: body.pointCost ?? 35,
         modes: ["POINTS"],
         duration: 60,
+        availability: body.availabilityText,
+        availabilitySlots: body.availabilitySlots || [],
         active: true,
       };
       db.offerings.push(newOffering);
@@ -650,6 +665,14 @@ export function handleMockApiRequest(
       return newOffering;
     }
     return db.offerings;
+  }
+
+  const mentorOfferingMatch = cleanPath.match(/^\/api\/v1\/me\/mentor-offerings\/([^/]+)$/);
+  if (mentorOfferingMatch && method === "DELETE") {
+    const offeringId = mentorOfferingMatch[1];
+    db.offerings = db.offerings.filter((offering) => offering.id !== offeringId);
+    saveDB(db);
+    return undefined;
   }
 
   // ==========================================

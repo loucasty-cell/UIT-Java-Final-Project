@@ -6,6 +6,11 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+import com.skillbridge.mentor.domain.entity.MentorAvailabilitySlot;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -34,4 +39,8 @@ public class MentorOfferingCreateRequest {
 
     @Size(max = 500)
     private String availabilityText;
+
+    @NotEmpty(message = "Add at least one available date and time window")
+    @Valid
+    private List<MentorAvailabilitySlot> availabilitySlots;
 }

@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { availabilitySummary, type MentorAvailabilitySlot } from "@/lib/mentor-availability";
 import {
   Dialog,
   DialogContent,
@@ -23,9 +24,20 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const selectClass = "h-11 w-full rounded-md border bg-background px-3";
 const collapsedTeachingPostCount = 3;
+type AvailabilityDate = { date: string; times: string[] };
 export function SkillLevelSelect({
   value,
   onChange,
@@ -181,7 +193,7 @@ export function Certificates({
         )}
         {editable && (
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent>
+            <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain">
               <DialogHeader>
                 <DialogTitle>Upload certificate</DialogTitle>
                 <DialogDescription>
@@ -250,9 +262,10 @@ export function TeachingPosts({
   const [volunteer, setVolunteer] = useState(false);
   const [cost, setCost] = useState("10");
   const [duration, setDuration] = useState("60");
-  const [availability, setAvailability] = useState("");
+  const [availabilityDates, setAvailabilityDates] = useState<AvailabilityDate[]>([]);
   const [showAll, setShowAll] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [postToRemove, setPostToRemove] = useState<MentorOfferingResponse | null>(null);
   const [error, setError] = useState("");
   const load = useCallback(async () => {
     setItems(await mentorsService.getMyOfferings());
@@ -271,6 +284,14 @@ export function TeachingPosts({
       (!cost.trim() || !Number.isInteger(Number(cost)) || Number(cost) < 0 || Number(cost) > 10000)
     )
       return setError("Point cost must be a whole number from 0 to 10,000.");
+    if (!availabilityDates.length) return setError("Add at least one available date and time.");
+    if (availabilityDates.some((entry) => !entry.date || !entry.times.length || entry.times.some((time) => !time)))
+      return setError("Each availability entry needs a date and at least one time.");
+    const availabilitySlots: MentorAvailabilitySlot[] = availabilityDates.flatMap((entry) =>
+      entry.times.map((time) => ({ date: entry.date, time })),
+    );
+    if (new Set(availabilitySlots.map((slot) => `${slot.date}-${slot.time}`)).size !== availabilitySlots.length)
+      return setError("Add each available time only once per date.");
     setBusy(true);
     try {
       const skill = await skillsService.ensureTeachingSkill(name, level);
@@ -281,11 +302,12 @@ export function TeachingPosts({
         skillSwapEnabled: exchange,
         volunteerEnabled: volunteer,
         duration: Number(duration),
-        availabilityText: availability.trim(),
+        availabilityText: availabilitySummary(availabilitySlots),
+        availabilitySlots,
       });
       setOpen(false);
       setName("");
-      setAvailability("");
+      setAvailabilityDates([]);
       await load();
       await reloadSkills?.();
       toast.success("Teaching post published in Find Mentors");
@@ -330,27 +352,36 @@ export function TeachingPosts({
                   .join(", ")}
                 {item.modes.includes("POINTS") ? ` · ${item.price} points` : ""}
               </p>
-              <p className="text-sm text-muted-foreground">{item.availability}</p>
+              <p className="text-sm text-muted-foreground">
+                {item.availabilitySlots?.length
+                  ? availabilitySummary(item.availabilitySlots)
+                  : item.availability}
+              </p>
               <p>{item.active ? "Published" : "Hidden"}</p>
             </div>
             {editable && (
-              <Button
-                variant="outline"
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    await mentorsService.updateOffering(item.id, { active: !item.active });
-                    await load();
-                  } catch (e) {
-                    setError(e instanceof Error ? e.message : "Could not update post.");
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                {item.active ? "Hide post" : "Publish again"}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      await mentorsService.updateOffering(item.id, { active: !item.active });
+                      await load();
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : "Could not update post.");
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  {item.active ? "Hide post" : "Publish again"}
+                </Button>
+                <Button variant="destructive" disabled={busy} onClick={() => setPostToRemove(item)}>
+                  Remove post
+                </Button>
+              </div>
             )}
           </div>
         ))}
@@ -364,15 +395,54 @@ export function TeachingPosts({
             {error}
           </p>
         )}
+        <AlertDialog
+          open={!!postToRemove}
+          onOpenChange={(isOpen) => {
+            if (!isOpen && !busy) setPostToRemove(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove teaching post?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Remove “{postToRemove?.skill.name}” from your teaching posts? Learners will no longer be able to book it.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={busy}
+                onClick={async (event) => {
+                  event.preventDefault();
+                  if (!postToRemove) return;
+                  setBusy(true);
+                  setError("");
+                  try {
+                    await mentorsService.deleteOffering(postToRemove.id);
+                    setItems((current) => current.filter((item) => item.id !== postToRemove.id));
+                    setPostToRemove(null);
+                    toast.success("Teaching post removed");
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : "Could not remove post.");
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                {busy ? "Removing..." : "Remove post"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         {editable && (
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent>
-              <DialogHeader>
+            <DialogContent className="flex h-[870px] max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0">
+              <DialogHeader className="shrink-0 border-b px-6 py-5 pr-12">
                 <DialogTitle>Create teaching post</DialogTitle>
-                <DialogDescription>
-                  Choose your skill, session length, and accepted modes.
-                </DialogDescription>
+                <DialogDescription>Choose your skill, session length, accepted modes, and specific available dates.</DialogDescription>
               </DialogHeader>
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-6 py-5">
               <div>
                 <Label htmlFor="teaching-name">Teaching skill</Label>
                 <Input
@@ -428,22 +498,116 @@ export function TeachingPosts({
                   </div>
                 )}
               </div>
-              <div>
-                <Label htmlFor="teaching-availability">Availability</Label>
-                <Input
-                  id="teaching-availability"
-                  value={availability}
-                  maxLength={500}
-                  onChange={(e) => setAvailability(e.target.value)}
-                  placeholder="Weekdays after 5 PM"
-                />
+              <div className="space-y-2">
+                <Label>Available dates and session times</Label>
+                <p className="text-xs text-muted-foreground">
+                  Add each date, then add every session start time you can teach on that date.
+                </p>
+                {availabilityDates.map((entry, dateIndex) => (
+                  <div key={dateIndex} className="space-y-2 rounded-md border p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Input
+                        className="min-w-0 flex-1"
+                        aria-label={`Availability ${dateIndex + 1} date`}
+                        type="date"
+                        min={new Date().toISOString().slice(0, 10)}
+                        value={entry.date}
+                        onChange={(event) =>
+                          setAvailabilityDates((current) =>
+                            current.map((item, itemIndex) =>
+                              itemIndex === dateIndex ? { ...item, date: event.target.value } : item,
+                            ),
+                          )
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          setAvailabilityDates((current) =>
+                            current.filter((_, itemIndex) => itemIndex !== dateIndex),
+                          )
+                        }
+                      >
+                        Remove date
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {entry.times.map((time, timeIndex) => (
+                        <div key={timeIndex} className="flex items-center gap-1">
+                          <Input
+                            className="w-36"
+                            aria-label={`Availability ${dateIndex + 1} time ${timeIndex + 1}`}
+                            type="time"
+                            value={time}
+                            onChange={(event) =>
+                              setAvailabilityDates((current) =>
+                                current.map((item, itemIndex) =>
+                                  itemIndex === dateIndex
+                                    ? {
+                                        ...item,
+                                        times: item.times.map((itemTime, itemTimeIndex) =>
+                                          itemTimeIndex === timeIndex ? event.target.value : itemTime,
+                                        ),
+                                      }
+                                    : item,
+                                ),
+                              )
+                            }
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`Remove time ${time}`}
+                            onClick={() =>
+                              setAvailabilityDates((current) =>
+                                current.map((item, itemIndex) =>
+                                  itemIndex === dateIndex
+                                    ? { ...item, times: item.times.filter((_, itemTimeIndex) => itemTimeIndex !== timeIndex) }
+                                    : item,
+                                ),
+                              )
+                            }
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setAvailabilityDates((current) =>
+                          current.map((item, itemIndex) =>
+                            itemIndex === dateIndex ? { ...item, times: [...item.times, "09:00"] } : item,
+                          ),
+                        )
+                      }
+                    >
+                      Add time
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    setAvailabilityDates((current) => [...current, { date: "", times: ["09:00"] }])
+                  }
+                >
+                  Add available date
+                </Button>
               </div>
               {error && (
                 <p role="alert" className="text-destructive">
                   {error}
                 </p>
               )}
-              <DialogFooter>
+              </div>
+              <DialogFooter className="shrink-0 border-t px-6 py-4">
                 <Button variant="outline" onClick={() => setOpen(false)}>
                   Cancel
                 </Button>

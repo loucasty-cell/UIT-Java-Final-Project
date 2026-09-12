@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -33,6 +35,7 @@ public class MentorOfferingService {
         if (!Boolean.TRUE.equals(request.getPointsEnabled()) && !Boolean.TRUE.equals(request.getSkillSwapEnabled()) && !Boolean.TRUE.equals(request.getVolunteerEnabled())) {
             throw new IllegalArgumentException("Choose at least one session mode");
         }
+        validateAvailability(request.getAvailabilitySlots());
 
         MentorOffering entity = new MentorOffering();
         entity.setId(UUID.randomUUID());
@@ -44,6 +47,7 @@ public class MentorOfferingService {
         entity.setVolunteerEnabled(request.getVolunteerEnabled());
         entity.setDurationMinutes(request.getDuration());
         entity.setAvailabilityText(request.getAvailabilityText());
+        entity.setAvailabilitySlots(new LinkedHashSet<>(request.getAvailabilitySlots()));
         entity.setActive(true);
         entity.setCreatedAt(OffsetDateTime.now());
         entity.setUpdatedAt(OffsetDateTime.now());
@@ -72,6 +76,10 @@ public class MentorOfferingService {
         if (request.getVolunteerEnabled() != null) entity.setVolunteerEnabled(request.getVolunteerEnabled());
         if (request.getDuration() != null) entity.setDurationMinutes(request.getDuration());
         if (request.getAvailabilityText() != null) entity.setAvailabilityText(request.getAvailabilityText());
+        if (request.getAvailabilitySlots() != null) {
+            validateAvailability(request.getAvailabilitySlots());
+            entity.setAvailabilitySlots(new LinkedHashSet<>(request.getAvailabilitySlots()));
+        }
         if (request.getActive() != null) entity.setActive(request.getActive());
 
         entity.setUpdatedAt(OffsetDateTime.now());
@@ -90,5 +98,17 @@ public class MentorOfferingService {
         }
 
         offeringRepository.delete(entity);
+    }
+
+    private void validateAvailability(List<com.skillbridge.mentor.domain.entity.MentorAvailabilitySlot> slots) {
+        if (slots == null || slots.isEmpty()) {
+            throw new IllegalArgumentException("Add at least one available date and time");
+        }
+        for (var slot : slots) {
+            if (slot == null || slot.getDate() == null || slot.getDate().isBefore(java.time.LocalDate.now())
+                    || slot.getTime() == null) {
+                throw new IllegalArgumentException("Each availability entry needs a date and a time");
+            }
+        }
     }
 }

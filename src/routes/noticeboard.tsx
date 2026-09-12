@@ -22,6 +22,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { AvailabilityEditor, availabilitySlotsFromDates, type AvailabilityDate } from "@/components/availability-editor";
+import { availableDates, availableTimes, availabilitySummary, localDateTimeWithOffset } from "@/lib/mentor-availability";
 
 export const Route = createFileRoute("/noticeboard")({ component: NoticeboardPage });
 type NoticeboardMode = "POINTS" | "SKILL_SWAP" | "VOLUNTEER";
@@ -55,6 +57,10 @@ function NoticeboardPage() {
   const error = needsQuery.error ?? teachSkillsQuery.error;
   const needs = needsQuery.data ?? [];
   const teachSkills = teachSkillsQuery.data ?? [];
+  // Keep this defensive filter even though the API is already queried with
+  // direction=TEACH. It prevents a stale or mixed response from exposing a
+  // "want to learn" skill in the exchange selector.
+  const teachingSkills = teachSkills.filter((skill) => skill.direction === "TEACH");
 
   const reload = async (silent = false) => {
     if (!silent) {
@@ -75,7 +81,7 @@ function NoticeboardPage() {
   }, [needs, query]);
 
   const canTeach = (need: LearningNeedResponse) =>
-    teachSkills.some((item) => item.skill.id === need.skillId);
+    teachingSkills.some((item) => item.skill.id === need.skillId);
 
   const remove = async (need: LearningNeedResponse) => {
     if (!window.confirm("Remove this learning need from the noticeboard?")) return;
@@ -205,7 +211,7 @@ function NoticeboardPage() {
 
       <CreateNeed
         open={creating}
-        teachSkills={teachSkills}
+        teachSkills={teachingSkills}
         onClose={() => setCreating(false)}
         reload={reload}
       />
@@ -228,7 +234,7 @@ function CreateNeed({
   const [title, setTitle] = useState("");
   const [skillName, setSkillName] = useState("");
   const [description, setDescription] = useState("");
-  const [availability, setAvailability] = useState("");
+  const [availabilityDates, setAvailabilityDates] = useState<AvailabilityDate[]>([]);
   const [duration, setDuration] = useState("60");
   const [modes, setModes] = useState<NoticeboardMode[]>(["VOLUNTEER"]);
   const [exchangeUserSkillId, setExchangeUserSkillId] = useState("");
@@ -242,6 +248,11 @@ function CreateNeed({
       return setError("Describe what you need in at least 20 characters.");
     if (!Number.isInteger(minutes) || minutes < 15 || minutes > 480)
       return setError("Choose a whole number of minutes from 15 to 480.");
+    const availabilitySlots = availabilitySlotsFromDates(availabilityDates);
+    if (!availabilitySlots.length || availabilityDates.some((entry) => !entry.date || !entry.times.length || entry.times.some((time) => !time)))
+      return setError("Add at least one available date and time.");
+    if (new Set(availabilitySlots.map((slot) => `${slot.date}-${slot.time}`)).size !== availabilitySlots.length)
+      return setError("Add each available time only once per date.");
     if (!modes.length) return setError("Choose at least one session mode.");
     if (modes.includes("SKILL_SWAP") && !exchangeUserSkillId)
       return setError("Choose the skill you can offer for a skill exchange.");
@@ -253,7 +264,8 @@ function CreateNeed({
         title: title.trim(),
         skillId: skill.skill.id,
         description: description.trim(),
-        availabilityText: availability.trim() || undefined,
+        availabilityText: availabilitySummary(availabilitySlots),
+        availabilitySlots,
         durationMinutes: minutes,
         allowedModes: modes,
         exchangeUserSkillId: modes.includes("SKILL_SWAP") ? exchangeUserSkillId : undefined,
@@ -264,7 +276,7 @@ function CreateNeed({
       setTitle("");
       setSkillName("");
       setDescription("");
-      setAvailability("");
+      setAvailabilityDates([]);
       setDuration("60");
       setModes(["VOLUNTEER"]);
       setExchangeUserSkillId("");
@@ -278,7 +290,7 @@ function CreateNeed({
   };
   return (
     <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>What do you want to learn?</DialogTitle>
           <DialogDescription>
@@ -317,30 +329,19 @@ function CreateNeed({
             maxLength={5000}
           />
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="need-duration">Preferred length (minutes)</Label>
-            <Input
-              id="need-duration"
-              type="number"
-              min="15"
-              max="480"
-              step="15"
-              value={duration}
-              onChange={(event) => setDuration(event.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="need-availability">Availability</Label>
-            <Input
-              id="need-availability"
-              value={availability}
-              onChange={(event) => setAvailability(event.target.value)}
-              maxLength={500}
-              placeholder="Example: Weekends"
-            />
-          </div>
+        <div>
+          <Label htmlFor="need-duration">Preferred length (minutes)</Label>
+          <Input
+            id="need-duration"
+            type="number"
+            min="15"
+            max="480"
+            step="15"
+            value={duration}
+            onChange={(event) => setDuration(event.target.value)}
+          />
         </div>
+        <AvailabilityEditor value={availabilityDates} onChange={setAvailabilityDates} idPrefix="need-availability" />
         <div className="space-y-2">
           <Label>Session modes you accept</Label>
           <p className="text-xs text-muted-foreground">
@@ -426,6 +427,9 @@ function OfferToTeach({
   const [mode, setMode] = useState<NoticeboardMode>(allowedModes[0]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const availabilitySlots = need?.availabilitySlots ?? [];
+  const bookableDates = useMemo(() => availableDates(availabilitySlots), [availabilitySlots]);
+  const bookableTimes = useMemo(() => availableTimes(availabilitySlots, date), [availabilitySlots, date]);
   useEffect(() => {
     setMode(allowedModes[0]);
     setError("");
@@ -442,7 +446,9 @@ function OfferToTeach({
     try {
       await learningNeedsService.offerToTeach(need.id, {
         message,
-        proposedStart: proposedStart.toISOString(),
+        proposedStart: localDateTimeWithOffset(date, time),
+        availabilityDate: date,
+        availabilityTime: time,
         mode,
       });
       toast.success("Teaching offer sent", {
@@ -470,7 +476,7 @@ function OfferToTeach({
           </DialogDescription>
         </DialogHeader>
         <p className="rounded-md bg-muted px-3 py-2 text-sm">
-          Learner availability: {need?.availabilityText || "Not specified"}
+          Learner availability: {availabilitySlots.length ? availabilitySummary(availabilitySlots) : "No dates published"}
         </p>
         <div>
           <Label htmlFor="offer-mode">Session mode</Label>
@@ -495,22 +501,29 @@ function OfferToTeach({
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label htmlFor="offer-date">Proposed date</Label>
-            <Input
+            <select
               id="offer-date"
-              type="date"
-              min={new Date().toISOString().slice(0, 10)}
               value={date}
-              onChange={(event) => setDate(event.target.value)}
-            />
+              disabled={!availabilitySlots.length}
+              className="h-10 w-full rounded-md border bg-background px-3"
+              onChange={(event) => { setDate(event.target.value); setTime(""); }}
+            >
+              <option value="">Select an available date</option>
+              {bookableDates.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+            </select>
           </div>
           <div>
             <Label htmlFor="offer-time">Proposed time</Label>
-            <Input
+            <select
               id="offer-time"
-              type="time"
               value={time}
+              disabled={!date}
+              className="h-10 w-full rounded-md border bg-background px-3"
               onChange={(event) => setTime(event.target.value)}
-            />
+            >
+              <option value="">Select an available time</option>
+              {bookableTimes.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
           </div>
         </div>
         <div>
@@ -532,7 +545,7 @@ function OfferToTeach({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button disabled={busy || !date || !time} onClick={() => void submit()}>
+          <Button disabled={busy || !date || !time || !availabilitySlots.length} onClick={() => void submit()}>
             Send teaching offer
           </Button>
         </DialogFooter>

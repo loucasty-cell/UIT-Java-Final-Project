@@ -77,6 +77,7 @@ public class LearningRequestService {
                     || !post.getSkillIds().contains(request.getRequestedSkillId())) {
                 throw new IllegalArgumentException("Choose an active volunteer post and one of its offered skills");
             }
+            request.setScheduledStart(validateForumPostAvailability(post, request));
             request.setMode(SessionMode.VOLUNTEER);
         }
 
@@ -109,6 +110,7 @@ public class LearningRequestService {
                     || !teaching.getSkillId().equals(request.getRequestedSkillId()) || !enabled) {
                 throw new IllegalArgumentException("The selected offering does not support this mentor, skill or mode");
             }
+            request.setScheduledStart(validateOfferingAvailability(offering, request));
         }
         if (request.getMode() == SessionMode.POINTS) {
             if (request.getMentorOfferingId() != null) {
@@ -477,5 +479,49 @@ public class LearningRequestService {
         User mentor = userRepository.findById(entity.getMentorId()).orElse(null);
         Skill skill = skillRepository.findById(entity.getRequestedSkillId()).orElse(null);
         return learningRequestMapper.toResponse(saved, learner, mentor, skill);
+    }
+
+    private OffsetDateTime validateOfferingAvailability(MentorOffering offering, CreateLearningRequest request) {
+        if (offering.getAvailabilitySlots() == null || offering.getAvailabilitySlots().isEmpty()) {
+            throw new IllegalArgumentException("This teaching post has no bookable availability. Ask the mentor to update it.");
+        }
+
+        // Use the date/time pair selected in the UI when it is supplied.  The
+        // timestamp remains for calendar storage, but its timezone must not
+        // change which availability slot the learner selected.
+        var selectedDate = request.getAvailabilityDate() != null
+                ? request.getAvailabilityDate()
+                : request.getScheduledStart().toLocalDate();
+        var selectedTime = request.getAvailabilityTime() != null
+                ? request.getAvailabilityTime()
+                : request.getScheduledStart().toLocalTime();
+        boolean withinWindow = offering.getAvailabilitySlots().stream().anyMatch(slot ->
+                slot.getDate().equals(selectedDate)
+                        && slot.getTime().equals(selectedTime));
+        if (!withinWindow) {
+            throw new IllegalArgumentException("Choose one of the mentor's published times for that date");
+        }
+
+        return OffsetDateTime.of(selectedDate, selectedTime, request.getScheduledStart().getOffset());
+    }
+
+    private OffsetDateTime validateForumPostAvailability(
+            com.skillbridge.forum.domain.entity.ForumPost post,
+            CreateLearningRequest request) {
+        if (post.getAvailabilitySlots() == null || post.getAvailabilitySlots().isEmpty()) {
+            throw new IllegalArgumentException("This free session post has no bookable availability.");
+        }
+        var selectedDate = request.getAvailabilityDate() != null
+                ? request.getAvailabilityDate()
+                : request.getScheduledStart().toLocalDate();
+        var selectedTime = request.getAvailabilityTime() != null
+                ? request.getAvailabilityTime()
+                : request.getScheduledStart().toLocalTime();
+        boolean published = post.getAvailabilitySlots().stream().anyMatch(slot ->
+                slot.getDate().equals(selectedDate) && slot.getTime().equals(selectedTime));
+        if (!published) {
+            throw new IllegalArgumentException("Choose one of the volunteer's published times for that date");
+        }
+        return OffsetDateTime.of(selectedDate, selectedTime, request.getScheduledStart().getOffset());
     }
 }

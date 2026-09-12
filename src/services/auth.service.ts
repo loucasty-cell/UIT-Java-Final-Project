@@ -2,11 +2,13 @@ import { api } from "@/lib/api-client";
 import {
   AuthResponse,
   LoginRequest,
+  PageResponse,
   PublicUserProfileResponse,
   PublicUserSkillResponse,
   RefreshTokenRequest,
   RegisterRequest,
   UpdateUserProfileRequest,
+  ReviewResponse,
   UserProfileResponse,
 } from "@/types/api";
 
@@ -101,5 +103,13 @@ export const authService = {
    */
   async getPublicSkills(userId: string): Promise<PublicUserSkillResponse[]> {
     return api.get<PublicUserSkillResponse[]>(`/api/v1/users/${userId}/skills`);
+  },
+
+  /** Get public reviews received by this member. */
+  async getPublicReviews(userId: string): Promise<PageResponse<ReviewResponse>> {
+    return api.get<PageResponse<ReviewResponse>>(`/api/v1/users/${userId}/reviews`, {
+      page: 0,
+      size: 10,
+    });
   },
 };

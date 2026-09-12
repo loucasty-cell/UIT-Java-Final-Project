@@ -67,6 +67,7 @@ describe("My Sessions real API flow", () => {
     await screen.findByText("Session with Real Mentor");
     await user.click(screen.getByRole("tab", { name: /requests/i }));
     expect(screen.getByText("Java")).toBeInTheDocument();
+    expect(screen.getByText("Thursday, Oct 1 · 10:00")).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: /^Mentor$/ }));
     expect(screen.getByText("No active sessions.")).toBeInTheDocument();
     expect(screen.queryByText("Java")).not.toBeInTheDocument();

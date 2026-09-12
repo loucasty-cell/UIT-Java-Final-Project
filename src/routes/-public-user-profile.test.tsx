@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   currentUserId: "11111111-1111-4111-8111-111111111111",
   getPublicProfile: vi.fn(),
   getPublicSkills: vi.fn(),
+  getPublicReviews: vi.fn(),
 }));
 
 vi.mock("@/context/auth-context", () => ({
@@ -18,6 +19,7 @@ vi.mock("@/services/auth.service", () => ({
   authService: {
     getPublicProfile: state.getPublicProfile,
     getPublicSkills: state.getPublicSkills,
+    getPublicReviews: state.getPublicReviews,
   },
 }));
 
@@ -71,6 +73,28 @@ describe("public user profile", () => {
         level: "BEGINNER",
       },
     ]);
+    state.getPublicReviews.mockResolvedValue({
+      content: [
+        {
+          id: "review-1",
+          sessionId: "session-1",
+          reviewerId: "33333333-3333-4333-8333-333333333333",
+          reviewerName: "Alex Chen",
+          revieweeId: viewedUserId,
+          skillId: "skill-1",
+          rating: 5,
+          feedback: "Clear explanations and very patient guidance.",
+          createdAt: "2026-09-10T09:00:00Z",
+        },
+      ],
+      page: 0,
+      size: 10,
+      totalElements: 1,
+      totalPages: 1,
+      first: true,
+      last: true,
+      empty: false,
+    });
   });
 
   afterEach(() => {
@@ -88,9 +112,14 @@ describe("public user profile", () => {
     expect(screen.getByText("Java")).toBeVisible();
     expect(screen.getByRole("heading", { name: "Skills they want to learn" })).toBeVisible();
     expect(screen.getByText("Spanish")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Reviews" })).toBeVisible();
+    expect(screen.getByText("Alex Chen")).toBeVisible();
+    expect(screen.getByText("Clear explanations and very patient guidance.")).toBeVisible();
+    expect(screen.getByLabelText("5 out of 5 stars")).toBeVisible();
     expect(screen.queryByText("Open my private profile")).not.toBeInTheDocument();
     expect(state.getPublicProfile).toHaveBeenCalledWith(viewedUserId);
     expect(state.getPublicSkills).toHaveBeenCalledWith(viewedUserId);
+    expect(state.getPublicReviews).toHaveBeenCalledWith(viewedUserId);
   });
 
   it("identifies the profile when a member opens their own public view", async () => {

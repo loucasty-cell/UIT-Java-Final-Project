@@ -38,6 +38,7 @@ public class ForumMapper {
         response.setExcerpt(entity.getDescription().substring(0, Math.min(entity.getDescription().length(), 100)));
         response.setSkillTags(toSkillTags(entity));
         response.setAvailability(entity.getAvailabilityText());
+        response.setAvailabilitySlots(entity.getAvailabilitySlots().stream().toList());
         response.setDurationMinutes(entity.getDurationMinutes());
         response.setLikeCount(entity.getLikeCount());
         response.setCommentCount(entity.getCommentCount());
@@ -61,6 +62,7 @@ public class ForumMapper {
         response.setDescription(entity.getDescription());
         response.setSkillTags(toSkillTags(entity));
         response.setAvailability(entity.getAvailabilityText());
+        response.setAvailabilitySlots(entity.getAvailabilitySlots().stream().toList());
         response.setDurationMinutes(entity.getDurationMinutes());
         response.setLikeCount(entity.getLikeCount());
         response.setCommentCount(entity.getCommentCount());

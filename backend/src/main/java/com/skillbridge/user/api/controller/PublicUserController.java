@@ -3,7 +3,10 @@ package com.skillbridge.user.api.controller;
 import com.skillbridge.auth.domain.entity.User;
 import com.skillbridge.auth.infrastructure.persistence.UserRepository;
 import com.skillbridge.review.domain.entity.Review;
+import com.skillbridge.review.api.dto.response.ReviewResponse;
+import com.skillbridge.review.application.ReviewService;
 import com.skillbridge.review.infrastructure.persistence.ReviewRepository;
+import com.skillbridge.shared.api.dto.response.PageResponse;
 import com.skillbridge.skill.domain.entity.Skill;
 import com.skillbridge.skill.infrastructure.SkillRepository;
 import com.skillbridge.user.api.dto.response.PublicUserProfileResponse;
@@ -13,6 +16,8 @@ import com.skillbridge.user.infrastructure.persistence.UserSkillRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,6 +37,7 @@ public class PublicUserController {
     private final UserSkillRepository userSkillRepository;
     private final SkillRepository skillRepository;
     private final ReviewRepository reviewRepository;
+    private final ReviewService reviewService;
 
     @GetMapping("/{userId}/profile")
     @Operation(summary = "Get a user's safe public profile")
@@ -82,5 +88,16 @@ public class PublicUserController {
         }).toList();
 
         return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/{userId}/reviews")
+    @Operation(summary = "Get public reviews received by a member")
+    public ResponseEntity<PageResponse<ReviewResponse>> getPublicReviews(
+            @PathVariable UUID userId,
+            @PageableDefault(size = 10) Pageable pageable) {
+        if (!userRepository.existsById(userId)) {
+            throw new IllegalArgumentException("User not found with id: " + userId);
+        }
+        return ResponseEntity.ok(reviewService.getMentorReviews(userId, pageable));
     }
 }

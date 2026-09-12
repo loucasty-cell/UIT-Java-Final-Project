@@ -215,6 +215,7 @@ export interface MentorOfferingResponse {
   modes: ("POINTS" | "SKILL_SWAP" | "VOLUNTEER")[];
   duration: number;
   availability?: string;
+  availabilitySlots: MentorAvailabilitySlot[];
   active: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -228,6 +229,12 @@ export interface CreateMentorOfferingRequest {
   volunteerEnabled: boolean;
   duration: number;
   availabilityText?: string;
+  availabilitySlots: MentorAvailabilitySlot[];
+}
+
+export interface MentorAvailabilitySlot {
+  date: string;
+  time: string;
 }
 
 export interface UpdateMentorOfferingRequest extends Partial<
@@ -440,6 +447,7 @@ export interface ForumPostSummaryResponse {
   authorMajor?: string;
   authorAvatar?: string;
   availabilityText?: string;
+  availabilitySlots?: MentorAvailabilitySlot[];
   active: boolean;
   likeCount: number;
   commentCount: number;
@@ -456,6 +464,7 @@ export interface CreateForumPostRequest {
   description: string;
   skillIds: string[];
   availabilityText?: string;
+  availabilitySlots: MentorAvailabilitySlot[];
   durationMinutes: number;
   active?: boolean;
 }
@@ -496,6 +505,7 @@ export interface LearningNeedResponse {
   title: string;
   description: string;
   availabilityText?: string;
+  availabilitySlots: MentorAvailabilitySlot[];
   durationMinutes: number;
   allowedModes: Array<"POINTS" | "SKILL_SWAP" | "VOLUNTEER">;
   exchangeSkillName?: string;
@@ -509,6 +519,7 @@ export interface CreateLearningNeedRequest {
   title: string;
   description: string;
   availabilityText?: string;
+  availabilitySlots: MentorAvailabilitySlot[];
   durationMinutes: number;
   allowedModes: Array<"POINTS" | "SKILL_SWAP" | "VOLUNTEER">;
   exchangeUserSkillId?: string;
@@ -632,6 +643,9 @@ export interface CreateLearningRequestDTO {
   mode: LearningRequestMode;
   offeredUserSkillId?: string;
   scheduledStart: string;
+  /** Exact availability entry selected from the mentor's teaching post. */
+  availabilityDate?: string;
+  availabilityTime?: string;
   durationMinutes: number;
   message?: string;
   sourceForumPostId?: string;

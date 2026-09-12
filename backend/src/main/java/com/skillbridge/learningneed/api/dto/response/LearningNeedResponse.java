@@ -1,6 +1,7 @@
 package com.skillbridge.learningneed.api.dto.response;
 
 import lombok.Data;
+import com.skillbridge.mentor.domain.entity.MentorAvailabilitySlot;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -17,6 +18,7 @@ public class LearningNeedResponse {
     private String title;
     private String description;
     private String availabilityText;
+    private List<MentorAvailabilitySlot> availabilitySlots;
     private Integer durationMinutes;
     private List<SessionMode> allowedModes;
     private String exchangeSkillName;

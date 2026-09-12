@@ -2,6 +2,7 @@ package com.skillbridge.forum.api.dto.response;
 
 import com.skillbridge.shared.api.dto.response.SkillSummaryResponse;
 import com.skillbridge.shared.api.dto.response.UserSummaryResponse;
+import com.skillbridge.mentor.domain.entity.MentorAvailabilitySlot;
 import lombok.Data;
 
 import java.time.OffsetDateTime;
@@ -16,6 +17,7 @@ public class ForumPostSummaryResponse {
     private String excerpt;
     private List<SkillSummaryResponse> skillTags;
     private String availability;
+    private List<MentorAvailabilitySlot> availabilitySlots;
     private Integer durationMinutes;
     private Integer likeCount;
     private Integer commentCount;

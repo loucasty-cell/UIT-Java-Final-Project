@@ -1,5 +1,6 @@
 package com.skillbridge.forum.domain.entity;
 
+import com.skillbridge.mentor.domain.entity.MentorAvailabilitySlot;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -41,6 +42,10 @@ public class ForumPost {
 
     @Column(name = "availability_text", length = 500)
     private String availabilityText;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "forum_post_availability", joinColumns = @JoinColumn(name = "post_id"))
+    private Set<MentorAvailabilitySlot> availabilitySlots = new LinkedHashSet<>();
 
     @Column(name = "duration_minutes", nullable = false)
     private Integer durationMinutes = 60;

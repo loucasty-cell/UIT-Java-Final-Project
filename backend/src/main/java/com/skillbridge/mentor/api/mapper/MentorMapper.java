@@ -50,6 +50,10 @@ public class MentorMapper {
 
         response.setDuration(entity.getDurationMinutes());
         response.setAvailability(entity.getAvailabilityText());
+        response.setAvailabilitySlots(entity.getAvailabilitySlots().stream()
+                .sorted(java.util.Comparator.comparing(com.skillbridge.mentor.domain.entity.MentorAvailabilitySlot::getDate)
+                        .thenComparing(com.skillbridge.mentor.domain.entity.MentorAvailabilitySlot::getTime))
+                .toList());
         response.setActive(entity.getActive());
         response.setCreatedAt(entity.getCreatedAt());
         response.setUpdatedAt(entity.getUpdatedAt());

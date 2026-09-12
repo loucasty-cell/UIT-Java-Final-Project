@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Coins, HandHeart, Handshake, LoaderCircle, Search, Star } from "lucide-react";
-import { format } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/context/auth-context";
 import { mentorsService } from "@/services/mentors.service";
@@ -20,6 +19,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { userInitials } from "@/lib/auth-validation";
+import {
+  availableDates,
+  availableTimes,
+  availabilitySummary,
+  localDateTimeWithOffset,
+} from "@/lib/mentor-availability";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -186,12 +191,20 @@ function RequestDialog({
   const [offerings, setOfferings] = useState<MentorOfferingResponse[]>([]);
   const [offeringId, setOfferingId] = useState("");
   const selectedOffering = offerings.find((item) => item.id === offeringId);
+  const availabilitySlots = selectedOffering?.availabilitySlots ?? [];
+  const bookableDates = useMemo(() => availableDates(availabilitySlots), [availabilitySlots]);
+  const bookableTimes = useMemo(
+    () => availableTimes(availabilitySlots, date),
+    [availabilitySlots, date],
+  );
   useEffect(() => {
     if (!mentor) return;
     setRequestedSkillId(mentor.matchingTeachSkills[0]?.id || "");
     setError("");
     setOfferingId("");
     setOfferings([]);
+    setDate("");
+    setTime("");
     void Promise.all([
       skillsService.getUserSkills("TEACH"),
       mentorsService.getMentorDetail(mentor.user.id),
@@ -237,7 +250,9 @@ function RequestDialog({
         requestedSkillId,
         mode,
         offeredUserSkillId,
-        scheduledStart: new Date(`${date}T${time}`).toISOString(),
+        scheduledStart: localDateTimeWithOffset(date, time),
+        availabilityDate: date,
+        availabilityTime: time,
         durationMinutes: selectedOffering?.duration || 60,
         message: message.trim() || undefined,
       });
@@ -278,6 +293,8 @@ function RequestDialog({
                 if (item) {
                   setRequestedSkillId(item.skill.id);
                   setMode(item.modes[0]);
+                  setDate("");
+                  setTime("");
                 }
               }}
             >
@@ -287,50 +304,67 @@ function RequestDialog({
                 </option>
               ))}
             </select>
-            {selectedOffering?.availability && (
-              <p className="text-sm text-muted-foreground">{selectedOffering.availability}</p>
+            {availabilitySlots.length > 0 && (
+              <p className="text-sm text-muted-foreground">Available: {availabilitySummary(availabilitySlots)}</p>
             )}
           </div>
         )}
         <div>
           <Label htmlFor="requested-skill">Skill to learn</Label>
-          <select
+          <Input
             id="requested-skill"
-            className="h-11 w-full rounded-md border bg-background px-3"
-            value={requestedSkillId}
-            disabled={!!selectedOffering}
-            onChange={(event) => setRequestedSkillId(event.target.value)}
-          >
-            {mentor?.matchingTeachSkills.map((skill) => (
-              <option key={skill.id} value={skill.id}>
-                {skill.name}
-              </option>
-            ))}
-          </select>
+            readOnly
+            value={
+              selectedOffering?.skill.name ||
+              mentor?.matchingTeachSkills.find((skill) => skill.id === requestedSkillId)?.name ||
+              ""
+            }
+          />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="request-date">Date</Label>
-            <Input
+            <select
               id="request-date"
-              type="date"
-              min={format(new Date(), "yyyy-MM-dd")}
+              className="h-11 w-full rounded-md border bg-background px-3"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
-              onInput={(e) => setDate(e.currentTarget.value)}
-            />
+              disabled={!availabilitySlots.length}
+              onChange={(e) => {
+                setDate(e.target.value);
+                setTime("");
+              }}
+            >
+              <option value="">Select an available date</option>
+              {bookableDates.map((availableDate) => (
+                <option key={availableDate.value} value={availableDate.value}>
+                  {availableDate.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <Label htmlFor="request-time">Time</Label>
-            <Input
+            <select
               id="request-time"
-              type="time"
+              className="h-11 w-full rounded-md border bg-background px-3"
               value={time}
+              disabled={!date}
               onChange={(e) => setTime(e.target.value)}
-              onInput={(e) => setTime(e.currentTarget.value)}
-            />
+            >
+              <option value="">Select an available time</option>
+              {bookableTimes.map((availableTime) => (
+                <option key={availableTime} value={availableTime}>
+                  {availableTime}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
+        {!availabilitySlots.length && selectedOffering && (
+          <p className="text-sm text-destructive">
+            This teaching post has no available dates yet. Please select another post.
+          </p>
+        )}
         <Tabs value={mode} onValueChange={(value) => setMode(value as LearningRequestMode)}>
           <TabsList className="grid grid-cols-3">
             <TabsTrigger

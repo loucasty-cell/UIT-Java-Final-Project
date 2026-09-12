@@ -12,11 +12,19 @@ export const learningNeedsService = {
 
   offerToTeach(
     needId: string,
-    data: { message?: string; proposedStart: string; mode: "POINTS" | "SKILL_SWAP" | "VOLUNTEER" },
+    data: {
+      message?: string;
+      proposedStart: string;
+      availabilityDate: string;
+      availabilityTime: string;
+      mode: "POINTS" | "SKILL_SWAP" | "VOLUNTEER";
+    },
   ): Promise<LearningNeedResponse> {
     return api.post<LearningNeedResponse>(`/api/v1/learning-needs/${needId}/offers`, {
       message: data.message?.trim() || undefined,
       proposedStart: data.proposedStart,
+      availabilityDate: data.availabilityDate,
+      availabilityTime: data.availabilityTime,
       mode: data.mode,
     });
   },

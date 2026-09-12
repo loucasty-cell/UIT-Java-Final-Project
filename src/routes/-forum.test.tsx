@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
@@ -44,6 +44,9 @@ it("explains short descriptions, then publishes a manually entered skill", async
     screen.getByLabelText("What will learners practise?"),
     "Learn hand lettering with practical exercises.",
   );
+  await user.click(screen.getByRole("button", { name: "Add available date" }));
+  fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2026-09-20" } });
+  fireEvent.change(screen.getByLabelText("Start time"), { target: { value: "10:00" } });
   await user.click(screen.getByRole("button", { name: "Publish free session" }));
   await waitFor(() =>
     expect(forumService.createPost).toHaveBeenCalledWith(
@@ -51,6 +54,7 @@ it("explains short descriptions, then publishes a manually entered skill", async
         durationMinutes: 60,
         skillIds: ["skill-id"],
         title: "Java for beginner",
+        availabilitySlots: [{ date: "2026-09-20", time: "10:00" }],
       }),
     ),
   );

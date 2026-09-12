@@ -19,7 +19,10 @@ export interface CreateLearningRequestDTO {
   mode: LearningRequestMode;
   /** Only required for SKILL_SWAP mode */
   offeredUserSkillId?: string;
-  scheduledStart: string; // ISO-8601 UTC
+  scheduledStart: string;
+  /** Exact availability entry chosen from the mentor's teaching post. */
+  availabilityDate?: string;
+  availabilityTime?: string;
   durationMinutes: number;
   message?: string;
   /** Optional: link from a forum post */

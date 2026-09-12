@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import com.skillbridge.shared.domain.model.SessionMode;
+import com.skillbridge.mentor.domain.entity.MentorAvailabilitySlot;
 import lombok.Data;
 
 import java.util.List;
@@ -25,6 +26,9 @@ public class LearningNeedCreateRequest {
 
     @Size(max = 500)
     private String availabilityText;
+
+    @jakarta.validation.Valid
+    private List<MentorAvailabilitySlot> availabilitySlots;
 
     @NotNull
     @Min(15)

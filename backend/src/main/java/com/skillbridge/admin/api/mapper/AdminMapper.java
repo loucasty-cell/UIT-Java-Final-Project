@@ -3,14 +3,19 @@ package com.skillbridge.admin.api.mapper;
 import com.skillbridge.admin.api.dto.response.*;
 import com.skillbridge.admin.domain.entity.*;
 import com.skillbridge.shared.api.dto.response.UserSummaryResponse;
+import com.skillbridge.swap.infrastructure.persistence.SwapSessionRepository;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 
 @Component
 @lombok.RequiredArgsConstructor
 public class AdminMapper {
     private final com.skillbridge.auth.infrastructure.persistence.UserRepository userRepository;
+    private final SwapSessionRepository sessionRepository;
 
     public UserSummaryResponse toUserSummary(UUID userId) {
         if (userId == null) {
@@ -62,8 +67,14 @@ public class AdminMapper {
                 .admin(toUserSummary(entity.getAdminId()))
                 .reason(entity.getReason())
                 .message(entity.getMessage())
+                .evidenceReviewIds(parseReviewIds(entity.getEvidenceReviewIds()))
                 .createdAt(entity.getCreatedAt())
                 .build();
+    }
+
+    private List<UUID> parseReviewIds(String value) {
+        if (value == null || value.isBlank()) return List.of();
+        return Arrays.stream(value.split(",")).map(UUID::fromString).toList();
     }
 
     public DisputeResponse toResponse(Dispute entity) {
@@ -71,11 +82,24 @@ public class AdminMapper {
             return null;
         }
 
+        UserSummaryResponse reportedUser = sessionRepository.findById(entity.getSessionId())
+                .map(session -> {
+                    if (Objects.equals(entity.getOpenedBy(), session.getRequesterId())) {
+                        return toUserSummary(session.getResponderId());
+                    }
+                    if (Objects.equals(entity.getOpenedBy(), session.getResponderId())) {
+                        return toUserSummary(session.getRequesterId());
+                    }
+                    return null;
+                })
+                .orElse(null);
+
         return DisputeResponse.builder()
                 .id(entity.getId())
                 .sessionId(entity.getSessionId())
                 .sessionMode(entity.getSessionMode())
                 .openedBy(toUserSummary(entity.getOpenedBy()))
+                .reportedUser(reportedUser)
                 .reason(entity.getReason())
                 .details(entity.getDetails())
                 .status(entity.getStatus())

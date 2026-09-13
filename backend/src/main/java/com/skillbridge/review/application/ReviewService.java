@@ -7,6 +7,7 @@ import com.skillbridge.review.api.dto.response.ReviewResponse;
 import com.skillbridge.review.api.mapper.ReviewMapper;
 import com.skillbridge.review.domain.entity.Review;
 import com.skillbridge.review.infrastructure.persistence.ReviewRepository;
+import com.skillbridge.review.domain.model.ReviewModerationStatus;
 import com.skillbridge.shared.api.dto.response.PageResponse;
 import com.skillbridge.shared.security.SecurityUtils;
 import com.skillbridge.skill.infrastructure.SkillRepository;
@@ -92,6 +93,7 @@ public class ReviewService {
         review.setSkillId(request.getSkillId());
         review.setRating(request.getRating());
         review.setFeedback(request.getFeedback());
+        review.setModerationStatus(ReviewModerationStatus.VERIFIED);
         review.setCreatedAt(OffsetDateTime.now());
 
         Review saved = reviewRepository.save(review);

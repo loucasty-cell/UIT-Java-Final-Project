@@ -7,6 +7,7 @@ import lombok.Data;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import java.util.List;
 
 @Data
 @Builder
@@ -16,5 +17,6 @@ public class AccountWarningResponse {
     private UserSummaryResponse admin;
     private WarningReason reason;
     private String message;
+    private List<UUID> evidenceReviewIds;
     private OffsetDateTime createdAt;
 }

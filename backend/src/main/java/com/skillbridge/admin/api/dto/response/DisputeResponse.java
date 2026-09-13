@@ -17,6 +17,7 @@ public class DisputeResponse {
     private UUID sessionId;
     private Mode sessionMode;
     private UserSummaryResponse openedBy;
+    private UserSummaryResponse reportedUser;
     private String reason;
     private String details;
     private DisputeStatus status;

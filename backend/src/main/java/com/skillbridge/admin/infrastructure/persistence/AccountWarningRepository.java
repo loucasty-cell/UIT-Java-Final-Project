@@ -11,4 +11,5 @@ import java.util.UUID;
 public interface AccountWarningRepository extends JpaRepository<AccountWarning, UUID> {
     List<AccountWarning> findByUserId(UUID userId);
     long countByUserId(UUID userId);
+    java.util.Optional<AccountWarning> findFirstByUserIdOrderByCreatedAtDesc(UUID userId);
 }

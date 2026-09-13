@@ -263,13 +263,16 @@ public class SessionServiceTest {
                         PlatformSettingRepository.class.getClassLoader(),
                         new Class<?>[] { PlatformSettingRepository.class },
                         (proxy, method, args) -> Optional.empty());
+        private final SwapSessionRepository sessionRepository = repository();
         private final SessionService service = new SessionService(
-                repository(),
+                sessionRepository,
                 swapService,
                 new SessionMapper(null),
                 notificationService,
                 disputeRepository,
-                new AdminMapper(org.mockito.Mockito.mock(com.skillbridge.auth.infrastructure.persistence.UserRepository.class)),
+                new AdminMapper(
+                        org.mockito.Mockito.mock(com.skillbridge.auth.infrastructure.persistence.UserRepository.class),
+                        sessionRepository),
                 confirmationRepository,
                 platformSettingRepository);
 

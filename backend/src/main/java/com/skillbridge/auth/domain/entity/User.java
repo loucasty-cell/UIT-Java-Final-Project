@@ -52,6 +52,15 @@ public class User {
     @Column(name = "status", nullable = false, length = 50)
     private AccountStatus status;
 
+    @Column(name = "suspended_until")
+    private OffsetDateTime suspendedUntil;
+
+    @Column(name = "last_suspended_at")
+    private OffsetDateTime lastSuspendedAt;
+
+    @Column(name = "suspension_count", nullable = false)
+    private Integer suspensionCount = 0;
+
     @Column(name = "referral_code", length = 12, unique = true)
     private String referralCode;
 

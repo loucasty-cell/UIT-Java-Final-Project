@@ -3,6 +3,7 @@ package com.skillbridge.review.domain.entity;
 import com.skillbridge.auth.domain.entity.User;
 import com.skillbridge.skill.domain.entity.Skill;
 import com.skillbridge.swap.domain.entity.SwapSession;
+import com.skillbridge.review.domain.model.ReviewModerationStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -61,6 +62,19 @@ public class Review {
     @Column(name = "feedback", length = 1000)
     private String feedback;
 
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    @Column(name = "moderation_status", nullable = false, length = 20)
+    private ReviewModerationStatus moderationStatus;
+
+    @Column(name = "reviewed_by")
+    private UUID reviewedBy;
+
+    @Column(name = "reviewed_at")
+    private OffsetDateTime reviewedAt;
+
+    @Column(name = "admin_notes", length = 1000)
+    private String adminNotes;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -75,6 +89,9 @@ public class Review {
         }
         if (version == null) {
             version = 0L;
+        }
+        if (moderationStatus == null) {
+            moderationStatus = ReviewModerationStatus.VERIFIED;
         }
         createdAt = OffsetDateTime.now();
     }

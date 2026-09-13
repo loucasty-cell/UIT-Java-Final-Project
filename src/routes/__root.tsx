@@ -15,6 +15,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { TopNav } from "@/components/top-nav";
+import { ModerationAlertBanner } from "@/components/moderation-alert-banner";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/context/auth-context";
 import { AuthGate } from "@/components/auth-gate";
@@ -167,6 +168,7 @@ function AppContent() {
         <AppSidebar />
         <SidebarInset className="bg-background">
           <TopNav />
+          <ModerationAlertBanner />
           <main className="flex-1">
             <Outlet />
           </main>

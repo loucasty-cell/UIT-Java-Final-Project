@@ -5,6 +5,7 @@ import com.skillbridge.review.api.dto.request.SubmitReviewRequest;
 import com.skillbridge.review.api.dto.response.ReviewResponse;
 import com.skillbridge.review.api.mapper.ReviewMapper;
 import com.skillbridge.review.domain.entity.Review;
+import com.skillbridge.review.domain.model.ReviewModerationStatus;
 import com.skillbridge.review.infrastructure.persistence.ReviewRepository;
 import com.skillbridge.skill.infrastructure.SkillRepository;
 import com.skillbridge.support.TestAuthContext;
@@ -46,6 +47,7 @@ public class ReviewServiceTest {
 
         assertNotNull(response);
         assertEquals(2, response.getRating());
+        assertEquals(ReviewModerationStatus.VERIFIED, response.getModerationStatus());
         assertEquals(3.0, response.getRevieweeAverageRating());
         assertEquals(2L, response.getRevieweeReviewCount());
         assertEquals(3.0, response.getSkillAverageRating());

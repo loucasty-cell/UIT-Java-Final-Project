@@ -3,17 +3,24 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   AlertTriangle,
+  Ban,
   Flag,
   LoaderCircle,
   LogOut,
   RefreshCw,
   ShieldCheck,
+  Star,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { adminService, type ReportResponse } from "@/services/admin.service";
 import { useAuth } from "@/context/auth-context";
-import type { AdminDisputeResponse, AdminDashboardMetricsResponse } from "@/types/api";
+import type {
+  AdminDisputeResponse,
+  AdminDashboardMetricsResponse,
+  AdminReviewResponse,
+  AdminUserResponse,
+} from "@/types/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,17 +63,47 @@ function AdminPage() {
     refetchInterval: 60000,
   });
 
-  const loading = metricsQuery.isLoading || reportsQuery.isLoading || disputesQuery.isLoading;
-  const error = metricsQuery.error ?? reportsQuery.error ?? disputesQuery.error;
+  const usersQuery = useQuery({
+    queryKey: ["admin-users"],
+    queryFn: () => adminService.getUsers({ page: 0, size: 200 }),
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+
+  const reviewsQuery = useQuery({
+    queryKey: ["admin-reviews-needing-attention"],
+    queryFn: () => adminService.getReviewsNeedingAttention({ page: 0, size: 200 }),
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+
+  const loading =
+    metricsQuery.isLoading ||
+    reportsQuery.isLoading ||
+    disputesQuery.isLoading ||
+    usersQuery.isLoading ||
+    reviewsQuery.isLoading;
+  const error =
+    metricsQuery.error ??
+    reportsQuery.error ??
+    disputesQuery.error ??
+    usersQuery.error ??
+    reviewsQuery.error;
   const metrics = metricsQuery.data ?? null;
   const reports = reportsQuery.data?.content ?? [];
   const disputes = disputesQuery.data ?? [];
+  const users = usersQuery.data?.content ?? [];
+  const reviews = reviewsQuery.data?.content ?? [];
 
   const reload = async (silent = false) => {
     if (!silent) {
-      await metricsQuery.refetch();
-      await reportsQuery.refetch();
-      await disputesQuery.refetch();
+      await Promise.all([
+        metricsQuery.refetch(),
+        reportsQuery.refetch(),
+        disputesQuery.refetch(),
+        usersQuery.refetch(),
+        reviewsQuery.refetch(),
+      ]);
     }
   };
   const handleLogout = async () => {
@@ -95,7 +132,7 @@ function AdminPage() {
           </Badge>
           <h1 className="mt-2 text-3xl font-bold">Admin Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            Review reports, investigate issues, and resolve session disputes.
+            Review user patterns, investigate reports, and resolve session disputes.
           </p>
           <p className="mt-1 text-xs text-muted-foreground">Signed in as {user?.email}</p>
         </div>
@@ -129,8 +166,10 @@ function AdminPage() {
           <Metric icon={RefreshCw} label="Active sessions" value={metrics.activeSessions} />
         </div>
       )}
-      <Tabs defaultValue="sessions">
-        <TabsList>
+      <Tabs defaultValue="users">
+        <TabsList className="flex h-auto flex-wrap">
+          <TabsTrigger value="users">Users ({users.length})</TabsTrigger>
+          <TabsTrigger value="reviews">Needs attention ({reviews.length})</TabsTrigger>
           <TabsTrigger value="sessions">
             Session Reports ({disputes.filter((d) => d.status === "OPEN").length})
           </TabsTrigger>
@@ -138,6 +177,26 @@ function AdminPage() {
             Content Reports ({reports.filter((r) => r.status === "OPEN").length})
           </TabsTrigger>
         </TabsList>
+        <TabsContent value="users" className="space-y-3">
+          {users.map((account) => (
+            <UserModerationCard
+              key={account.id}
+              account={account}
+              reviews={reviews}
+              currentAdminId={user?.id}
+              reload={reload}
+            />
+          ))}
+          {!users.length && !loading && <Empty message="No users are available." />}
+        </TabsContent>
+        <TabsContent value="reviews" className="space-y-3">
+          {reviews.map((review) => (
+            <ReviewAttentionCard key={review.id} review={review} />
+          ))}
+          {!reviews.length && !loading && (
+            <Empty message="No low-rating patterns need attention." />
+          )}
+        </TabsContent>
         <TabsContent value="sessions" className="space-y-3">
           {disputes.map((d) => (
             <DisputeCard key={d.id} dispute={d} reload={reload} />
@@ -175,16 +234,200 @@ function Metric({
     </Card>
   );
 }
-function Empty() {
+function Empty({ message = "The review queue is empty." }: { message?: string }) {
   return (
     <Card>
-      <CardContent className="p-8 text-center text-muted-foreground">
-        The review queue is empty.
+      <CardContent className="p-8 text-center text-muted-foreground">{message}</CardContent>
+    </Card>
+  );
+}
+
+export function UserModerationCard({
+  account,
+  reviews,
+  currentAdminId,
+  reload,
+}: {
+  account: AdminUserResponse;
+  reviews: AdminReviewResponse[];
+  currentAdminId?: string;
+  reload: () => Promise<void>;
+}) {
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const isAdmin = account.roles.some((role) => role.replace("ROLE_", "") === "ADMIN");
+  const canModerate = !isAdmin && account.id !== currentAdminId;
+  const warningReady = account.recommendedAction === "WARN";
+  const suspensionReady = account.recommendedAction === "SUSPEND" && account.status !== "SUSPENDED";
+  const needsReason = warningReady || suspensionReady || account.status === "SUSPENDED";
+  const evidence = reviews
+    .filter((review) => review.revieweeId === account.id && review.rating <= 2)
+    .map((review) => review.id);
+
+  const act = async (action: "WARN" | "SUSPEND" | "ACTIVE") => {
+    if (reason.trim().length < 10) return;
+    setBusy(true);
+    try {
+      if (action === "WARN") {
+        await adminService.issueWarning(account.id, {
+          reason: "POOR_REVIEWS",
+          message: reason.trim(),
+          reviewIds: evidence.slice(0, 3),
+        });
+        toast.success("Warning sent", {
+          description: "The user will see a prominent account-warning banner.",
+        });
+      } else {
+        const status = action === "SUSPEND" ? "SUSPENDED" : "ACTIVE";
+        await adminService.updateStatus(
+          account.id,
+          status,
+          reason.trim(),
+          account.version,
+          status === "SUSPENDED" ? evidence.slice(0, 2) : [],
+        );
+        toast.success(action === "SUSPEND" ? "User temporarily suspended" : "Suspension lifted");
+      }
+      setReason("");
+      await reload();
+    } catch (failure) {
+      toast.error(failure instanceof Error ? failure.message : "Could not update this account.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-base">
+              {account.firstName} {account.lastName}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">{account.email}</p>
+          </div>
+          <Badge variant={account.status === "SUSPENDED" ? "destructive" : "secondary"}>
+            {account.status}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex flex-wrap gap-2 text-sm">
+          <Badge variant="outline">{account.verifiedReviewCount} reviews</Badge>
+          <Badge variant={account.verifiedLowReviewCount ? "destructive" : "outline"}>
+            {account.verifiedLowReviewCount} low ratings
+          </Badge>
+          <Badge variant="outline">{account.warningCount} warnings</Badge>
+          <Badge variant="outline">
+            {account.verifiedReviewCount
+              ? `${account.verifiedAverageRating.toFixed(1)} average`
+              : "No ratings yet"}
+          </Badge>
+        </div>
+        {account.suspendedUntil && (
+          <p className="text-sm font-medium text-destructive">
+            Suspended until {new Date(account.suspendedUntil).toLocaleString()}
+          </p>
+        )}
+        {canModerate && (
+          <div className="space-y-2 rounded-lg border p-3">
+            <p className="text-sm font-medium">Moderation actions</p>
+            <p className="text-xs text-muted-foreground">
+              {warningReady && "Warning available: this user has at least 3 low ratings."}
+              {suspensionReady &&
+                "Temporary ban available: this user received 2 more low ratings after a warning."}
+              {!warningReady &&
+                !suspensionReady &&
+                account.status !== "SUSPENDED" &&
+                (account.warningCount === 0
+                  ? `Warning becomes available at 3 low ratings (${account.verifiedLowReviewCount}/3).`
+                  : "Temporary ban becomes available after 2 new low ratings following the warning.")}
+              {account.status === "SUSPENDED" && "This account is currently temporarily banned."}
+            </p>
+            {needsReason && (
+              <Textarea
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                maxLength={500}
+                placeholder="Explain the decision to the user (at least 10 characters)"
+                aria-label={`Moderation reason for ${account.firstName} ${account.lastName}`}
+              />
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                disabled={!warningReady || busy || reason.trim().length < 10}
+                onClick={() => void act("WARN")}
+              >
+                <AlertTriangle className="mr-2 h-4 w-4" /> Warn user
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={!suspensionReady || busy || reason.trim().length < 10}
+                onClick={() => void act("SUSPEND")}
+              >
+                <Ban className="mr-2 h-4 w-4" /> Temporarily ban
+              </Button>
+              {account.status === "SUSPENDED" && (
+                <Button
+                  variant="outline"
+                  disabled={busy || reason.trim().length < 10}
+                  onClick={() => void act("ACTIVE")}
+                >
+                  Lift suspension
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+        {!canModerate && (
+          <p className="text-xs text-muted-foreground">
+            Administrator accounts cannot be moderated here.
+          </p>
+        )}
       </CardContent>
     </Card>
   );
 }
-function DisputeCard({
+
+function ReviewAttentionCard({ review }: { review: AdminReviewResponse }) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-base">
+              {review.reviewerName} reviewed {review.revieweeName}
+            </CardTitle>
+            <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+              <Star className="h-4 w-4 fill-current" /> {review.rating}/5 ·{" "}
+              {new Date(review.createdAt).toLocaleString()}
+            </p>
+          </div>
+          <Badge variant="destructive">Needs attention</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="whitespace-pre-wrap text-sm">{review.feedback || "No written feedback."}</p>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+          <span>
+            {review.lowReviewCount} low rating{review.lowReviewCount === 1 ? "" : "s"} for this user
+          </span>
+          {review.recommendedAction !== "NONE" && (
+            <Badge variant="outline">
+              Recommended: {review.recommendedAction.replace("SUSPEND", "TEMPORARY BAN")}
+            </Badge>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          This review is already public. Use the Users tab only when the repeated-rating threshold
+          recommends action.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+export function DisputeCard({
   dispute,
   reload,
 }: {
@@ -221,6 +464,9 @@ function DisputeCard({
           <b>Reason:</b> {dispute.reason}
         </p>
         {dispute.openedBy && <p className="text-sm">Reported by {dispute.openedBy.displayName}</p>}
+        {dispute.reportedUser && (
+          <p className="text-sm">Reported against {dispute.reportedUser.displayName}</p>
+        )}
         {dispute.details && <p className="whitespace-pre-wrap">{dispute.details}</p>}
         {dispute.resolutionNote && <p>Resolution: {dispute.resolutionNote}</p>}
         {dispute.status === "OPEN" && (

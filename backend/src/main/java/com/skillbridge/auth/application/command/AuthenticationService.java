@@ -1,6 +1,5 @@
 package com.skillbridge.auth.application.command;
 
-import com.skillbridge.admin.domain.model.AccountStatus;
 import com.skillbridge.auth.api.dto.request.LoginRequest;
 import com.skillbridge.auth.api.dto.response.AuthResponse;
 import com.skillbridge.auth.api.mapper.AuthMapper;
@@ -42,6 +41,8 @@ public class AuthenticationService {
     // Mapper to convert User entity and tokens into standardized AuthResponse DTO
     private final AuthMapper authMapper;
 
+    private final AccountAccessService accountAccessService;
+
     // Verifies credentials, validates account status, and issues fresh 12h access token + new refresh token family
     // Linkage: Invoked by AuthController.login() when processing user login request
     public AuthResponse login(LoginRequest request) {
@@ -54,10 +55,9 @@ public class AuthenticationService {
             throw new BadCredentialsException("Invalid email or password");
         }
 
-        // Step 3: Enforce account status invariant (DISABLED accounts are strictly blocked)
-        if (user.getStatus() == AccountStatus.DISABLED) {
-            throw new AccessDeniedException("Account has been disabled. Please contact support.");
-        }
+        // Step 3: Block disabled or active temporary suspensions and automatically
+        // reactivate an expired suspension before issuing any token.
+        user = accountAccessService.requireAccessible(user);
 
         // Step 4: Retrieve all persisted roles for this user from 'user_roles' table
         List<String> roles = userRoleRepository.findByUserId(user.getId())

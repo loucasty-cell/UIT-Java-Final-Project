@@ -1,6 +1,5 @@
 package com.skillbridge.auth.application.command;
 
-import com.skillbridge.admin.domain.model.AccountStatus;
 import com.skillbridge.auth.api.dto.request.RefreshTokenRequest;
 import com.skillbridge.auth.api.dto.response.AuthResponse;
 import com.skillbridge.auth.api.mapper.AuthMapper;
@@ -43,6 +42,8 @@ public class RefreshTokenService {
     // Mapper to convert User entity and tokens into standardized AuthResponse DTO
     private final AuthMapper authMapper;
 
+    private final AccountAccessService accountAccessService;
+
     // Rotates the refresh token, validates expiry/reuse, and issues fresh 12h JWT token + new refresh token in same family
     // Linkage: Invoked by AuthController.refresh() when access token expires
     public AuthResponse refreshToken(RefreshTokenRequest request) {
@@ -72,9 +73,7 @@ public class RefreshTokenService {
         User user = userRepository.findById(storedToken.getUserId())
                 .orElseThrow(() -> new AccessDeniedException("User not found"));
 
-        if (user.getStatus() == AccountStatus.DISABLED) {
-            throw new AccessDeniedException("Account has been disabled");
-        }
+        user = accountAccessService.requireAccessible(user);
 
         // Step 7: Load user roles from 'user_roles'
         List<String> roles = userRoleRepository.findByUserId(user.getId())

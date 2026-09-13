@@ -100,7 +100,7 @@ public class SessionDisputeTest {
                 new SessionMapper(null),
                 notificationService,
                 disputeRepository,
-                new AdminMapper(org.mockito.Mockito.mock(com.skillbridge.auth.infrastructure.persistence.UserRepository.class)),
+                new AdminMapper(org.mockito.Mockito.mock(com.skillbridge.auth.infrastructure.persistence.UserRepository.class), sessionRepository),
                 (SessionConfirmationRepository) Proxy.newProxyInstance(SessionConfirmationRepository.class.getClassLoader(), new Class<?>[]{SessionConfirmationRepository.class}, (p, m, a) -> null),
                 (PlatformSettingRepository) Proxy.newProxyInstance(PlatformSettingRepository.class.getClassLoader(), new Class<?>[]{PlatformSettingRepository.class}, (p, m, a) -> Optional.empty())
         );
@@ -109,7 +109,7 @@ public class SessionDisputeTest {
 
         adminDisputeService = new AdminDisputeService(
                 disputeRepository,
-                new AdminMapper(org.mockito.Mockito.mock(com.skillbridge.auth.infrastructure.persistence.UserRepository.class)),
+                new AdminMapper(org.mockito.Mockito.mock(com.skillbridge.auth.infrastructure.persistence.UserRepository.class), sessionRepository),
                 auditService,
                 sessionRepository,
                 requestRepository,
@@ -130,6 +130,7 @@ public class SessionDisputeTest {
 
         assertNotNull(opened);
         assertEquals(DisputeStatus.OPEN, opened.getStatus());
+        assertEquals(responderId, opened.getReportedUser().getId());
 
         SwapSession session = sessionRepository.findById(sessionId).orElseThrow();
         assertEquals(SwapSessionStatus.DISPUTED, session.getStatus());

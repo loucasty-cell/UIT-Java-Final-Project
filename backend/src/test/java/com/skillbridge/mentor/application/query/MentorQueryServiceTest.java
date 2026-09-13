@@ -22,6 +22,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -45,7 +47,7 @@ class MentorQueryServiceTest {
 
         User mentor = new User();
         mentor.setId(mentorId);
-        mentor.setStatus(AccountStatus.ACTIVE);
+        mentor.setStatus(AccountStatus.WARNED);
 
         UserSkill postedJava = new UserSkill();
         postedJava.setId(javaUserSkillId);
@@ -78,12 +80,18 @@ class MentorQueryServiceTest {
 
         when(offeringRepository.findByActiveTrue()).thenReturn(List.of(javaPost));
         when(userRepository.findById(mentorId)).thenReturn(Optional.of(mentor));
+        when(userRepository.findAllByIdIn(anyCollection())).thenReturn(List.of(mentor));
         when(userSkillRepository.findById(javaUserSkillId)).thenReturn(Optional.of(postedJava));
+        when(userSkillRepository.findByUserIdInAndDirection(anyCollection(), eq(Direction.TEACH)))
+                .thenReturn(List.of(postedJava, unpostedReact));
+        when(userSkillRepository.findByUserIdInAndDirection(anyCollection(), eq(Direction.LEARN)))
+                .thenReturn(List.of());
         when(userSkillRepository.findByUserIdAndDirectionOrderByCreatedAtDesc(mentorId, Direction.TEACH))
                 .thenReturn(List.of(postedJava, unpostedReact));
         when(userSkillRepository.findByUserIdAndDirectionOrderByCreatedAtDesc(mentorId, Direction.LEARN))
                 .thenReturn(List.of());
         when(reviewRepository.findByRevieweeId(mentorId)).thenReturn(List.of());
+        when(reviewRepository.findByRevieweeIdIn(anyCollection())).thenReturn(List.of());
         when(mentorMapper.toSkillSummary(javaSkillId)).thenReturn(javaSummary);
         when(mentorMapper.toUserSummary(mentorId, true)).thenReturn(userSummary);
 
@@ -92,6 +100,10 @@ class MentorQueryServiceTest {
 
         assertEquals(1, result.getTotalElements());
         assertEquals(List.of(javaSummary), result.getContent().getFirst().getMatchingTeachSkills());
+
+        mentor.setStatus(AccountStatus.SUSPENDED);
+        assertEquals(0, service.searchMentors(new MentorSearchQuery()).getTotalElements());
+        mentor.setStatus(AccountStatus.WARNED);
 
         MentorSearchQuery unpostedSkillQuery = new MentorSearchQuery();
         unpostedSkillQuery.setSkillId(reactSkillId);

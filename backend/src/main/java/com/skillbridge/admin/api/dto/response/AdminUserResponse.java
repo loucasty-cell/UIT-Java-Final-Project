@@ -20,6 +20,12 @@ public class AdminUserResponse {
     private String major;
     private Integer yearOfStudy;
     private Long warningCount;
+    private Long verifiedReviewCount;
+    private Long verifiedLowReviewCount;
+    private Double verifiedAverageRating;
+    private String recommendedAction;
+    private OffsetDateTime suspendedUntil;
+    private Integer suspensionCount;
     private Long reportCount;
     private Long completedSessionCount;
     private Integer availablePoints;

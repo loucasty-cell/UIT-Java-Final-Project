@@ -30,6 +30,9 @@ public class AccountWarning {
     @Column(name = "message", nullable = false, length = 2000)
     private String message;
 
+    @Column(name = "evidence_review_ids", length = 2000)
+    private String evidenceReviewIds;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 }

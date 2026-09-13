@@ -56,7 +56,8 @@ public class MentorQueryService {
 
                 // 2. Batch fetch all users in 1 query
                 Map<UUID, User> users = userRepository.findAllByIdIn(mentorIds).stream()
-                                .filter(u -> u.getStatus() == AccountStatus.ACTIVE)
+                                .filter(u -> u.getStatus() != AccountStatus.SUSPENDED
+                                                && u.getStatus() != AccountStatus.DISABLED)
                                 .collect(Collectors.toMap(User::getId, Function.identity()));
 
                 // 3. Batch fetch all skills for all mentors in 2 queries (TEACH + LEARN)
@@ -136,6 +137,40 @@ public class MentorQueryService {
                         double avgRating = userReviews.isEmpty() ? 5.0
                                         : userReviews.stream().mapToInt(Review::getRating).average().orElse(5.0);
                         int ratingCount = userReviews.size();
+
+                        if (query != null && query.getEffectiveQuery() != null
+                                        && !query.getEffectiveQuery().isBlank()) {
+                                String qLower = query.getEffectiveQuery().toLowerCase(Locale.ROOT);
+                                boolean matchesUser = Stream.of(user.getDisplayName(), user.getFirstName(),
+                                                user.getLastName(), user.getBio(), user.getMajor())
+                                                .filter(Objects::nonNull)
+                                                .map(value -> value.toLowerCase(Locale.ROOT))
+                                                .anyMatch(value -> value.contains(qLower));
+                                boolean matchesSkill = teachSkillDtos.stream()
+                                                .map(SkillSummaryResponse::getName)
+                                                .filter(Objects::nonNull)
+                                                .map(value -> value.toLowerCase(Locale.ROOT))
+                                                .anyMatch(value -> value.contains(qLower));
+                                if (!matchesUser && !matchesSkill) {
+                                        continue;
+                                }
+                        }
+                        if (query != null && query.getSkillId() != null
+                                        && postedTeachSkills.stream()
+                                                        .noneMatch(skill -> skill.getSkillId().equals(query.getSkillId()))) {
+                                continue;
+                        }
+                        if (query != null && query.getLevel() != null
+                                        && postedTeachSkills.stream()
+                                                        .noneMatch(skill -> skill.getLevel() == query.getLevel())) {
+                                continue;
+                        }
+                        if (query != null && query.getMode() != null && !modes.contains(query.getMode())) {
+                                continue;
+                        }
+                        if (query != null && query.getMinRating() != null && avgRating < query.getMinRating()) {
+                                continue;
+                        }
 
                         MentorSummaryResponse response = new MentorSummaryResponse();
                         response.setUser(mentorMapper.toUserSummary(userId, true));

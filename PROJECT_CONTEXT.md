@@ -694,3 +694,236 @@ Spring Boot/PostgreSQL backend in `backend/`. Read this file before making chang
 - Publication hygiene: checked the complete tracked/untracked publication set; no
   environment files, local backups, generated outputs, logs, test credentials or
   secret-pattern matches were included. Local database content is not part of Git.
+
+## 2026-09-13 — Review-based admin warnings and temporary bans
+
+- Objective: add only the requested administrator responsibilities: view users,
+  verify reviews, issue evidence-backed warnings, and temporarily ban users whose
+  verified low-review pattern worsens. No commit, push, deployment, role change,
+  synthetic user creation or unrelated application feature change was performed.
+- Policy: new reviews enter `PENDING`; administrators may make one auditable
+  `VERIFIED` or `DISMISSED` decision with notes. Three verified 1–2 star reviews
+  recommend an official warning. After a warning, two additional verified low
+  reviews recommend a temporary ban. The first ban lasts 7 days and later bans
+  last 30 days; reviews predating the latest warning/ban cannot be reused to
+  trigger another ban. Administrator confirmation and selected review evidence
+  remain required for every action.
+- Backend: added V34 for review moderation metadata, warning evidence, suspension
+  dates and counts. Replaced the placeholder admin status response with persisted
+  user changes, real versions and review aggregates. Warning actions now update
+  account status, create `ACCOUNT_WARNING` notifications and audit events.
+  Temporary bans persist an expiry, revoke all refresh tokens, block login,
+  refresh and already-issued access tokens, automatically reactivate after expiry,
+  and create audit/notification records. Self-moderation and moderation of other
+  admin accounts are rejected; permanent disabling is not exposed by this flow.
+- Frontend: Admin Dashboard now has Users and Review verification tabs alongside
+  the existing report/dispute tabs. User cards show verified review risk, warning
+  history, status and expiry, with threshold-gated warning/temporary-ban controls.
+  Pending review cards support verify/dismiss decisions with notes. Users receive
+  a prominent red account-warning banner that remains until acknowledged, as well
+  as the existing notification-bell entry. A suspension-specific 403 clears stale
+  local authentication. The artifact verifier now includes `/admin`.
+- Files: admin/review/auth/notification DTOs, entities, repositories, services and
+  controllers; security filter/configuration; V34 migration; `src/routes/admin.tsx`,
+  admin client/types, root/top navigation, moderation banner, API client, focused
+  backend/frontend tests, and the frontend artifact verifier.
+- Validation: V34 validated and applied successfully to local PostgreSQL 17.11;
+  Hibernate schema validation and isolated backend startup on 9195/9196 succeeded,
+  health returned UP, and the unauthenticated admin review endpoint returned 401.
+  The isolated server was stopped and verification ports were free. All 111 backend
+  tests passed. Seven focused backend moderation/access tests and four focused
+  frontend tests passed. TypeScript and scoped ESLint passed, and `git diff --check`
+  was clean. The production frontend build completed with traced `tslib`; its final
+  Node artifact served 7 routes (including `/admin`) and 55 referenced assets.
+- Existing unrelated checks: the complete frontend run passed 96 tests and retained
+  the same two previously documented My Sessions text-assumption failures. Full
+  lint retains pre-existing formatting findings in Forum, Noticeboard, Sessions and
+  auth service plus existing warnings; changed-file lint has no findings. These
+  unrelated files and failures were intentionally not repaired under the user's
+  scope restriction.
+
+## 2026-09-13 — Live whole-project and moderation-flow verification
+
+- Objective: verify the implemented administrator moderation story and the broader
+  project without changing unrelated working features. No application source,
+  dependency, commit, push or deployment change was made during this check.
+- Automated evidence: all 111 backend tests passed; the four focused frontend admin
+  service/banner tests passed; TypeScript and the production build passed. The final
+  generated `.output` artifact served all 7 checked routes and 55 referenced assets,
+  with `tslib` traced and no unresolved dependency warning.
+- Live evidence: an isolated current backend on 9195/9196 validated all 34 migrations,
+  Hibernate and PostgreSQL 17.11, and reported health `UP`. A disposable ADMIN account
+  accessed the real users and review endpoints. Browser verification on frontend 3001
+  rendered the Users and Review verification tabs with no error overlay or console
+  errors. The browser was left open on the administrator sign-in page at the user's
+  request; the temporary frontend/backend verification servers remain running.
+- Moderation story: three verified low reviews produced a real `WARNED` account and
+  notification; the user saw the prominent red `Important account warning` banner
+  with acknowledgement. Two newer verified low reviews then produced a `SUSPEND`
+  recommendation; the first temporary ban stored a seven-day expiry. An already-issued
+  access token, refresh attempt and new login each returned 403, and the browser showed
+  the suspension-expiry message without console errors.
+- Test-data hygiene: removed all three documented synthetic accounts and their review,
+  session, notification, warning and audit dependencies using the guarded cleanup
+  script. It verified an ignored local recovery backup at
+  `backend/storage/backups/before-test-cleanup-1789283335135.json`; existing user data
+  was not intentionally modified.
+- Whole-project caveat: the repository is not perfectly clean. The current full
+  frontend test run reproduced the same two pre-existing `-sessions.test.tsx`
+  expectation failures and required interruption after it stopped producing output.
+  Full lint also reproduced 57 pre-existing Prettier errors and 9 warnings in Forum,
+  Noticeboard, Sessions, auth service and shared UI/context files. These unrelated
+  findings were reported but intentionally not repaired under the user's scope limit.
+
+## 2026-09-13 — Product-guidance preference and runtime handoff
+
+- User preference: future suggestions for this project should lead with the simplest
+  realistic real-world approach and avoid unnecessary complexity.
+- Current moderation recommendation only; not yet implemented: publish completed-session
+  reviews automatically, show only 1–2 star reviews in an admin `Needs attention` list,
+  warn after three low reviews, and temporarily ban after two more low reviews following
+  the warning. Administrators review the user's pattern, not every individual review.
+- Runtime correction: at the user's request, the agent-owned frontend/backend processes
+  were stopped; ports 3001, 9195 and 9196 were verified free. This supersedes the prior
+  checkpoint's statement that the temporary verification servers remained running.
+
+## 2026-09-13 — One-review-per-session policy confirmation
+
+- User requirement: each participant may submit a review only once for each session.
+- Existing implementation already satisfies this: `ReviewService` rejects a second
+  review from the same reviewer for the same session, and the database enforces the
+  same rule with `uq_reviews_session_reviewer`. No application source was changed.
+
+## 2026-09-13 — Simplified realistic review moderation
+
+- Objective: replace per-review administrator verification with the simplest
+  realistic moderation flow requested by the user, without changing other working
+  features. The existing warning banner, notifications, temporary suspension access
+  controls, and one-review-per-participant-per-session rule remain in place.
+- Behavior: completed-session reviews now publish immediately. The administrator
+  dashboard shows only published 1–2 star reviews in `Needs attention`; it no longer
+  asks an administrator to verify or dismiss every review. User-pattern cards still
+  recommend a warning after three low ratings and a temporary ban after two newer low
+  ratings following the warning. Administrator confirmation and a written reason are
+  still required before either action.
+- Backend: `ReviewService` and the entity default now create reviews as `VERIFIED`;
+  V35 converts any existing `PENDING` reviews and changes the database default to
+  `VERIFIED`. The admin review endpoint now returns only verified reviews rated 1–2,
+  and its per-review decision endpoint/DTO were removed. Policy and enforcement text
+  now describe published low ratings rather than individually verified evidence.
+- Frontend: renamed the dashboard tab to `Needs attention`, removed review-level
+  verify/dismiss controls, added pattern/action context to low-review cards, and
+  updated the admin client/types/tests. No unrelated route or feature was edited.
+- Validation: 19 focused backend moderation/review tests passed, followed by all 111
+  backend tests with no failures or errors. Four focused frontend tests, TypeScript,
+  changed-file ESLint, `git diff --check`, and the full production build passed. The
+  final frontend artifact served 7 routes and 54 assets. The final backend JAR was
+  packaged and confirmed to contain V35 and the changed review/admin services.
+- Runtime: the packaged JAR validated all 35 migrations against local PostgreSQL
+  17.11, applied V35 successfully, started with Hibernate validation, returned health
+  `UP`, and returned 401 for an unauthenticated admin-review request. The temporary
+  backend was stopped; ports 9295 and 9296 were confirmed free. No synthetic users,
+  commit, push, deployment, or dependency change was made.
+
+## 2026-09-13 — Low-review count and visible moderation-action repair
+
+- Objective: investigate the user's screenshots where `Needs attention (5)` did not
+  match Htet Yadanar Myo's Users card (`2 low ratings`) and no warning/ban action was
+  visible. Used the investigation workflow: no app terminal or server was attached,
+  no project ports were listening, and direct read-only database checks isolated the
+  mismatch without changing unrelated features.
+- Root cause: the database held four accepted 1-star reviews for Htet: two `VERIFIED`
+  and two legacy `PENDING` rows inserted by stale pre-V35 backend behavior. The old
+  review queue counted all five reviews in the platform, including an unrelated
+  4-star review for Evelyn, while the Users summary counted only `VERIFIED` rows.
+  Therefore the queue showed 5, Htet showed 2, and the 3-review warning threshold did
+  not expose its conditionally rendered action panel.
+- Backend repair: the attention queue, pattern policy, evidence validation and Users
+  summary now consistently include every non-dismissed published review regardless of
+  legacy `PENDING`/`VERIFIED` status. Added V36 to normalize stale `PENDING` rows to
+  `VERIFIED`; current review submission still writes `VERIFIED` immediately. Dismissed
+  historical reviews remain excluded. No session/review uniqueness rule changed.
+- Frontend repair: every non-admin user card now has a visible `Moderation actions`
+  area with Warn and Temporarily ban buttons plus threshold guidance. Actions remain
+  disabled until policy eligibility is met; eligible actions require an administrator
+  reason of at least 10 characters. Htet's four low ratings qualify for Warn. A ban
+  still correctly requires two new low ratings after the warning.
+- Validation: added a focused UI regression proving four low ratings display both
+  controls and enable Warn after a reason. Five focused frontend tests, TypeScript and
+  changed-file ESLint passed. Nineteen focused backend tests and all 111 backend tests
+  passed. The full frontend production build passed without the route-test warning;
+  its final artifact served 7 routes and 54 assets. The backend JAR packaged, validated
+  all 36 migrations, applied V36, initialized all JPA repositories/Hibernate, and
+  reported health `UP` on temporary ports.
+- Live data verification after V36: Htet has 4 non-dismissed 1-star reviews, all 4 are
+  `VERIFIED`, and 0 remain `PENDING`; no fifth Htet review exists. The temporary backend
+  was stopped and ports 9295/9296 are free. No user was warned or banned during testing,
+  and no synthetic account, unrelated source edit, commit, push or deployment occurred.
+
+## 2026-09-13 — Warned mentor teaching-post visibility repair
+
+- Objective: investigate why a newly created teaching post was saved on Profile but
+  did not appear on Find Mentors. No app terminal/server was attached, so investigation
+  continued with read-only port, source and database checks.
+- Root cause: `MentorQueryService` admitted only users whose account status was exactly
+  `ACTIVE`. Htet Yadanar Myo was correctly in `WARNED` state and had five valid active
+  teaching posts with owned `TEACH` skills, so saving succeeded but the directory
+  silently excluded the entire mentor. A warning is not a ban and should not remove
+  normal application access.
+- Change: mentor search now includes `ACTIVE`, `WARNED`, and legacy null-status users;
+  only `SUSPENDED` or `DISABLED` accounts are excluded. Updated the existing focused
+  mentor-query regression to prove a warned mentor appears and the same mentor becomes
+  hidden when suspended. Only `MentorQueryService.java`, its focused test and this
+  checkpoint were changed for this repair.
+- Validation: the focused mentor test passed and all 111 backend tests passed. The
+  updated backend JAR packaged successfully, validated all 36 migrations, initialized
+  PostgreSQL/JPA/Hibernate, and reported health `UP`. A real GET `/api/v1/mentors`
+  against the packaged runtime returned Htet with rating count 4 and all five active
+  posted skills: React, Python, Journling, Marketing, and Finance.
+- Runtime/scope: the temporary backend was stopped after verification; no teaching
+  post, user/account state, frontend source, unrelated feature, dependency, commit,
+  push or deployment was changed.
+
+## 2026-09-13 — Session-report target visibility
+
+- Objective: show administrators both who submitted a session report and which other
+  session participant was reported, without changing dispute submission or resolution.
+- Backend: `DisputeResponse` now includes `reportedUser`. `AdminMapper` derives it from
+  the dispute's session as the participant other than `openedBy`, so existing and new
+  reports receive the information without a migration or duplicated persisted field.
+- Frontend: the Session Reports card now renders `Reported against <display name>`
+  directly below the existing `Reported by <display name>` line. The admin dispute API
+  type and a focused card regression were updated accordingly.
+- Tests: the focused frontend card tests passed 2/2, the focused backend dispute tests
+  passed 4/4, all 111 backend tests passed, TypeScript and changed-file ESLint passed,
+  and `git diff --check` was clean. The production frontend build completed with traced
+  `tslib`; its final artifact served all 7 checked routes and 54 assets successfully.
+- Scope/runtime: no database migration, report data, resolution behavior, dependency,
+  commit, push, deployment or unrelated feature was changed. The artifact verifier
+  stopped its temporary server automatically; no agent-owned app server remains running.
+
+## 2026-09-13 — Publish September 13 admin feature set to updated main
+
+- Objective: publish the reviewed admin moderation, review-flow, warned-mentor and
+  session-report-target work to `loucasty-cell/UIT-Java-Final-Project` on `main`.
+- Remote reconciliation: verified `origin` exactly matches the requested repository,
+  fetched six newer remote commits, and rebased onto `83af9e8` without rewriting remote
+  history. Preserved the remote slot-based availability, CI repairs, batched mentor
+  queries and React Query admin loading while retaining the local moderation behavior.
+- Migration resolution: the remote already owned V34–V36, so the unpublished moderation
+  migrations were renumbered to V37–V39. This avoids duplicate Flyway versions for new
+  checkouts and deployed databases. The existing local development database previously
+  recorded the unpublished moderation SQL under V34–V36; its Flyway history was not
+  mutated during publication and requires local reconciliation before this merged branch
+  can be runtime-validated against that same database.
+- Conflict/test resolution: combined the remote review batch query with the moderation
+  queries, retained published-post mentor filtering and all search filters, allowed
+  WARNED mentors while excluding SUSPENDED/DISABLED accounts, and extended the focused
+  mentor test fixture for the new batched repository methods.
+- Validation on the final combined source: all 101 frontend tests and all 112 backend
+  tests passed. TypeScript, changed-file ESLint and `git diff --check` passed. The final
+  production frontend build traced `tslib`, and its generated Node artifact served all
+  7 checked routes plus 52 referenced assets successfully before stopping automatically.
+- Publication hygiene: the staged source was checked for private-key/token signatures.
+  Ignored `backend/.env`, `auth-test.local`, local backups, `.output` and build `target`
+  directories are excluded. No force push, deployment or local user-data edit is used.

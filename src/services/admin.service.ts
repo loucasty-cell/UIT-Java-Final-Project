@@ -10,21 +10,24 @@ import {
   AdminDashboardMetricsResponse,
   AdminDisputeResponse,
   AdminPlatformSettingsResponse,
+  AdminReviewResponse,
   AdminUserResponse,
   PageResponse,
   PaginationParams,
 } from "@/types/api";
 
 export interface AccountWarningRequest {
-  category: "VIOLENT_CONTENT" | "FRAUDULENT_ACTIVITY" | "SPAM" | "HARASSMENT" | string;
-  reason: string;
+  reason: "POOR_REVIEWS" | "VIOLENT_CONTENT" | "FRAUDULENT_ACTIVITY" | "SPAM" | "OTHER";
+  message: string;
+  reviewIds: string[];
 }
 
 export interface AccountWarningResponse {
   id: string;
   userId: string;
-  category: string;
   reason: string;
+  message: string;
+  evidenceReviewIds: string[];
   createdAt: string;
 }
 
@@ -65,7 +68,19 @@ export const adminService = {
   async getUsers(
     params: PaginationParams = { page: 0, size: 20 },
   ): Promise<PageResponse<AdminUserResponse>> {
-    return api.get<PageResponse<AdminUserResponse>>("/api/v1/admin/users", params);
+    const result = await api.get<AdminUserResponse[] | PageResponse<AdminUserResponse>>(
+      "/api/v1/admin/users",
+      params,
+    );
+    if (!Array.isArray(result)) return result;
+    return {
+      content: result,
+      pageNumber: 0,
+      pageSize: result.length,
+      totalElements: result.length,
+      totalPages: 1,
+      last: true,
+    };
   },
 
   /**
@@ -105,13 +120,16 @@ export const adminService = {
    */
   async updateStatus(
     userId: string,
-    status: "ACTIVE" | "WARNED" | "SUSPENDED" | "DISABLED" | string,
-    reason?: string,
+    status: "ACTIVE" | "SUSPENDED",
+    reason: string,
+    version?: number,
+    reviewIds: string[] = [],
   ): Promise<AdminUserResponse> {
-    return api.patch<AdminUserResponse>(`/api/v1/admin/users/${userId}/status`, {
-      status,
-      reason,
-    });
+    return api.patch<AdminUserResponse>(
+      `/api/v1/admin/users/${userId}/status`,
+      { status, reason, reviewIds },
+      version === undefined ? undefined : { headers: { "If-Match": `"${version}"` } },
+    );
   },
 
   /**
@@ -119,11 +137,7 @@ export const adminService = {
    * POST /api/v1/admin/users/{id}/freeze
    */
   async freezeUser(id: string, reason: string): Promise<void> {
-    try {
-      await this.updateStatus(id, "SUSPENDED", reason);
-    } catch {
-      await api.post<void>(`/api/v1/admin/users/${id}/freeze`, { reason });
-    }
+    await this.updateStatus(id, "SUSPENDED", reason);
   },
 
   /**
@@ -131,11 +145,7 @@ export const adminService = {
    * POST /api/v1/admin/users/{id}/unfreeze
    */
   async unfreezeUser(id: string, reason: string): Promise<void> {
-    try {
-      await this.updateStatus(id, "ACTIVE", reason);
-    } catch {
-      await api.post<void>(`/api/v1/admin/users/${id}/unfreeze`, { reason });
-    }
+    await this.updateStatus(id, "ACTIVE", reason);
   },
 
   /**
@@ -143,11 +153,13 @@ export const adminService = {
    * POST /api/v1/admin/users/{id}/ban
    */
   async banUser(id: string, reason: string): Promise<void> {
-    try {
-      await this.updateStatus(id, "DISABLED", reason);
-    } catch {
-      await api.post<void>(`/api/v1/admin/users/${id}/ban`, { reason });
-    }
+    await this.updateStatus(id, "SUSPENDED", reason);
+  },
+
+  async getReviewsNeedingAttention(
+    params: PaginationParams = { page: 0, size: 100 },
+  ): Promise<PageResponse<AdminReviewResponse>> {
+    return api.get<PageResponse<AdminReviewResponse>>("/api/v1/admin/reviews", params);
   },
 
   /**

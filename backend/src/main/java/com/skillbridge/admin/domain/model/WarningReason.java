@@ -4,5 +4,6 @@ public enum WarningReason {
     VIOLENT_CONTENT,
     FRAUDULENT_ACTIVITY,
     SPAM,
+    POOR_REVIEWS,
     OTHER
 }

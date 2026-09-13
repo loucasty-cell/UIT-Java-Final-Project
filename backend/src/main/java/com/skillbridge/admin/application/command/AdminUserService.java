@@ -8,115 +8,218 @@ import com.skillbridge.admin.api.mapper.AdminMapper;
 import com.skillbridge.admin.domain.entity.AccountWarning;
 import com.skillbridge.admin.domain.model.AccountStatus;
 import com.skillbridge.admin.infrastructure.persistence.AccountWarningRepository;
+import com.skillbridge.auth.domain.entity.User;
+import com.skillbridge.auth.infrastructure.persistence.RefreshTokenRepository;
+import com.skillbridge.auth.infrastructure.persistence.UserRepository;
+import com.skillbridge.auth.infrastructure.persistence.UserRoleRepository;
+import com.skillbridge.notification.application.NotificationService;
+import com.skillbridge.notification.domain.model.NotificationType;
+import com.skillbridge.review.domain.entity.Review;
+import com.skillbridge.review.domain.model.ReviewModerationStatus;
+import com.skillbridge.review.infrastructure.persistence.ReviewRepository;
 import com.skillbridge.shared.security.SecurityUtils;
+import com.skillbridge.wallet.infrastructure.persistence.WalletRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 @Transactional
 @RequiredArgsConstructor
 public class AdminUserService {
-
     private final AccountWarningRepository accountWarningRepository;
     private final AdminMapper adminMapper;
     private final AdminAuditService adminAuditService;
-    private final com.skillbridge.auth.infrastructure.persistence.UserRepository userRepository;
-    private final com.skillbridge.auth.infrastructure.persistence.UserRoleRepository userRoleRepository;
+    private final UserRepository userRepository;
+    private final UserRoleRepository userRoleRepository;
+    private final ReviewRepository reviewRepository;
+    private final ReviewModerationPolicy moderationPolicy;
+    private final NotificationService notificationService;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final WalletRepository walletRepository;
 
     @Transactional(readOnly = true)
     public List<AdminUserResponse> getAllUsers() {
-        return userRepository.findAll().stream().map(user -> {
-            List<String> roles = userRoleRepository.findByUserId(user.getId())
-                    .stream().map(com.skillbridge.auth.domain.entity.UserRole::getRole).toList();
-            long warningCount = accountWarningRepository.countByUserId(user.getId());
-
-            return AdminUserResponse.builder()
-                    .id(user.getId())
-                    .email(user.getEmail())
-                    .firstName(user.getFirstName())
-                    .lastName(user.getLastName())
-                    .status(user.getStatus() != null ? user.getStatus() : AccountStatus.ACTIVE)
-                    .roles(roles.isEmpty() ? List.of("USER") : roles)
-                    .major(user.getMajor())
-                    .yearOfStudy(user.getYearOfStudy())
-                    .warningCount(warningCount)
-                    .reportCount(0L)
-                    .completedSessionCount(0L)
-                    .availablePoints(30)
-                    .heldPoints(0)
-                    .createdAt(user.getCreatedAt())
-                    .updatedAt(user.getUpdatedAt())
-                    .version(1L)
-                    .build();
-        }).toList();
+        return userRepository.findAll().stream().map(this::toResponse).toList();
     }
 
     public AccountWarningResponse issueWarning(UUID userId, AccountWarningRequest request) {
-        UUID currentAdminId = SecurityUtils.getCurrentUserId();
+        UUID adminId = SecurityUtils.getCurrentUserId();
+        User user = loadModeratableUser(userId, adminId);
+        ReviewModerationPolicy.Assessment assessment = moderationPolicy.assess(userId);
+        if (!"WARN".equals(assessment.recommendedAction())) {
+            throw new IllegalStateException("A warning requires at least three published 1-2 star reviews and no previous warning");
+        }
+        validateEvidence(userId, request.getReviewIds(), null, ReviewModerationPolicy.WARNING_THRESHOLD);
 
         AccountWarning warning = new AccountWarning();
         warning.setId(UUID.randomUUID());
         warning.setUserId(userId);
-        warning.setAdminId(currentAdminId);
+        warning.setAdminId(adminId);
         warning.setReason(request.getReason());
-        warning.setMessage(request.getMessage());
+        warning.setMessage(request.getMessage().trim());
+        warning.setEvidenceReviewIds(joinIds(request.getReviewIds()));
         warning.setCreatedAt(OffsetDateTime.now());
-
         AccountWarning saved = accountWarningRepository.save(warning);
 
+        AccountStatus before = user.getStatus();
+        user.setStatus(AccountStatus.WARNED);
+        user.setUpdatedAt(OffsetDateTime.now());
+        userRepository.save(user);
+        notificationService.createNotification(
+                userId,
+                NotificationType.ACCOUNT_WARNING,
+                "Important account warning",
+                request.getMessage().trim(),
+                "ACCOUNT_WARNING",
+                saved.getId()
+        );
         adminAuditService.logEvent(
-                currentAdminId,
+                adminId,
                 "ISSUE_WARNING",
                 "USER",
                 userId,
-                null,
-                "Warning Reason: " + request.getReason().name(),
-                request.getMessage(),
+                "Status: " + before,
+                "Status: WARNED; reviews: " + joinIds(request.getReviewIds()),
+                request.getMessage().trim(),
                 null
         );
-
         return adminMapper.toResponse(saved);
     }
 
     public AdminUserResponse updateUserStatus(UUID userId, AccountStatusUpdateRequest request, Long ifMatchVersion) {
-        UUID currentAdminId = SecurityUtils.getCurrentUserId();
-
-        long warningCount = accountWarningRepository.countByUserId(userId);
-
+        UUID adminId = SecurityUtils.getCurrentUserId();
+        User user = loadModeratableUser(userId, adminId);
+        if (ifMatchVersion != null && !ifMatchVersion.equals(user.getVersion())) {
+            throw new IllegalStateException("This user changed since the page loaded. Refresh and try again.");
+        }
+        AccountStatus before = user.getStatus();
+        if (request.getStatus() == AccountStatus.SUSPENDED) {
+            suspendFromVerifiedReviews(user, request);
+        } else if (request.getStatus() == AccountStatus.ACTIVE) {
+            user.setStatus(AccountStatus.ACTIVE);
+            user.setSuspendedUntil(null);
+        } else {
+            throw new IllegalArgumentException("Use a review warning or temporary suspension; permanent disabling is not available here");
+        }
+        user.setUpdatedAt(OffsetDateTime.now());
+        User saved = userRepository.save(user);
         adminAuditService.logEvent(
-                currentAdminId,
-                "UPDATE_ACCOUNT_STATUS",
+                adminId,
+                request.getStatus() == AccountStatus.SUSPENDED ? "TEMPORARILY_SUSPEND_USER" : "LIFT_USER_SUSPENSION",
                 "USER",
                 userId,
-                "Status: UNKNOWN",
-                "Status: " + request.getStatus().name(),
-                request.getReason(),
+                "Status: " + before,
+                "Status: " + saved.getStatus() + (saved.getSuspendedUntil() == null ? "" : "; until: " + saved.getSuspendedUntil()),
+                request.getReason().trim(),
                 null
         );
+        return toResponse(saved);
+    }
 
+    private void suspendFromVerifiedReviews(User user, AccountStatusUpdateRequest request) {
+        ReviewModerationPolicy.Assessment assessment = moderationPolicy.assess(user.getId());
+        if (!"SUSPEND".equals(assessment.recommendedAction())) {
+            throw new IllegalStateException("A temporary suspension requires two additional published 1-2 star reviews after a warning");
+        }
+        validateEvidence(
+                user.getId(),
+                request.getReviewIds(),
+                assessment.latestEnforcementAt(),
+                ReviewModerationPolicy.SUSPENSION_THRESHOLD_AFTER_WARNING
+        );
+        int previousSuspensions = user.getSuspensionCount() == null ? 0 : user.getSuspensionCount();
+        int days = previousSuspensions == 0 ? 7 : 30;
+        user.setStatus(AccountStatus.SUSPENDED);
+        OffsetDateTime now = OffsetDateTime.now();
+        user.setLastSuspendedAt(now);
+        user.setSuspendedUntil(now.plusDays(days));
+        user.setSuspensionCount(previousSuspensions + 1);
+        refreshTokenRepository.revokeAllForUser(user.getId());
+        notificationService.createNotification(
+                user.getId(),
+                NotificationType.ACCOUNT_SUSPENDED,
+                "Account temporarily suspended",
+                notificationMessage("Your account is suspended for " + days + " days. Reason: " + request.getReason().trim()),
+                "USER",
+                user.getId()
+        );
+    }
+
+    private User loadModeratableUser(UUID userId, UUID adminId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+        if (userId.equals(adminId)) throw new AccessDeniedException("Administrators cannot moderate themselves");
+        boolean isAdmin = userRoleRepository.findByUserId(userId).stream()
+                .anyMatch(role -> role.getRole() != null && role.getRole().replace("ROLE_", "").equalsIgnoreCase("ADMIN"));
+        if (isAdmin) throw new AccessDeniedException("Administrator accounts cannot be warned or suspended");
+        return user;
+    }
+
+    private void validateEvidence(UUID userId, List<UUID> reviewIds, OffsetDateTime after, int requiredCount) {
+        if (reviewIds == null) throw new IllegalArgumentException("Low-review evidence is required");
+        Set<UUID> uniqueIds = new HashSet<>(reviewIds);
+        List<Review> evidence = reviewRepository.findAllById(uniqueIds);
+        long valid = evidence.stream()
+                .filter(review -> review.getRevieweeId().equals(userId))
+                .filter(review -> review.getModerationStatus() != ReviewModerationStatus.DISMISSED)
+                .filter(review -> review.getRating() <= ReviewModerationPolicy.LOW_RATING_MAX)
+                .filter(review -> after == null || review.getCreatedAt().isAfter(after))
+                .count();
+        if (evidence.size() != uniqueIds.size() || valid < requiredCount) {
+            throw new IllegalArgumentException("Select the required published 1-2 star reviews for this user");
+        }
+    }
+
+    private AdminUserResponse toResponse(User user) {
+        List<String> roles = userRoleRepository.findByUserId(user.getId()).stream()
+                .map(com.skillbridge.auth.domain.entity.UserRole::getRole).toList();
+        ReviewModerationPolicy.Assessment assessment = moderationPolicy.assess(user.getId());
+        List<Review> publishedReviews = reviewRepository.findByRevieweeId(user.getId()).stream()
+                .filter(review -> review.getModerationStatus() != ReviewModerationStatus.DISMISSED)
+                .toList();
+        long reviewCount = publishedReviews.size();
+        double average = publishedReviews.stream().mapToInt(Review::getRating).average().orElse(0.0);
+        var wallet = walletRepository.findByUserId(user.getId()).orElse(null);
         return AdminUserResponse.builder()
-                .id(userId)
-                .email("user-" + userId.toString().substring(0, 8) + "@skillbridge.edu")
-                .firstName("User")
-                .lastName(userId.toString().substring(0, 4))
-                .status(request.getStatus())
-                .roles(Collections.singletonList("USER"))
-                .major("Computer Science")
-                .yearOfStudy(3)
-                .warningCount(warningCount)
+                .id(user.getId())
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .status(user.getStatus() == null ? AccountStatus.ACTIVE : user.getStatus())
+                .roles(roles.isEmpty() ? List.of("USER") : roles)
+                .major(user.getMajor())
+                .yearOfStudy(user.getYearOfStudy())
+                .warningCount(assessment.warningCount())
+                .verifiedReviewCount(reviewCount)
+                .verifiedLowReviewCount((long) assessment.lowReviews().size())
+                .verifiedAverageRating(average)
+                .recommendedAction(roles.stream().anyMatch(role -> role.toUpperCase().contains("ADMIN"))
+                        ? "NONE" : assessment.recommendedAction())
+                .suspendedUntil(user.getSuspendedUntil())
+                .suspensionCount(user.getSuspensionCount() == null ? 0 : user.getSuspensionCount())
                 .reportCount(0L)
                 .completedSessionCount(0L)
-                .availablePoints(50)
-                .heldPoints(0)
-                .createdAt(OffsetDateTime.now())
-                .updatedAt(OffsetDateTime.now())
-                .version(ifMatchVersion != null ? ifMatchVersion + 1 : 1L)
+                .availablePoints(wallet == null ? 0 : wallet.getAvailablePoints())
+                .heldPoints(wallet == null ? 0 : wallet.getHeldPoints())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .version(user.getVersion())
                 .build();
+    }
+
+    private String joinIds(List<UUID> ids) {
+        return ids.stream().distinct().map(UUID::toString).collect(java.util.stream.Collectors.joining(","));
+    }
+
+    private String notificationMessage(String message) {
+        return message.length() <= 500 ? message : message.substring(0, 497) + "...";
     }
 }

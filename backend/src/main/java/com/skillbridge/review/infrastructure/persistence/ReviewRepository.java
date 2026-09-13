@@ -1,6 +1,7 @@
 package com.skillbridge.review.infrastructure.persistence;
 
 import com.skillbridge.review.domain.entity.Review;
+import com.skillbridge.review.domain.model.ReviewModerationStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -26,7 +27,34 @@ public interface ReviewRepository extends JpaRepository<Review, UUID> {
     long countByReviewerId(UUID reviewerId);
 
     long countByRevieweeId(UUID revieweeId);
-    
+
     /** Batch fetch reviews by reviewee IDs - avoids N+1 queries in mentor search */
     List<Review> findByRevieweeIdIn(Collection<UUID> revieweeIds);
+
+    Page<Review> findByModerationStatusNotAndRatingLessThanEqualOrderByCreatedAtDesc(
+            ReviewModerationStatus moderationStatus,
+            Integer rating,
+            Pageable pageable
+    );
+
+    List<Review> findByRevieweeIdAndModerationStatusNotAndRatingLessThanEqualOrderByCreatedAtDesc(
+            UUID revieweeId,
+            ReviewModerationStatus moderationStatus,
+            Integer rating
+    );
+
+    long countByRevieweeIdAndModerationStatus(UUID revieweeId, ReviewModerationStatus moderationStatus);
+
+    long countByRevieweeIdAndModerationStatusAndRatingLessThanEqual(
+            UUID revieweeId,
+            ReviewModerationStatus moderationStatus,
+            Integer rating
+    );
+
+    long countByRevieweeIdAndModerationStatusAndRatingLessThanEqualAndCreatedAtAfter(
+            UUID revieweeId,
+            ReviewModerationStatus moderationStatus,
+            Integer rating,
+            java.time.OffsetDateTime createdAt
+    );
 }

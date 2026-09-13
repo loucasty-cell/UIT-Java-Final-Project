@@ -161,9 +161,11 @@ export function TopNav() {
                       "mt-1 h-2 w-2 shrink-0 rounded-full " +
                       (n.tone === "success"
                         ? "bg-success"
-                        : n.tone === "warning"
+                        : n.tone === "warning" || n.type === "ACCOUNT_WARNING"
                           ? "bg-warning"
-                          : "bg-primary")
+                          : n.type === "ACCOUNT_SUSPENDED"
+                            ? "bg-destructive"
+                            : "bg-primary")
                     }
                   />
                   <div className="min-w-0 flex-1">

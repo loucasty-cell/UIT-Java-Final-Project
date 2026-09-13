@@ -44,6 +44,7 @@ public class ReviewMapper {
         response.setSkillId(review.getSkillId());
         response.setRating(review.getRating());
         response.setFeedback(review.getFeedback());
+        response.setModerationStatus(review.getModerationStatus());
         response.setRevieweeAverageRating(revieweeAverageRating);
         response.setRevieweeReviewCount(revieweeReviewCount);
         response.setSkillAverageRating(skillAverageRating);

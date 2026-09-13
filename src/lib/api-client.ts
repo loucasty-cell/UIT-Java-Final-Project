@@ -159,7 +159,11 @@ async function request(endpoint: string, options: RequestOptions): Promise<Respo
     }
     if (revision === getAuthRevision()) clearAuth();
   }
-  if (!response.ok) throw await responseError(response);
+  if (!response.ok) {
+    const error = await responseError(response);
+    if (!isAuth && response.status === 403 && error.error === "ACCOUNT_UNAVAILABLE") clearAuth();
+    throw error;
+  }
   return response;
 }
 

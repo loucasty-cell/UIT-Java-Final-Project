@@ -360,6 +360,7 @@ export interface ReviewResponse {
   skillName?: string;
   rating: number;
   feedback: string;
+  moderationStatus?: "PENDING" | "VERIFIED" | "DISMISSED";
   createdAt: string;
 }
 
@@ -567,15 +568,44 @@ export interface AdminUserResponse {
   lastName: string;
   displayName: string;
   roles: string[];
-  status: "ACTIVE" | "FROZEN" | "BANNED" | "WARNED" | string;
+  status: "ACTIVE" | "WARNED" | "SUSPENDED" | "DISABLED" | string;
+  warningCount: number;
+  verifiedReviewCount: number;
+  verifiedLowReviewCount: number;
+  verifiedAverageRating: number;
+  recommendedAction: "NONE" | "WARN" | "SUSPEND" | string;
+  suspendedUntil?: string;
+  suspensionCount: number;
+  version: number;
   availablePoints?: number;
   heldPoints?: number;
   createdAt: string;
 }
 
+export interface AdminReviewResponse {
+  id: string;
+  sessionId: string;
+  reviewerId: string;
+  reviewerName: string;
+  revieweeId: string;
+  revieweeName: string;
+  skillId: string;
+  rating: number;
+  feedback?: string;
+  status: "PENDING" | "VERIFIED" | "DISMISSED";
+  reviewedBy?: string;
+  reviewedAt?: string;
+  adminNotes?: string;
+  createdAt: string;
+  lowReviewCount: number;
+  lowReviewsSinceLastAction: number;
+  recommendedAction: "NONE" | "WARN" | "SUSPEND" | string;
+}
+
 export interface AdminDisputeResponse {
   details?: string;
   openedBy?: { id: string; displayName: string };
+  reportedUser?: { id: string; displayName: string };
   resolutionNote?: string;
   id: string;
   sessionId: string;

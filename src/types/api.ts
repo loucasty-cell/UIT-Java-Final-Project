@@ -110,6 +110,7 @@ export interface PublicUserProfileResponse {
   avatarObjectKey?: string;
   averageRating?: number;
   reviewCount?: number;
+  trustedMentor?: boolean;
 }
 
 export interface PublicUserSkillResponse {
@@ -180,6 +181,7 @@ export interface MentorSearchResponse {
     major?: string;
     yearOfStudy?: number;
     avatarUrl?: string;
+    trustedMentor?: boolean;
   };
   rating: number;
   ratingCount: number;
@@ -576,6 +578,10 @@ export interface AdminUserResponse {
   recommendedAction: "NONE" | "WARN" | "SUSPEND" | string;
   suspendedUntil?: string;
   suspensionCount: number;
+  completedSessionCount: number;
+  trustedMentor: boolean;
+  trustedMentorEligible: boolean;
+  trustedMentorAwardedAt?: string;
   version: number;
   availablePoints?: number;
   heldPoints?: number;

@@ -12,4 +12,5 @@ public class UserSummaryResponse {
     private Integer yearOfStudy;
     private String avatarUrl;
     private Boolean mentorBadge;
+    private Boolean trustedMentor;
 }

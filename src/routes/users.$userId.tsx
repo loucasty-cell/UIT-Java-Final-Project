@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TrustedMentorBadge } from "@/components/trusted-mentor-badge";
 
 export const Route = createFileRoute("/users/$userId")({
   component: UserProfileRoute,
@@ -78,6 +79,7 @@ export function PublicUserProfile({ userId }: { userId: string }) {
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-3xl font-bold">{displayName}</h1>
                   {user?.id === profile.id && <Badge variant="secondary">This is you</Badge>}
+                  {profile.trustedMentor && <TrustedMentorBadge />}
                 </div>
                 <p className="mt-1 text-muted-foreground">
                   {[profile.major, profile.yearOfStudy ? `Year ${profile.yearOfStudy}` : null]

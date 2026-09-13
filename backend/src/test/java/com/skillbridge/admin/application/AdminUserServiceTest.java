@@ -2,6 +2,7 @@ package com.skillbridge.admin.application;
 
 import com.skillbridge.admin.api.dto.request.AccountStatusUpdateRequest;
 import com.skillbridge.admin.api.dto.request.AccountWarningRequest;
+import com.skillbridge.admin.api.dto.request.TrustedMentorBadgeUpdateRequest;
 import com.skillbridge.admin.api.dto.response.AccountWarningResponse;
 import com.skillbridge.admin.api.mapper.AdminMapper;
 import com.skillbridge.admin.application.command.AdminAuditService;
@@ -12,6 +13,7 @@ import com.skillbridge.admin.domain.model.AccountStatus;
 import com.skillbridge.admin.domain.model.WarningReason;
 import com.skillbridge.admin.infrastructure.persistence.AccountWarningRepository;
 import com.skillbridge.auth.domain.entity.User;
+import com.skillbridge.auth.domain.entity.UserRole;
 import com.skillbridge.auth.infrastructure.persistence.RefreshTokenRepository;
 import com.skillbridge.auth.infrastructure.persistence.UserRepository;
 import com.skillbridge.auth.infrastructure.persistence.UserRoleRepository;
@@ -21,6 +23,7 @@ import com.skillbridge.review.domain.entity.Review;
 import com.skillbridge.review.domain.model.ReviewModerationStatus;
 import com.skillbridge.review.infrastructure.persistence.ReviewRepository;
 import com.skillbridge.support.TestAuthContext;
+import com.skillbridge.swap.infrastructure.persistence.SwapSessionRepository;
 import com.skillbridge.wallet.infrastructure.persistence.WalletRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -47,8 +50,9 @@ class AdminUserServiceTest {
     private final AdminAuditService audit = mock(AdminAuditService.class);
     private final AdminMapper mapper = mock(AdminMapper.class);
     private final WalletRepository wallets = mock(WalletRepository.class);
+    private final SwapSessionRepository sessions = mock(SwapSessionRepository.class);
     private final AdminUserService service = new AdminUserService(
-            warnings, mapper, audit, users, roles, reviews, policy, notifications, tokens, wallets);
+            warnings, mapper, audit, users, roles, reviews, policy, notifications, tokens, wallets, sessions);
 
     @AfterEach
     void logout() {
@@ -117,6 +121,56 @@ class AdminUserServiceTest {
                 eq(userId), eq(NotificationType.ACCOUNT_SUSPENDED), anyString(), contains("7 days"), eq("USER"), eq(userId));
     }
 
+    @Test
+    void awardsTrustedMentorBadgeWhenSimpleEligibilityRulesAreMet() {
+        TestAuthContext.loginAs(adminId);
+        User user = user(AccountStatus.ACTIVE);
+        List<Review> positiveReviews = List.of(highReview(), highReview(), highReview(), highReview(), highReview());
+        when(users.findById(userId)).thenReturn(Optional.of(user));
+        when(users.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(roles.findByUserId(userId)).thenReturn(List.of(new UserRole(userId, "MENTOR")));
+        when(reviews.findByRevieweeId(userId)).thenReturn(positiveReviews);
+        when(sessions.countTaughtSessionsByUserId(userId)).thenReturn(5L);
+        when(policy.assess(userId)).thenReturn(new ReviewModerationPolicy.Assessment(
+                List.of(), 0, 0, "NONE", null));
+        when(wallets.findByUserId(userId)).thenReturn(Optional.empty());
+
+        TrustedMentorBadgeUpdateRequest request = new TrustedMentorBadgeUpdateRequest();
+        request.setTrustedMentor(true);
+        var response = service.updateTrustedMentorBadge(userId, request, 4L);
+
+        assertTrue(user.getTrustedMentor());
+        assertNotNull(user.getTrustedMentorAwardedAt());
+        assertEquals(adminId, user.getTrustedMentorAwardedBy());
+        assertTrue(response.getTrustedMentor());
+        assertTrue(response.getTrustedMentorEligible());
+        assertEquals(5L, response.getCompletedSessionCount());
+        verify(notifications).createNotification(
+                eq(userId), eq(NotificationType.SYSTEM_ALERT), eq("Trusted Mentor badge awarded"),
+                contains("strong teaching record"), eq("USER"), eq(userId));
+        verify(audit).logEvent(eq(adminId), eq("AWARD_TRUSTED_MENTOR_BADGE"), eq("USER"),
+                eq(userId), any(), any(), any(), isNull());
+    }
+
+    @Test
+    void rejectsTrustedMentorBadgeWhenMentorHasTooFewCompletedTeachingSessions() {
+        TestAuthContext.loginAs(adminId);
+        User user = user(AccountStatus.ACTIVE);
+        when(users.findById(userId)).thenReturn(Optional.of(user));
+        when(roles.findByUserId(userId)).thenReturn(List.of(new UserRole(userId, "MENTOR")));
+        when(reviews.findByRevieweeId(userId))
+                .thenReturn(List.of(highReview(), highReview(), highReview(), highReview(), highReview()));
+        when(sessions.countTaughtSessionsByUserId(userId)).thenReturn(4L);
+
+        TrustedMentorBadgeUpdateRequest request = new TrustedMentorBadgeUpdateRequest();
+        request.setTrustedMentor(true);
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> service.updateTrustedMentorBadge(userId, request, 4L));
+        assertTrue(failure.getMessage().contains("5 completed teaching sessions"));
+        verify(users, never()).save(any());
+    }
+
     private User user(AccountStatus status) {
         User user = new User();
         user.setId(userId);
@@ -136,6 +190,16 @@ class AdminUserServiceTest {
         review.setId(UUID.randomUUID());
         review.setRevieweeId(userId);
         review.setRating(1);
+        review.setModerationStatus(ReviewModerationStatus.VERIFIED);
+        review.setCreatedAt(OffsetDateTime.now().minusHours(1));
+        return review;
+    }
+
+    private Review highReview() {
+        Review review = new Review();
+        review.setId(UUID.randomUUID());
+        review.setRevieweeId(userId);
+        review.setRating(5);
         review.setModerationStatus(ReviewModerationStatus.VERIFIED);
         review.setCreatedAt(OffsetDateTime.now().minusHours(1));
         return review;

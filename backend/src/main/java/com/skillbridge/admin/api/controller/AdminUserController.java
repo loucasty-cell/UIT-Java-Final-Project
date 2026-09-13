@@ -2,6 +2,7 @@ package com.skillbridge.admin.api.controller;
 
 import com.skillbridge.admin.api.dto.request.AccountStatusUpdateRequest;
 import com.skillbridge.admin.api.dto.request.AccountWarningRequest;
+import com.skillbridge.admin.api.dto.request.TrustedMentorBadgeUpdateRequest;
 import com.skillbridge.admin.api.dto.response.AccountWarningResponse;
 import com.skillbridge.admin.api.dto.response.AdminUserResponse;
 import com.skillbridge.admin.application.command.AdminAuditService;
@@ -109,5 +110,27 @@ public class AdminUserController {
 
         AdminUserResponse response = adminUserService.updateUserStatus(userId, request, version);
         return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{userId}/trusted-mentor")
+    public ResponseEntity<AdminUserResponse> updateTrustedMentorBadge(
+            @PathVariable UUID userId,
+            @Valid @RequestBody TrustedMentorBadgeUpdateRequest request,
+            @RequestHeader(value = "If-Match", required = false) String ifMatch
+    ) {
+        return ResponseEntity.ok(adminUserService.updateTrustedMentorBadge(
+                userId,
+                request,
+                parseVersion(ifMatch)
+        ));
+    }
+
+    private Long parseVersion(String ifMatch) {
+        if (ifMatch == null || ifMatch.isBlank()) return null;
+        try {
+            return Long.parseLong(ifMatch.replace("\"", "").trim());
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 }

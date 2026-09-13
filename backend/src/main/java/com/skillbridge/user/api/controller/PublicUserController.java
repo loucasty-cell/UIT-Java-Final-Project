@@ -62,6 +62,7 @@ public class PublicUserController {
                 .avatarObjectKey(user.getAvatarObjectKey())
                 .averageRating(avgRating)
                 .reviewCount((long) reviews.size())
+                .trustedMentor(user.hasVisibleTrustedMentorBadge())
                 .build();
 
         return ResponseEntity.ok(response);

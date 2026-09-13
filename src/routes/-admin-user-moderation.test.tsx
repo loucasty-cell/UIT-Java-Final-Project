@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 import type { AdminDisputeResponse, AdminReviewResponse, AdminUserResponse } from "@/types/api";
 import { DisputeCard, UserModerationCard } from "./admin";
+import { adminService } from "@/services/admin.service";
 
 it("shows moderation controls and enables warning for four low ratings", async () => {
   const user = userEvent.setup();
@@ -20,6 +21,9 @@ it("shows moderation controls and enables warning for four low ratings", async (
     verifiedAverageRating: 1,
     recommendedAction: "WARN",
     suspensionCount: 0,
+    completedSessionCount: 0,
+    trustedMentor: false,
+    trustedMentorEligible: false,
     version: 1,
     createdAt: new Date().toISOString(),
   };
@@ -45,6 +49,43 @@ it("shows moderation controls and enables warning for four low ratings", async (
     "Repeated poor session conduct.",
   );
   expect(warnButton).toBeEnabled();
+});
+
+it("lets an admin award the badge only to an eligible mentor", async () => {
+  const user = userEvent.setup();
+  const updateBadge = vi
+    .spyOn(adminService, "updateTrustedMentorBadge")
+    .mockResolvedValue({} as AdminUserResponse);
+  const reload = vi.fn().mockResolvedValue(undefined);
+  const account: AdminUserResponse = {
+    id: "mentor-1",
+    email: "mina@example.test",
+    firstName: "Mina",
+    lastName: "Patel",
+    displayName: "Mina Patel",
+    roles: ["USER", "MENTOR"],
+    status: "ACTIVE",
+    warningCount: 0,
+    verifiedReviewCount: 5,
+    verifiedLowReviewCount: 0,
+    verifiedAverageRating: 4.8,
+    recommendedAction: "NONE",
+    suspensionCount: 0,
+    completedSessionCount: 5,
+    trustedMentor: false,
+    trustedMentorEligible: true,
+    version: 7,
+    createdAt: new Date().toISOString(),
+  };
+
+  render(
+    <UserModerationCard account={account} reviews={[]} currentAdminId="admin-1" reload={reload} />,
+  );
+
+  expect(screen.getByText(/5\/5 completed teaching sessions/)).toBeVisible();
+  await user.click(screen.getByRole("button", { name: /Award Trusted Mentor/i }));
+  expect(updateBadge).toHaveBeenCalledWith("mentor-1", true, 7);
+  expect(reload).toHaveBeenCalled();
 });
 
 it("shows both people involved in a session report", () => {

@@ -72,6 +72,7 @@ public class MentorMapper {
             summary.setMajor(user.getMajor());
             summary.setYearOfStudy(user.getYearOfStudy());
             summary.setAvatarUrl(user.getAvatarObjectKey());
+            summary.setTrustedMentor(user.hasVisibleTrustedMentorBadge());
         });
 
         if (summary.getDisplayName() == null) {

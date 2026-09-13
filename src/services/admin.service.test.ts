@@ -44,3 +44,13 @@ it("loads only reviews that need administrator attention", async () => {
   await adminService.getReviewsNeedingAttention({ page: 0, size: 200 });
   expect(get).toHaveBeenCalledWith("/api/v1/admin/reviews", { page: 0, size: 200 });
 });
+
+it("sends an optimistic admin decision when awarding the Trusted Mentor badge", async () => {
+  patch.mockResolvedValue({ id: "mentor-1", trustedMentor: true });
+  await adminService.updateTrustedMentorBadge("mentor-1", true, 7);
+  expect(patch).toHaveBeenCalledWith(
+    "/api/v1/admin/users/mentor-1/trusted-mentor",
+    { trustedMentor: true },
+    { headers: { "If-Match": '"7"' } },
+  );
+});

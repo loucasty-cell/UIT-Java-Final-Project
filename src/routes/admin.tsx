@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { TrustedMentorBadge } from "@/components/trusted-mentor-badge";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 type Resolution =
@@ -256,6 +257,7 @@ export function UserModerationCard({
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const isAdmin = account.roles.some((role) => role.replace("ROLE_", "") === "ADMIN");
+  const isMentor = account.roles.some((role) => role.replace("ROLE_", "") === "MENTOR");
   const canModerate = !isAdmin && account.id !== currentAdminId;
   const warningReady = account.recommendedAction === "WARN";
   const suspensionReady = account.recommendedAction === "SUSPEND" && account.status !== "SUSPENDED";
@@ -297,6 +299,21 @@ export function UserModerationCard({
     }
   };
 
+  const updateTrustedMentor = async (trustedMentor: boolean) => {
+    setBusy(true);
+    try {
+      await adminService.updateTrustedMentorBadge(account.id, trustedMentor, account.version);
+      toast.success(
+        trustedMentor ? "Trusted Mentor badge awarded" : "Trusted Mentor badge removed",
+      );
+      await reload();
+    } catch (failure) {
+      toast.error(failure instanceof Error ? failure.message : "Could not update the badge.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -324,6 +341,7 @@ export function UserModerationCard({
               ? `${account.verifiedAverageRating.toFixed(1)} average`
               : "No ratings yet"}
           </Badge>
+          {account.trustedMentor && <TrustedMentorBadge />}
         </div>
         {account.suspendedUntil && (
           <p className="text-sm font-medium text-destructive">
@@ -378,6 +396,44 @@ export function UserModerationCard({
                 </Button>
               )}
             </div>
+          </div>
+        )}
+        {canModerate && isMentor && (
+          <div className="space-y-2 rounded-lg border border-sky-200 bg-sky-50/50 p-3 dark:border-sky-900 dark:bg-sky-950/30">
+            <p className="text-sm font-medium">Trusted Mentor badge</p>
+            <p className="text-xs text-muted-foreground">
+              {account.completedSessionCount}/5 completed teaching sessions ·{" "}
+              {account.verifiedReviewCount}/5 reviews ·{" "}
+              {account.verifiedReviewCount
+                ? `${account.verifiedAverageRating.toFixed(1)}/4.5 average`
+                : "No rating yet"}
+            </p>
+            {account.trustedMentor && account.status !== "ACTIVE" && (
+              <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                Awarded, but hidden while this account is {account.status.toLowerCase()}.
+              </p>
+            )}
+            {!account.trustedMentor && !account.trustedMentorEligible && (
+              <p className="text-xs text-muted-foreground">
+                The award becomes available when all requirements are met and the account is active.
+              </p>
+            )}
+            {account.trustedMentor ? (
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={() => void updateTrustedMentor(false)}
+              >
+                Remove badge
+              </Button>
+            ) : (
+              <Button
+                disabled={busy || !account.trustedMentorEligible}
+                onClick={() => void updateTrustedMentor(true)}
+              >
+                <ShieldCheck className="mr-2 h-4 w-4" /> Award Trusted Mentor
+              </Button>
+            )}
           </div>
         )}
         {!canModerate && (

@@ -61,6 +61,15 @@ public class User {
     @Column(name = "suspension_count", nullable = false)
     private Integer suspensionCount = 0;
 
+    @Column(name = "trusted_mentor", nullable = false)
+    private Boolean trustedMentor = false;
+
+    @Column(name = "trusted_mentor_awarded_at")
+    private OffsetDateTime trustedMentorAwardedAt;
+
+    @Column(name = "trusted_mentor_awarded_by")
+    private UUID trustedMentorAwardedBy;
+
     @Column(name = "referral_code", length = 12, unique = true)
     private String referralCode;
 
@@ -76,4 +85,9 @@ public class User {
     @Version
     @Column(name = "version", nullable = false)
     private Long version;
+
+    @Transient
+    public boolean hasVisibleTrustedMentorBadge() {
+        return Boolean.TRUE.equals(trustedMentor) && status == AccountStatus.ACTIVE;
+    }
 }

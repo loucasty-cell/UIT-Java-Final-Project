@@ -132,6 +132,19 @@ export const adminService = {
     );
   },
 
+  /** Award or revoke the Trusted Mentor badge after server-side eligibility checks. */
+  async updateTrustedMentorBadge(
+    userId: string,
+    trustedMentor: boolean,
+    version?: number,
+  ): Promise<AdminUserResponse> {
+    return api.patch<AdminUserResponse>(
+      `/api/v1/admin/users/${userId}/trusted-mentor`,
+      { trustedMentor },
+      version === undefined ? undefined : { headers: { "If-Match": `"${version}"` } },
+    );
+  },
+
   /**
    * Freeze / Suspend user account
    * POST /api/v1/admin/users/{id}/freeze

@@ -28,6 +28,9 @@ public class AdminUserResponse {
     private Integer suspensionCount;
     private Long reportCount;
     private Long completedSessionCount;
+    private Boolean trustedMentor;
+    private Boolean trustedMentorEligible;
+    private OffsetDateTime trustedMentorAwardedAt;
     private Integer availablePoints;
     private Integer heldPoints;
     private OffsetDateTime createdAt;

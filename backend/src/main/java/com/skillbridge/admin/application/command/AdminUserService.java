@@ -2,6 +2,7 @@ package com.skillbridge.admin.application.command;
 
 import com.skillbridge.admin.api.dto.request.AccountStatusUpdateRequest;
 import com.skillbridge.admin.api.dto.request.AccountWarningRequest;
+import com.skillbridge.admin.api.dto.request.TrustedMentorBadgeUpdateRequest;
 import com.skillbridge.admin.api.dto.response.AccountWarningResponse;
 import com.skillbridge.admin.api.dto.response.AdminUserResponse;
 import com.skillbridge.admin.api.mapper.AdminMapper;
@@ -18,6 +19,7 @@ import com.skillbridge.review.domain.entity.Review;
 import com.skillbridge.review.domain.model.ReviewModerationStatus;
 import com.skillbridge.review.infrastructure.persistence.ReviewRepository;
 import com.skillbridge.shared.security.SecurityUtils;
+import com.skillbridge.swap.infrastructure.persistence.SwapSessionRepository;
 import com.skillbridge.wallet.infrastructure.persistence.WalletRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -34,6 +36,9 @@ import java.util.UUID;
 @Transactional
 @RequiredArgsConstructor
 public class AdminUserService {
+    static final long TRUSTED_MENTOR_MIN_SESSIONS = 5;
+    static final long TRUSTED_MENTOR_MIN_REVIEWS = 5;
+    static final double TRUSTED_MENTOR_MIN_RATING = 4.5;
     private final AccountWarningRepository accountWarningRepository;
     private final AdminMapper adminMapper;
     private final AdminAuditService adminAuditService;
@@ -44,6 +49,7 @@ public class AdminUserService {
     private final NotificationService notificationService;
     private final RefreshTokenRepository refreshTokenRepository;
     private final WalletRepository walletRepository;
+    private final SwapSessionRepository swapSessionRepository;
 
     @Transactional(readOnly = true)
     public List<AdminUserResponse> getAllUsers() {
@@ -124,6 +130,56 @@ public class AdminUserService {
         return toResponse(saved);
     }
 
+    public AdminUserResponse updateTrustedMentorBadge(
+            UUID userId,
+            TrustedMentorBadgeUpdateRequest request,
+            Long ifMatchVersion
+    ) {
+        UUID adminId = SecurityUtils.getCurrentUserId();
+        User user = loadModeratableUser(userId, adminId);
+        if (ifMatchVersion != null && !ifMatchVersion.equals(user.getVersion())) {
+            throw new IllegalStateException("This user changed since the page loaded. Refresh and try again.");
+        }
+
+        boolean award = Boolean.TRUE.equals(request.getTrustedMentor());
+        TrustedMentorAssessment assessment = assessTrustedMentor(user);
+        if (award && !assessment.eligible()) {
+            throw new IllegalStateException(
+                    "Trusted Mentor requires an active mentor with at least 5 completed teaching sessions, "
+                            + "5 published reviews, and a 4.5 average rating"
+            );
+        }
+
+        boolean before = Boolean.TRUE.equals(user.getTrustedMentor());
+        user.setTrustedMentor(award);
+        user.setTrustedMentorAwardedAt(award ? OffsetDateTime.now() : null);
+        user.setTrustedMentorAwardedBy(award ? adminId : null);
+        user.setUpdatedAt(OffsetDateTime.now());
+        User saved = userRepository.save(user);
+
+        notificationService.createNotification(
+                userId,
+                NotificationType.SYSTEM_ALERT,
+                award ? "Trusted Mentor badge awarded" : "Trusted Mentor badge removed",
+                award
+                        ? "An administrator awarded you the Trusted Mentor badge for your strong teaching record."
+                        : "An administrator removed your Trusted Mentor badge.",
+                "USER",
+                userId
+        );
+        adminAuditService.logEvent(
+                adminId,
+                award ? "AWARD_TRUSTED_MENTOR_BADGE" : "REVOKE_TRUSTED_MENTOR_BADGE",
+                "USER",
+                userId,
+                "Trusted Mentor: " + before,
+                "Trusted Mentor: " + award,
+                award ? "Eligibility criteria met" : "Administrator revoked badge",
+                null
+        );
+        return toResponse(saved);
+    }
+
     private void suspendFromVerifiedReviews(User user, AccountStatusUpdateRequest request) {
         ReviewModerationPolicy.Assessment assessment = moderationPolicy.assess(user.getId());
         if (!"SUSPEND".equals(assessment.recommendedAction())) {
@@ -188,6 +244,7 @@ public class AdminUserService {
         long reviewCount = publishedReviews.size();
         double average = publishedReviews.stream().mapToInt(Review::getRating).average().orElse(0.0);
         var wallet = walletRepository.findByUserId(user.getId()).orElse(null);
+        TrustedMentorAssessment trustedMentor = assessTrustedMentor(user, roles, reviewCount, average);
         return AdminUserResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -206,13 +263,45 @@ public class AdminUserService {
                 .suspendedUntil(user.getSuspendedUntil())
                 .suspensionCount(user.getSuspensionCount() == null ? 0 : user.getSuspensionCount())
                 .reportCount(0L)
-                .completedSessionCount(0L)
+                .completedSessionCount(trustedMentor.completedTeachingSessions())
+                .trustedMentor(Boolean.TRUE.equals(user.getTrustedMentor()))
+                .trustedMentorEligible(trustedMentor.eligible())
+                .trustedMentorAwardedAt(user.getTrustedMentorAwardedAt())
                 .availablePoints(wallet == null ? 0 : wallet.getAvailablePoints())
                 .heldPoints(wallet == null ? 0 : wallet.getHeldPoints())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .version(user.getVersion())
                 .build();
+    }
+
+    private TrustedMentorAssessment assessTrustedMentor(User user) {
+        List<String> roles = userRoleRepository.findByUserId(user.getId()).stream()
+                .map(com.skillbridge.auth.domain.entity.UserRole::getRole).toList();
+        List<Review> publishedReviews = reviewRepository.findByRevieweeId(user.getId()).stream()
+                .filter(review -> review.getModerationStatus() != ReviewModerationStatus.DISMISSED)
+                .toList();
+        double average = publishedReviews.stream().mapToInt(Review::getRating).average().orElse(0.0);
+        return assessTrustedMentor(user, roles, publishedReviews.size(), average);
+    }
+
+    private TrustedMentorAssessment assessTrustedMentor(
+            User user,
+            List<String> roles,
+            long publishedReviewCount,
+            double averageRating
+    ) {
+        long completedTeachingSessions = swapSessionRepository.countTaughtSessionsByUserId(user.getId());
+        boolean mentor = roles.stream().anyMatch(role -> role.replace("ROLE_", "").equalsIgnoreCase("MENTOR"));
+        boolean eligible = mentor
+                && user.getStatus() == AccountStatus.ACTIVE
+                && completedTeachingSessions >= TRUSTED_MENTOR_MIN_SESSIONS
+                && publishedReviewCount >= TRUSTED_MENTOR_MIN_REVIEWS
+                && averageRating >= TRUSTED_MENTOR_MIN_RATING;
+        return new TrustedMentorAssessment(eligible, completedTeachingSessions);
+    }
+
+    private record TrustedMentorAssessment(boolean eligible, long completedTeachingSessions) {
     }
 
     private String joinIds(List<UUID> ids) {

@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { userInitials } from "@/lib/auth-validation";
+import { TrustedMentorBadge } from "@/components/trusted-mentor-badge";
 import {
   availableDates,
   availableTimes,
@@ -131,6 +132,11 @@ function MentorsPage() {
                   <h2 className="truncate font-semibold underline-offset-4 hover:underline">
                     {mentor.user.displayName}
                   </h2>
+                  {mentor.user.trustedMentor && (
+                    <div className="mt-1">
+                      <TrustedMentorBadge />
+                    </div>
+                  )}
                   <p className="truncate text-xs text-muted-foreground">
                     {mentor.user.major || "SkillBridge member"}
                   </p>
@@ -305,7 +311,9 @@ function RequestDialog({
               ))}
             </select>
             {availabilitySlots.length > 0 && (
-              <p className="text-sm text-muted-foreground">Available: {availabilitySummary(availabilitySlots)}</p>
+              <p className="text-sm text-muted-foreground">
+                Available: {availabilitySummary(availabilitySlots)}
+              </p>
             )}
           </div>
         )}

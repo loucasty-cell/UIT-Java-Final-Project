@@ -54,6 +54,7 @@ describe("public user profile", () => {
       yearOfStudy: 3,
       averageRating: 4.8,
       reviewCount: 5,
+      trustedMentor: true,
     });
     state.getPublicSkills.mockResolvedValue([
       {
@@ -107,6 +108,7 @@ describe("public user profile", () => {
 
     expect(await screen.findByRole("heading", { name: "Mina Patel" })).toBeVisible();
     expect(screen.getByText("Computer Science · Year 3")).toBeVisible();
+    expect(screen.getByLabelText(/Trusted Mentor/)).toBeVisible();
     expect(screen.getByText("I enjoy pair programming and practical projects.")).toBeVisible();
     expect(screen.getByRole("heading", { name: "Skills they can teach" })).toBeVisible();
     expect(screen.getByText("Java")).toBeVisible();

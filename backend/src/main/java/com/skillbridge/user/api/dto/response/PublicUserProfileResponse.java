@@ -22,4 +22,5 @@ public class PublicUserProfileResponse {
     private String avatarObjectKey;
     private Double averageRating;
     private Long reviewCount;
+    private Boolean trustedMentor;
 }

@@ -927,3 +927,62 @@ Spring Boot/PostgreSQL backend in `backend/`. Read this file before making chang
 - Publication hygiene: the staged source was checked for private-key/token signatures.
   Ignored `backend/.env`, `auth-test.local`, local backups, `.output` and build `target`
   directories are excluded. No force push, deployment or local user-data edit is used.
+
+## 2026-09-13 — Trusted Mentor badge
+
+- Objective: add the simplest realistic admin-awarded `Trusted Mentor` badge without
+  changing unrelated working features. Eligibility requires the `MENTOR` role, an active
+  account, at least 5 completed teaching sessions, at least 5 published reviews, and a
+  4.5-or-higher average; the server remains authoritative for all checks.
+- Backend/data: V40 adds the persisted badge flag plus award timestamp/admin fields.
+  `AdminUserService` now returns real completed-teaching-session counts and eligibility,
+  exposes an optimistic-concurrency-protected award/revoke endpoint, creates a system
+  notification, and writes the decision to the admin audit trail. Public mentor/profile
+  projections expose the badge only while the awarded mentor is `ACTIVE`, so a warning
+  or suspension hides but does not erase the award.
+- Frontend: the Admin Users card shows eligibility progress and enables Award/Remove only
+  in the appropriate state. A reusable blue shield/check badge appears on Find Mentors
+  cards and public profiles, with an accessible explanation. API types/service calls and
+  focused admin/profile regressions were updated. `package-lock.json` gained the missing
+  npm-10 lock entry needed by the repository's Maven frontend plugin.
+- Validation: all 114 backend tests and all 103 frontend tests passed; the 9 focused
+  frontend admin/profile/service checks passed again after formatting. TypeScript and
+  changed-file ESLint passed (three existing mentor-page hook warnings remain). A full
+  clean Maven package, including pinned npm 10 `npm ci` and the production frontend build,
+  passed. The final JAR contains V40, the badge API/service classes, exactly one current
+  badge asset, and the compiled frontend artifact served 7 routes plus 52 assets.
+- Full-story verification: a packaged JAR started against an isolated PostgreSQL database,
+  applied all 40 migrations, and passed eligibility (5 sessions/5 reviews/5.0), admin
+  award/revoke, persisted award attribution, public profile, Find Mentors propagation,
+  and hide-while-warned/restore-when-active checks. The app browser blocked all isolated
+  localhost aliases and no separate Chrome/Edge surface was available, so the real UI
+  interaction is covered by React Testing Library rather than an additional browser click.
+  Repository-wide lint still reports pre-existing formatting errors in unrelated
+  availability/forum/noticeboard files; they were intentionally not changed.
+- Cleanup/scope: the packaged test server was stopped and the isolated database
+  `skillbridge_badge_verify_20260913_2138` was removed. No normal local database, user data,
+  unrelated feature, commit, push, or deployment was changed; no agent-owned server remains.
+
+## 2026-09-13 — Local Flyway history reconciliation
+
+- Objective: repair the local `skillbridge` database startup failure caused by checksum
+  mismatches for migrations V34–V36 after the moderation migrations were renumbered during
+  the earlier remote-main reconciliation.
+- Diagnosis: an isolated database proved that the local applied V34/V35/V36 checksums
+  exactly match the current source migrations V37/V38/V39 respectively. The current source
+  legitimately owns different availability/performance migrations at V34–V36, so a plain
+  Flyway repair would have incorrectly marked unapplied schema work as complete.
+- Data safety: created a full PostgreSQL custom-format backup at
+  `backend/storage/backups/before-flyway-reconciliation-20260913-2158.dump`; the 131,300-byte
+  artifact was validated successfully with `pg_restore --list` (245 TOC entries).
+- Repair: in one transaction, moved only the three checksum-matched schema-history rows from
+  V34–V36 to V37–V39 and updated their descriptions/script names. Flyway then validated all
+  40 migrations and applied the real V34–V36 migrations out of order plus V40 normally.
+- Validation: the packaged backend initialized PostgreSQL, Flyway, JPA and Hibernate and
+  reported actuator health `UP`. V34–V40 are all successful, all three availability tables
+  and three Trusted Mentor user columns exist, no failed migration remains, and data counts
+  stayed unchanged at 6 users, 7 reviews, 12 sessions and 10 mentor offerings.
+- Cleanup/scope: the isolated checksum-verification database was removed and the temporary
+  backend was stopped. This repair changed only local database migration history/schema, the
+  ignored recovery backup, and this checkpoint; no feature source, user record, commit, push,
+  deployment, or unrelated working behavior was changed.

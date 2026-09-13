@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { CheckCircle2, Clock, ExternalLink, Flag, LoaderCircle } from "lucide-react";
+import { CheckCircle2, Clock, ExternalLink, Flag, Gift, LoaderCircle, Star } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/auth-context";
 import {
@@ -327,33 +327,57 @@ function SessionReview({ session, role }: { session: SessionResponse; role: Role
       setBusy(false);
     }
   };
-  if (saved) return <p className="text-sm text-muted-foreground">Thank you for your review.</p>;
+  if (saved) {
+    return (
+      <p className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+        <Gift className="h-4 w-4" />
+        Thank you for your honest feedback. 3 points were added to your wallet.
+      </p>
+    );
+  }
   return (
-    <details className="space-y-3">
-      <summary className="cursor-pointer text-sm text-primary">Leave a review</summary>
-      <Label htmlFor={`rating-${session.id}`}>Rating</Label>
-      <select
-        id={`rating-${session.id}`}
-        value={rating}
-        onChange={(event) => setRating(event.target.value)}
-        className="h-10 rounded-md border bg-background px-3"
-      >
-        {[5, 4, 3, 2, 1].map((value) => (
-          <option key={value} value={value}>
-            {value} stars
-          </option>
-        ))}
-      </select>
-      <Label htmlFor={`feedback-${session.id}`}>Feedback</Label>
-      <Textarea
-        id={`feedback-${session.id}`}
-        value={feedback}
-        onChange={(event) => setFeedback(event.target.value)}
-        maxLength={1000}
-      />
-      <Button disabled={busy} onClick={() => void submit()}>
-        Submit review
-      </Button>
+    <details className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+      <summary className="cursor-pointer list-none">
+        <div className="flex items-start gap-3">
+          <span className="rounded-full bg-primary/10 p-2 text-primary">
+            <Star className="h-4 w-4 fill-current" />
+          </span>
+          <div className="flex-1">
+            <p className="font-medium text-foreground">Leave an honest review and earn 3 points</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Each participant can rate the other once. Your review appears on their profile right away.
+            </p>
+          </div>
+          <span className="text-sm font-medium text-primary">Review (+3)</span>
+        </div>
+      </summary>
+      <div className="mt-4 space-y-3">
+        <Label htmlFor={`rating-${session.id}`}>Rating</Label>
+        <select
+          id={`rating-${session.id}`}
+          value={rating}
+          onChange={(event) => setRating(event.target.value)}
+          className="h-10 rounded-md border bg-background px-3"
+        >
+          {[5, 4, 3, 2, 1].map((value) => (
+            <option key={value} value={value}>
+              {value} stars
+            </option>
+          ))}
+        </select>
+        <Label htmlFor={`feedback-${session.id}`}>Feedback</Label>
+        <Textarea
+          id={`feedback-${session.id}`}
+          value={feedback}
+          onChange={(event) => setFeedback(event.target.value)}
+          maxLength={1000}
+          placeholder="Share what went well and what could improve."
+        />
+        <Button disabled={busy} onClick={() => void submit()}>
+          <Gift className="mr-2 h-4 w-4" />
+          Submit review (+3 points)
+        </Button>
+      </div>
     </details>
   );
 }

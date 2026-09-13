@@ -10,6 +10,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Star,
+  Trash2,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -259,6 +260,7 @@ export function UserModerationCard({
   const isAdmin = account.roles.some((role) => role.replace("ROLE_", "") === "ADMIN");
   const isMentor = account.roles.some((role) => role.replace("ROLE_", "") === "MENTOR");
   const canModerate = !isAdmin && account.id !== currentAdminId;
+  const isSyntheticTestAccount = account.email.toLowerCase().endsWith("@skillbridge.test");
   const warningReady = account.recommendedAction === "WARN";
   const suspensionReady = account.recommendedAction === "SUSPEND" && account.status !== "SUSPENDED";
   const needsReason = warningReady || suspensionReady || account.status === "SUSPENDED";
@@ -309,6 +311,22 @@ export function UserModerationCard({
       await reload();
     } catch (failure) {
       toast.error(failure instanceof Error ? failure.message : "Could not update the badge.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteTestAccount = async () => {
+    if (!window.confirm(
+      `Permanently delete ${account.email} and its linked test records? This cannot be undone.`,
+    )) return;
+    setBusy(true);
+    try {
+      await adminService.deleteTestAccount(account.id);
+      toast.success("Test account deleted", { description: account.email });
+      await reload();
+    } catch (failure) {
+      toast.error(failure instanceof Error ? failure.message : "Could not delete this test account.");
     } finally {
       setBusy(false);
     }
@@ -393,6 +411,15 @@ export function UserModerationCard({
                   onClick={() => void act("ACTIVE")}
                 >
                   Lift suspension
+                </Button>
+              )}
+              {isSyntheticTestAccount && (
+                <Button
+                  variant="destructive"
+                  disabled={busy}
+                  onClick={() => void deleteTestAccount()}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete test account
                 </Button>
               )}
             </div>

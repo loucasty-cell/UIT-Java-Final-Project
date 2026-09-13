@@ -11,6 +11,8 @@ import com.skillbridge.skill.domain.entity.Skill;
 import com.skillbridge.skill.infrastructure.SkillRepository;
 import com.skillbridge.user.api.dto.response.PublicUserProfileResponse;
 import com.skillbridge.user.api.dto.response.PublicUserSkillResponse;
+import com.skillbridge.user.api.dto.response.CertificateResponse;
+import com.skillbridge.user.application.command.CertificateService;
 import com.skillbridge.user.domain.entity.UserSkill;
 import com.skillbridge.user.infrastructure.persistence.UserSkillRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,6 +40,7 @@ public class PublicUserController {
     private final SkillRepository skillRepository;
     private final ReviewRepository reviewRepository;
     private final ReviewService reviewService;
+    private final CertificateService certificateService;
 
     @GetMapping("/{userId}/profile")
     @Operation(summary = "Get a user's safe public profile")
@@ -89,6 +92,15 @@ public class PublicUserController {
         }).toList();
 
         return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/{userId}/certificates")
+    @Operation(summary = "Get certificates published on a member's profile")
+    public ResponseEntity<List<CertificateResponse>> getPublicCertificates(@PathVariable UUID userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new IllegalArgumentException("User not found with id: " + userId);
+        }
+        return ResponseEntity.ok(certificateService.getCertificates(userId));
     }
 
     @GetMapping("/{userId}/reviews")

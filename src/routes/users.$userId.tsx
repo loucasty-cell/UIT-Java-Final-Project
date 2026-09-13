@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, BookOpen, GraduationCap, Star, UserRound } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, BookOpen, ExternalLink, FileText, GraduationCap, Star, UserRound } from "lucide-react";
 import { authService } from "@/services/auth.service";
+import { skillsService } from "@/services/skills.service";
 import { useAuth } from "@/context/auth-context";
 import { userDisplayName, userInitials } from "@/lib/auth-validation";
-import type { PublicUserSkillResponse, ReviewResponse, SkillDirection } from "@/types/api";
+import type { PublicUserSkillResponse, ReviewResponse, SkillCertificateResponse, SkillDirection } from "@/types/api";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,9 +38,14 @@ export function PublicUserProfile({ userId }: { userId: string }) {
     queryKey: ["public-user-reviews", userId],
     queryFn: () => authService.getPublicReviews(userId),
   });
+  const certificatesResult = useQuery({
+    queryKey: ["public-user-certificates", userId],
+    queryFn: () => authService.getPublicCertificates(userId),
+  });
   const profile = result.data?.profile;
   const skills = result.data?.skills ?? [];
   const reviews = reviewsResult.data?.content ?? [];
+  const certificates = certificatesResult.data ?? [];
   const displayName = userDisplayName(profile ?? null);
   const teaching = skills.filter((skill) => skill.direction === "TEACH");
   const learning = skills.filter((skill) => skill.direction === "LEARN");
@@ -132,6 +139,13 @@ export function PublicUserProfile({ userId }: { userId: string }) {
             />
           </div>
 
+          <CertificatesList
+            userId={userId}
+            certificates={certificates}
+            isLoading={certificatesResult.isPending}
+            hasError={certificatesResult.isError}
+          />
+
           <ReviewsList
             reviews={reviews}
             isLoading={reviewsResult.isPending}
@@ -140,6 +154,77 @@ export function PublicUserProfile({ userId }: { userId: string }) {
         </>
       )}
     </div>
+  );
+}
+
+function CertificatesList({
+  userId,
+  certificates,
+  isLoading,
+  hasError,
+}: {
+  userId: string;
+  certificates: SkillCertificateResponse[];
+  isLoading: boolean;
+  hasError: boolean;
+}) {
+  const [openingId, setOpeningId] = useState<string | null>(null);
+  const [error, setError] = useState("");
+
+  const openCertificate = async (certificate: SkillCertificateResponse) => {
+    const viewer = window.open("", "_blank");
+    setOpeningId(certificate.id);
+    setError("");
+    try {
+      const file = await skillsService.downloadCertificate(userId, certificate.skill.id);
+      const url = URL.createObjectURL(file);
+      if (viewer) viewer.location.href = url;
+      else window.open(url, "_blank");
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (cause) {
+      viewer?.close();
+      setError(cause instanceof Error ? cause.message : "Could not open this certificate.");
+    } finally {
+      setOpeningId(null);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          <h2 className="flex items-center gap-2 text-lg">
+            <FileText className="h-5 w-5" />
+            Certificates
+          </h2>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {isLoading && <p className="text-sm text-muted-foreground">Loading certificatesâ€¦</p>}
+        {hasError && <p className="text-sm text-muted-foreground">Certificates are not available right now.</p>}
+        {!isLoading && !hasError && !certificates.length && (
+          <p className="text-sm text-muted-foreground">This member has not uploaded any certificates yet.</p>
+        )}
+        {certificates.map((certificate) => (
+          <div key={certificate.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
+            <div className="min-w-0">
+              <p className="truncate font-medium">{certificate.skill.name}</p>
+              <p className="truncate text-xs text-muted-foreground">{certificate.fileName}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={openingId === certificate.id}
+              onClick={() => void openCertificate(certificate)}
+            >
+              <ExternalLink className="mr-2 h-4 w-4" />
+              {openingId === certificate.id ? "Opening…" : "View certificate"}
+            </Button>
+          </div>
+        ))}
+        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      </CardContent>
+    </Card>
   );
 }
 

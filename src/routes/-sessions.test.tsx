@@ -6,6 +6,7 @@ import type { ComponentType } from "react";
 import { Route } from "./sessions";
 import { sessionsService } from "@/services/sessions.service";
 import { learningRequestsService } from "@/services/learning-requests.service";
+import { reviewsService } from "@/services/reviews.service";
 
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: { id: "learner-1" } }) }));
 vi.mock("@/services/sessions.service", () => ({
@@ -18,6 +19,9 @@ vi.mock("@/services/learning-requests.service", () => ({
     rejectRequest: vi.fn(),
     cancelRequest: vi.fn(),
   },
+}));
+vi.mock("@/services/reviews.service", () => ({
+  reviewsService: { submitReview: vi.fn() },
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 const Page = Route.options.component as ComponentType;
@@ -101,5 +105,28 @@ describe("My Sessions real API flow", () => {
     await user.click(screen.getByRole("button", { name: "Confirm completion" }));
     await waitFor(() => expect(sessionsService.completeSession).toHaveBeenCalled());
     expect(screen.getByText("Session with Real Mentor")).toBeInTheDocument();
+  });
+  it("encourages each completed-session participant to leave an immediately visible review", async () => {
+    const user = userEvent.setup();
+    vi.mocked(sessionsService.listSessions).mockResolvedValue([
+      { ...scheduled, status: "COMPLETED" } as never,
+    ]);
+    vi.mocked(reviewsService.submitReview).mockResolvedValue({} as never);
+    renderPage();
+    await user.click(screen.getByRole("tab", { name: /completed/i }));
+    await screen.findByText("Leave an honest review and earn 3 points");
+    await user.click(screen.getByText("Leave an honest review and earn 3 points"));
+    await user.selectOptions(screen.getByLabelText("Rating"), "4");
+    await user.type(screen.getByLabelText("Feedback"), "Clear and helpful explanation.");
+    await user.click(screen.getByRole("button", { name: /submit review/i }));
+    await waitFor(() =>
+      expect(reviewsService.submitReview).toHaveBeenCalledWith("session-1", {
+        revieweeId: "mentor-2",
+        skillId: undefined,
+        rating: 4,
+        feedback: "Clear and helpful explanation.",
+      }),
+    );
+    expect(screen.getByText(/3 points were added to your wallet/i)).toBeInTheDocument();
   });
 });

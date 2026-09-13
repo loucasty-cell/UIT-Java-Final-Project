@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   currentUserId: "11111111-1111-4111-8111-111111111111",
   getPublicProfile: vi.fn(),
   getPublicSkills: vi.fn(),
+  getPublicCertificates: vi.fn(),
   getPublicReviews: vi.fn(),
 }));
 
@@ -19,6 +20,7 @@ vi.mock("@/services/auth.service", () => ({
   authService: {
     getPublicProfile: state.getPublicProfile,
     getPublicSkills: state.getPublicSkills,
+    getPublicCertificates: state.getPublicCertificates,
     getPublicReviews: state.getPublicReviews,
   },
 }));
@@ -96,6 +98,16 @@ describe("public user profile", () => {
       last: true,
       empty: false,
     });
+    state.getPublicCertificates.mockResolvedValue([
+      {
+        id: "certificate-1",
+        skill: { id: "skill-1", name: "Java", category: "Programming" },
+        fileName: "java-certificate.pdf",
+        fileSize: 1200,
+        contentType: "application/pdf",
+        createdAt: "2026-09-10T09:00:00Z",
+      },
+    ]);
   });
 
   afterEach(() => {
@@ -111,16 +123,20 @@ describe("public user profile", () => {
     expect(screen.getByLabelText(/Trusted Mentor/)).toBeVisible();
     expect(screen.getByText("I enjoy pair programming and practical projects.")).toBeVisible();
     expect(screen.getByRole("heading", { name: "Skills they can teach" })).toBeVisible();
-    expect(screen.getByText("Java")).toBeVisible();
+    expect(screen.getAllByText("Java")).toHaveLength(2);
     expect(screen.getByRole("heading", { name: "Skills they want to learn" })).toBeVisible();
     expect(screen.getByText("Spanish")).toBeVisible();
     expect(screen.getByRole("heading", { name: "Reviews" })).toBeVisible();
     expect(screen.getByText("Alex Chen")).toBeVisible();
     expect(screen.getByText("Clear explanations and very patient guidance.")).toBeVisible();
     expect(screen.getByLabelText("5 out of 5 stars")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Certificates" })).toBeVisible();
+    expect(screen.getByText("java-certificate.pdf")).toBeVisible();
+    expect(screen.getByRole("button", { name: "View certificate" })).toBeVisible();
     expect(screen.queryByText("Open my private profile")).not.toBeInTheDocument();
     expect(state.getPublicProfile).toHaveBeenCalledWith(viewedUserId);
     expect(state.getPublicSkills).toHaveBeenCalledWith(viewedUserId);
+    expect(state.getPublicCertificates).toHaveBeenCalledWith(viewedUserId);
     expect(state.getPublicReviews).toHaveBeenCalledWith(viewedUserId);
   });
 

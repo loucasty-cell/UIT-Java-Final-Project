@@ -7,6 +7,7 @@ import com.skillbridge.admin.api.dto.response.AccountWarningResponse;
 import com.skillbridge.admin.api.dto.response.AdminUserResponse;
 import com.skillbridge.admin.application.command.AdminAuditService;
 import com.skillbridge.admin.application.command.AdminUserService;
+import com.skillbridge.admin.application.command.TestAccountCleanupService;
 import com.skillbridge.shared.security.SecurityUtils;
 import com.skillbridge.wallet.api.dto.request.WalletAdjustmentRequest;
 import com.skillbridge.wallet.api.dto.response.WalletResponse;
@@ -31,6 +32,7 @@ public class AdminUserController {
 
     // Command service dependency for warning creation and account status mutations
     private final AdminUserService adminUserService;
+    private final TestAccountCleanupService testAccountCleanupService;
 
     // The only financial mutation boundary; applies the signed adjustment to the target wallet
     private final WalletService walletService;
@@ -132,5 +134,12 @@ public class AdminUserController {
         } catch (NumberFormatException ignored) {
             return null;
         }
+    }
+
+    /** Removes only synthetic accounts whose email ends in @skillbridge.test. */
+    @DeleteMapping("/{userId}/test-account")
+    public ResponseEntity<Void> deleteTestAccount(@PathVariable UUID userId) {
+        testAccountCleanupService.deleteTestAccount(userId);
+        return ResponseEntity.noContent().build();
     }
 }

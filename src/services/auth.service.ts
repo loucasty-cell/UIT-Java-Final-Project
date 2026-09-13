@@ -5,6 +5,7 @@ import {
   PageResponse,
   PublicUserProfileResponse,
   PublicUserSkillResponse,
+  SkillCertificateResponse,
   RefreshTokenRequest,
   RegisterRequest,
   UpdateUserProfileRequest,
@@ -103,6 +104,11 @@ export const authService = {
    */
   async getPublicSkills(userId: string): Promise<PublicUserSkillResponse[]> {
     return api.get<PublicUserSkillResponse[]>(`/api/v1/users/${userId}/skills`);
+  },
+
+  /** Get certificate metadata published on a member's public profile. */
+  async getPublicCertificates(userId: string): Promise<SkillCertificateResponse[]> {
+    return api.get<SkillCertificateResponse[]>(`/api/v1/users/${userId}/certificates`);
   },
 
   /** Get public reviews received by this member. */

@@ -145,6 +145,11 @@ export const adminService = {
     );
   },
 
+  /** Permanently removes a synthetic @skillbridge.test account and its test records. */
+  async deleteTestAccount(userId: string): Promise<void> {
+    return api.delete<void>(`/api/v1/admin/users/${userId}/test-account`);
+  },
+
   /**
    * Freeze / Suspend user account
    * POST /api/v1/admin/users/{id}/freeze

@@ -40,14 +40,8 @@ public class CertificateController {
             @PathVariable UUID userId,
             @PathVariable UUID skillId
     ) {
-        UUID callerId = SecurityUtils.getCurrentUserId();
-        // Enterprise IDOR guard: only owner or ADMIN may download another user's certificate
-        boolean isAdmin = org.springframework.security.core.context.SecurityContextHolder.getContext()
-                .getAuthentication().getAuthorities().stream()
-                .anyMatch(a -> "ADMIN".equals(a.getAuthority()) || "ROLE_ADMIN".equals(a.getAuthority()));
-        if (!callerId.equals(userId) && !isAdmin) {
-            throw new org.springframework.security.access.AccessDeniedException("Not authorized to download this certificate");
-        }
+        // The security filter still requires a signed-in user. Certificates are
+        // intentionally visible to signed-in members from the owner's public profile.
         byte[] pdfBytes = certificateService.downloadCertificate(userId, skillId);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);

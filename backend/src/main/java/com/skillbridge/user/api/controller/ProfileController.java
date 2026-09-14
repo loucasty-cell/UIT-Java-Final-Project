@@ -2,8 +2,11 @@ package com.skillbridge.user.api.controller;
 
 import com.skillbridge.auth.domain.entity.User;
 import com.skillbridge.shared.security.SecurityUtils;
+import com.skillbridge.user.api.dto.request.ChangePasswordRequest;
+import com.skillbridge.user.api.dto.request.NotificationPreferencesUpdateRequest;
 import com.skillbridge.user.api.dto.request.ProfileUpdateRequest;
 import com.skillbridge.user.api.dto.response.MyProfileResponse;
+import com.skillbridge.user.api.dto.response.NotificationPreferencesResponse;
 import com.skillbridge.user.application.command.UserProfileService;
 import com.skillbridge.user.application.query.UserProfileQueryService;
 import jakarta.validation.Valid;
@@ -11,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -53,6 +57,26 @@ public class ProfileController {
         return ResponseEntity.ok()
                 .eTag("\"" + response.getVersion() + "\"")
                 .body(response);
+    }
+
+    /** Changes only the caller's password after the current password was verified. */
+    @PostMapping("/me/password")
+    public ResponseEntity<Void> changeMyPassword(@Valid @RequestBody ChangePasswordRequest request) {
+        userProfileService.changePassword(SecurityUtils.getCurrentUserId(), request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/me/notification-preferences")
+    public ResponseEntity<NotificationPreferencesResponse> getNotificationPreferences() {
+        return ResponseEntity.ok(userProfileService.getNotificationPreferences(SecurityUtils.getCurrentUserId()));
+    }
+
+    @PatchMapping("/me/notification-preferences")
+    public ResponseEntity<NotificationPreferencesResponse> updateNotificationPreferences(
+            @Valid @RequestBody NotificationPreferencesUpdateRequest request
+    ) {
+        return ResponseEntity.ok(userProfileService.updateNotificationPreferences(
+                SecurityUtils.getCurrentUserId(), request));
     }
 
     // Parses the quoted or bare version value from the If-Match header; null means missing

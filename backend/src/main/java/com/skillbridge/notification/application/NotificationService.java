@@ -5,8 +5,10 @@ import com.skillbridge.notification.api.mapper.NotificationMapper;
 import com.skillbridge.notification.domain.entity.Notification;
 import com.skillbridge.notification.domain.model.NotificationType;
 import com.skillbridge.notification.infrastructure.persistence.NotificationRepository;
+import com.skillbridge.auth.domain.entity.User;
+import com.skillbridge.auth.infrastructure.persistence.UserRepository;
 import com.skillbridge.shared.security.SecurityUtils;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,11 +19,27 @@ import java.util.UUID;
 
 @Service
 @Transactional
-@RequiredArgsConstructor
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final NotificationMapper notificationMapper;
+    private final UserRepository userRepository;
+
+    @Autowired
+    public NotificationService(
+            NotificationRepository notificationRepository,
+            NotificationMapper notificationMapper,
+            UserRepository userRepository
+    ) {
+        this.notificationRepository = notificationRepository;
+        this.notificationMapper = notificationMapper;
+        this.userRepository = userRepository;
+    }
+
+    // Retained for existing focused tests that exercise notification persistence in isolation.
+    public NotificationService(NotificationRepository notificationRepository, NotificationMapper notificationMapper) {
+        this(notificationRepository, notificationMapper, null);
+    }
 
     @Transactional(readOnly = true)
     public List<NotificationResponse> getUserNotifications() {
@@ -62,6 +80,10 @@ public class NotificationService {
             String referenceType,
             UUID referenceId
     ) {
+        User recipient = userRepository == null ? null : userRepository.findById(userId).orElse(null);
+        if (recipient != null && !shouldDeliver(recipient, type)) {
+            return null;
+        }
         Notification notification = new Notification();
         notification.setId(UUID.randomUUID());
         notification.setUserId(userId);
@@ -72,6 +94,19 @@ public class NotificationService {
         notification.setReferenceId(referenceId);
         notification.setCreatedAt(OffsetDateTime.now());
         return notificationMapper.toResponse(notificationRepository.save(notification));
+    }
+
+    // Preferences apply to user-facing session/request/message alerts. Security and system alerts
+    // deliberately remain deliverable so a member cannot silence important account notices.
+    private boolean shouldDeliver(User user, NotificationType type) {
+        return switch (type) {
+            case SESSION_STARTED, SESSION_UPDATED, SESSION_COMPLETED ->
+                    !Boolean.FALSE.equals(user.getSessionRemindersEnabled());
+            case SWAP_PROPOSAL_CREATED, SWAP_PROPOSAL_ACCEPTED, SWAP_PROPOSAL_REJECTED, SWAP_PROPOSAL_CANCELLED ->
+                    !Boolean.FALSE.equals(user.getSessionRequestNotificationsEnabled());
+            case FORUM_COMMENT_REPLY -> !Boolean.FALSE.equals(user.getMessageAlertsEnabled());
+            default -> true;
+        };
     }
 
     public void notifySwapProposalUpdate(UUID userId, NotificationType type, UUID swapRequestId) {

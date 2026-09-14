@@ -48,6 +48,16 @@ public class User {
     @Column(name = "avatar_object_key", length = 500)
     private String avatarObjectKey;
 
+    // In-app notification preferences. These default to true for existing and new accounts.
+    @Column(name = "session_reminders_enabled", nullable = false)
+    private Boolean sessionRemindersEnabled = true;
+
+    @Column(name = "session_request_notifications_enabled", nullable = false)
+    private Boolean sessionRequestNotificationsEnabled = true;
+
+    @Column(name = "message_alerts_enabled", nullable = false)
+    private Boolean messageAlertsEnabled = true;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 50)
     private AccountStatus status;

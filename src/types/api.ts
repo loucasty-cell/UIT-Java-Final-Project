@@ -99,6 +99,17 @@ export interface UpdateUserProfileRequest {
   timezone?: string;
 }
 
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface NotificationPreferences {
+  sessionRemindersEnabled: boolean;
+  sessionRequestNotificationsEnabled: boolean;
+  messageAlertsEnabled: boolean;
+}
+
 export interface PublicUserProfileResponse {
   id: string;
   displayName: string;

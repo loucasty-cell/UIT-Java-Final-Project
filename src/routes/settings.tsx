@@ -18,6 +18,15 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import type { NotificationPreferences } from "@/types/api";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "Settings · SkillBridge" }] }),
@@ -40,6 +49,10 @@ function SettingsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [avatarUrl, setAvatarUrl] = useState("");
   const [form, setForm] = useState<UpdateUserProfileRequest>({});
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   useEffect(() => {
     if (profile.data) {
       setAvatarUrl(profile.data.avatarUrl ?? "");
@@ -84,6 +97,42 @@ function SettingsPage() {
     onError: (failure) =>
       toast.error(failure instanceof Error ? failure.message : "Could not upload your profile photo."),
   });
+  const passwordChange = useMutation({
+    mutationFn: () => authService.changePassword({ currentPassword, newPassword }),
+    onSuccess: () => {
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordDialogOpen(false);
+      toast.success("Password changed successfully.");
+    },
+    onError: (failure) =>
+      toast.error(failure instanceof Error ? failure.message : "Could not change your password."),
+  });
+  const notificationPreferences = useQuery({
+    queryKey: ["notification-preferences"],
+    queryFn: authService.getNotificationPreferences,
+    enabled: signedIn,
+  });
+  const updateNotificationPreferences = useMutation({
+    mutationFn: (preferences: NotificationPreferences) =>
+      authService.updateNotificationPreferences(preferences),
+    onSuccess: (preferences) => {
+      queryClient.setQueryData(["notification-preferences"], preferences);
+      toast.success("Notification preferences saved.");
+    },
+    onError: (failure) =>
+      toast.error(
+        failure instanceof Error ? failure.message : "Could not save notification preferences.",
+      ),
+  });
+  const setNotificationPreference = (
+    key: keyof NotificationPreferences,
+    value: boolean,
+  ) => {
+    if (!notificationPreferences.data || updateNotificationPreferences.isPending) return;
+    updateNotificationPreferences.mutate({ ...notificationPreferences.data, [key]: value });
+  };
   const setField = (key: keyof UpdateUserProfileRequest, value: string) =>
     setForm((current) => ({
       ...current,
@@ -300,9 +349,9 @@ function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Password changes are managed through the secure account service.
+                Use your current password to set a new password for this account.
               </p>
-              <Button type="button" variant="outline" disabled>
+              <Button type="button" variant="outline" onClick={() => setPasswordDialogOpen(true)}>
                 Change password
               </Button>
             </CardContent>
@@ -321,7 +370,14 @@ function SettingsPage() {
                     Receive reminders before scheduled sessions.
                   </p>
                 </div>
-                <Switch disabled aria-label="Notification delivery preferences unavailable" />
+                <Switch
+                  checked={notificationPreferences.data?.sessionRemindersEnabled ?? false}
+                  disabled={notificationPreferences.isPending || updateNotificationPreferences.isPending}
+                  onCheckedChange={(checked) =>
+                    setNotificationPreference("sessionRemindersEnabled", checked)
+                  }
+                  aria-label="Enable session reminders"
+                />
               </div>
               <div className="flex items-center justify-between">
                 <div>
@@ -330,23 +386,120 @@ function SettingsPage() {
                     Know when a learner requests your time.
                   </p>
                 </div>
-                <Switch disabled aria-label="Notification delivery preferences unavailable" />
+                <Switch
+                  checked={notificationPreferences.data?.sessionRequestNotificationsEnabled ?? false}
+                  disabled={notificationPreferences.isPending || updateNotificationPreferences.isPending}
+                  onCheckedChange={(checked) =>
+                    setNotificationPreference("sessionRequestNotificationsEnabled", checked)
+                  }
+                  aria-label="Enable new session request notifications"
+                />
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">Message alerts</p>
                   <p className="text-sm text-muted-foreground">Get notified about new messages.</p>
                 </div>
-                <Switch disabled aria-label="Notification delivery preferences unavailable" />
+                <Switch
+                  checked={notificationPreferences.data?.messageAlertsEnabled ?? false}
+                  disabled={notificationPreferences.isPending || updateNotificationPreferences.isPending}
+                  onCheckedChange={(checked) => setNotificationPreference("messageAlertsEnabled", checked)}
+                  aria-label="Enable message alerts"
+                />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Notification delivery preferences are not configurable yet. Session updates remain
-                available from the notification bell.
-              </p>
+              {notificationPreferences.error ? (
+                <p role="alert" className="text-xs text-destructive">
+                  Could not load notification preferences. Refresh to try again.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Your choices are saved automatically and apply to matching in-app alerts.
+                </p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+      <Dialog
+        open={passwordDialogOpen}
+        onOpenChange={(open) => {
+          setPasswordDialogOpen(open);
+          if (!open && !passwordChange.isPending) {
+            setCurrentPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change password</DialogTitle>
+            <DialogDescription>
+              Your new password needs at least 8 characters, including a letter and a number.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (newPassword !== confirmPassword) {
+                toast.error("New password and confirmation do not match.");
+                return;
+              }
+              passwordChange.mutate();
+            }}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword">Current password</Label>
+              <Input
+                id="currentPassword"
+                type="password"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                required
+                minLength={8}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm new password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                required
+                minLength={8}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPasswordDialogOpen(false)}
+                disabled={passwordChange.isPending}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={passwordChange.isPending}>
+                {passwordChange.isPending ? "Changing..." : "Change password"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

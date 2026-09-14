@@ -1,7 +1,9 @@
 import { api } from "@/lib/api-client";
 import {
   AuthResponse,
+  ChangePasswordRequest,
   LoginRequest,
+  NotificationPreferences,
   PageResponse,
   PublicUserProfileResponse,
   PublicUserSkillResponse,
@@ -87,6 +89,23 @@ export const authService = {
     const formData = new FormData();
     formData.append("file", file);
     return api.upload<UserProfileResponse>("/api/v1/me/avatar", formData);
+  },
+
+  /** Change the signed-in member's password after checking their current password. */
+  async changePassword(data: ChangePasswordRequest): Promise<void> {
+    return api.post<void>("/api/v1/me/password", data);
+  },
+
+  /** Get notification switches saved for the signed-in member. */
+  async getNotificationPreferences(): Promise<NotificationPreferences> {
+    return api.get<NotificationPreferences>("/api/v1/me/notification-preferences");
+  },
+
+  /** Persist all notification switches together. */
+  async updateNotificationPreferences(
+    data: NotificationPreferences,
+  ): Promise<NotificationPreferences> {
+    return api.patch<NotificationPreferences>("/api/v1/me/notification-preferences", data);
   },
 
   /**

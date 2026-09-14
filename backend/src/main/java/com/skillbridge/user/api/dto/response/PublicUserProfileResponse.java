@@ -20,6 +20,7 @@ public class PublicUserProfileResponse {
     private String major;
     private Integer yearOfStudy;
     private String avatarObjectKey;
+    private String avatarUrl;
     private Double averageRating;
     private Long reviewCount;
     private Boolean trustedMentor;

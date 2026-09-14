@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -22,6 +23,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TestAccountCleanupService {
     private static final String TEST_EMAIL_SUFFIX = "@skillbridge.test";
+    /** Legacy seed accounts used only for demonstrations; normal @skillbridge.edu users are never removable here. */
+    private static final Set<String> LEGACY_DEMO_EMAILS = Set.of(
+            "learner.demo@skillbridge.edu",
+            "instructor.demo@skillbridge.edu"
+    );
 
     private final UserRepository userRepository;
     private final JdbcTemplate jdbcTemplate;
@@ -32,8 +38,8 @@ public class TestAccountCleanupService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
         String email = user.getEmail() == null ? "" : user.getEmail().toLowerCase(Locale.ROOT);
-        if (!email.endsWith(TEST_EMAIL_SUFFIX)) {
-            throw new AccessDeniedException("Only @skillbridge.test accounts can be deleted from the admin dashboard");
+        if (!isRemovableDemoEmail(email)) {
+            throw new AccessDeniedException("Only registered demo accounts can be deleted from the admin dashboard");
         }
         if (userId.equals(adminId)) {
             throw new AccessDeniedException("You cannot delete the account currently signed in as administrator");
@@ -44,14 +50,18 @@ public class TestAccountCleanupService {
         jdbcTemplate.update("DELETE FROM users WHERE id IN (SELECT id FROM cleanup_users)");
         adminAuditService.logEvent(
                 adminId,
-                "DELETE_TEST_ACCOUNT",
+                "DELETE_DEMO_ACCOUNT",
                 "USER",
                 userId,
-                "Synthetic account: " + user.getEmail(),
-                "Deleted with its linked test records",
-                "Admin dashboard test-account cleanup",
+                "Demo account: " + user.getEmail(),
+                "Deleted with its linked demo records",
+                "Admin dashboard demo-account cleanup",
                 null
         );
+    }
+
+    private boolean isRemovableDemoEmail(String email) {
+        return email.endsWith(TEST_EMAIL_SUFFIX) || LEGACY_DEMO_EMAILS.contains(email);
     }
 
     private void createCleanupTables(UUID userId) {

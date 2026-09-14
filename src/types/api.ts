@@ -108,6 +108,7 @@ export interface PublicUserProfileResponse {
   major?: string;
   yearOfStudy?: number;
   avatarObjectKey?: string;
+  avatarUrl?: string;
   averageRating?: number;
   reviewCount?: number;
   trustedMentor?: boolean;

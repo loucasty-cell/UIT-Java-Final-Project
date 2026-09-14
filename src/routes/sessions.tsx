@@ -303,10 +303,18 @@ function SessionCard({
   );
 }
 function SessionReview({ session, role }: { session: SessionResponse; role: RoleTab }) {
+  const { user } = useAuth();
   const [rating, setRating] = useState("5");
   const [feedback, setFeedback] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const existingReviews = useQuery({
+    queryKey: ["session-reviews", session.id],
+    queryFn: () => reviewsService.getSessionReviews(session.id),
+    enabled: Boolean(user?.id),
+    staleTime: 30000,
+  });
+  const hasReviewed = existingReviews.data?.some((review) => review.reviewerId === user?.id) ?? false;
   const submit = async () => {
     setBusy(true);
     try {
@@ -320,6 +328,7 @@ function SessionReview({ session, role }: { session: SessionResponse; role: Role
         feedback: feedback.trim(),
       });
       setSaved(true);
+      void existingReviews.refetch();
       toast.success("Review submitted");
     } catch (failure) {
       toast.error(failure instanceof Error ? failure.message : "Could not submit review.");
@@ -327,13 +336,16 @@ function SessionReview({ session, role }: { session: SessionResponse; role: Role
       setBusy(false);
     }
   };
-  if (saved) {
+  if (saved || hasReviewed) {
     return (
       <p className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
         <Gift className="h-4 w-4" />
         Thank you for your honest feedback. 3 points were added to your wallet.
       </p>
     );
+  }
+  if (existingReviews.isLoading) {
+    return <p className="text-sm text-muted-foreground">Checking your review statusâ€¦</p>;
   }
   return (
     <details className="rounded-lg border border-primary/20 bg-primary/5 p-3">

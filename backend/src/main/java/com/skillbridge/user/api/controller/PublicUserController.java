@@ -63,6 +63,8 @@ public class PublicUserController {
                 .major(user.getMajor())
                 .yearOfStudy(user.getYearOfStudy())
                 .avatarObjectKey(user.getAvatarObjectKey())
+                .avatarUrl(user.getAvatarObjectKey() == null || user.getAvatarObjectKey().isBlank()
+                        ? null : "/api/v1/users/" + user.getId() + "/avatar?v=" + user.getVersion())
                 .averageRating(avgRating)
                 .reviewCount((long) reviews.size())
                 .trustedMentor(user.hasVisibleTrustedMentorBadge())

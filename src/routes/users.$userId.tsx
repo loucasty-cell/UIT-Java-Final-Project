@@ -7,7 +7,7 @@ import { skillsService } from "@/services/skills.service";
 import { useAuth } from "@/context/auth-context";
 import { userDisplayName, userInitials } from "@/lib/auth-validation";
 import type { PublicUserSkillResponse, ReviewResponse, SkillCertificateResponse, SkillDirection } from "@/types/api";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,6 +78,7 @@ export function PublicUserProfile({ userId }: { userId: string }) {
           <Card>
             <CardContent className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center">
               <Avatar className="h-24 w-24">
+                <AvatarImage src={profile.avatarUrl} alt={displayName} />
                 <AvatarFallback className="bg-primary text-2xl text-primary-foreground">
                   {userInitials(displayName)}
                 </AvatarFallback>

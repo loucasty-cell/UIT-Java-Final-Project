@@ -21,7 +21,7 @@ vi.mock("@/services/learning-requests.service", () => ({
   },
 }));
 vi.mock("@/services/reviews.service", () => ({
-  reviewsService: { submitReview: vi.fn() },
+  reviewsService: { submitReview: vi.fn(), getSessionReviews: vi.fn() },
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 const Page = Route.options.component as ComponentType;
@@ -48,6 +48,7 @@ describe("My Sessions real API flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(sessionsService.listSessions).mockResolvedValue([scheduled as never]);
+    vi.mocked(reviewsService.getSessionReviews).mockResolvedValue([]);
     vi.mocked(learningRequestsService.listRequests).mockImplementation(async (direction) =>
       direction === "OUTGOING"
         ? [
@@ -128,5 +129,18 @@ describe("My Sessions real API flow", () => {
       }),
     );
     expect(screen.getByText(/3 points were added to your wallet/i)).toBeInTheDocument();
+  });
+  it("does not show the review form again after the current participant has reviewed", async () => {
+    const user = userEvent.setup();
+    vi.mocked(sessionsService.listSessions).mockResolvedValue([
+      { ...scheduled, status: "COMPLETED" } as never,
+    ]);
+    vi.mocked(reviewsService.getSessionReviews).mockResolvedValue([
+      { id: "review-1", reviewerId: "learner-1" },
+    ] as never);
+    renderPage();
+    await user.click(screen.getByRole("tab", { name: /completed/i }));
+    await screen.findByText(/3 points were added to your wallet/i);
+    expect(screen.queryByText("Leave an honest review and earn 3 points")).not.toBeInTheDocument();
   });
 });

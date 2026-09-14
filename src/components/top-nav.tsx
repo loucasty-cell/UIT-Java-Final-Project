@@ -24,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function TopNav() {
   const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
@@ -33,6 +33,7 @@ export function TopNav() {
   const [search, setSearch] = useState("");
   const unread = notifications.filter((item) => !item.read).length;
   const { user, logout } = useAuth();
+  const avatarUrl = user && "avatarUrl" in user ? user.avatarUrl : undefined;
   const navigate = useNavigate();
   const displayName = userDisplayName(user);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -215,6 +216,7 @@ export function TopNav() {
               className="flex items-center gap-2 rounded-xl border border-transparent p-1 pr-2 transition hover:border-border hover:bg-muted/60"
             >
               <Avatar className="h-8 w-8">
+                <AvatarImage src={avatarUrl} alt={displayName} />
                 <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
                   {userInitials(displayName)}
                 </AvatarFallback>

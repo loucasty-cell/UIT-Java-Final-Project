@@ -88,6 +88,38 @@ it("lets an admin award the badge only to an eligible mentor", async () => {
   expect(reload).toHaveBeenCalled();
 });
 
+it("hides review, rating, warning, and moderation details for administrator accounts", () => {
+  const account: AdminUserResponse = {
+    id: "admin-1",
+    email: "admin.demo@skillbridge.edu",
+    firstName: "System",
+    lastName: "Admin",
+    displayName: "System Admin",
+    roles: ["ADMIN"],
+    status: "ACTIVE",
+    warningCount: 2,
+    verifiedReviewCount: 3,
+    verifiedLowReviewCount: 1,
+    verifiedAverageRating: 4.2,
+    recommendedAction: "WARN",
+    suspensionCount: 0,
+    completedSessionCount: 0,
+    trustedMentor: false,
+    trustedMentorEligible: false,
+    version: 1,
+    createdAt: new Date().toISOString(),
+  };
+
+  render(<UserModerationCard account={account} reviews={[]} currentAdminId="admin-1" reload={vi.fn()} />);
+
+  expect(screen.queryByText(/3 reviews/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/1 low ratings/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/2 warnings/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/4.2 average/)).not.toBeInTheDocument();
+  expect(screen.queryByText("Moderation actions")).not.toBeInTheDocument();
+  expect(screen.getByText("Administrator accounts cannot be moderated here.")).toBeInTheDocument();
+});
+
 it("shows both people involved in a session report", () => {
   const dispute: AdminDisputeResponse = {
     id: "dispute-1",

@@ -26,7 +26,7 @@ public class UserMapper {
                 .yearOfStudy(user.getYearOfStudy())
                 .bio(user.getBio())
                 .timezone(user.getTimezone())
-                .avatarUrl(buildAvatarUrl(user.getAvatarObjectKey()))
+                .avatarUrl(buildAvatarUrl(user))
                 .roles(roles)
                 .accountStatus(user.getStatus().name())
                 .ratingAverage(0.0)
@@ -39,11 +39,11 @@ public class UserMapper {
     }
 
     // Derives a stable avatar URL from the stored storage object key; null until an avatar exists
-    private String buildAvatarUrl(String avatarObjectKey) {
-        if (avatarObjectKey == null || avatarObjectKey.isBlank()) {
+    private String buildAvatarUrl(User user) {
+        if (user.getAvatarObjectKey() == null || user.getAvatarObjectKey().isBlank()) {
             return null;
         }
-        return "/api/v1/files/" + avatarObjectKey;
+        return "/api/v1/users/" + user.getId() + "/avatar?v=" + user.getVersion();
     }
 
     // Assembles the dashboard projection; session/skill/certificate groups stay empty until

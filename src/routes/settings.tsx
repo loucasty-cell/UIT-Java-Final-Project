@@ -24,7 +24,7 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 function SettingsPage() {
-  const { updateProfile } = useAuth();
+  const { updateProfile, refreshProfile } = useAuth();
   const queryClient = useQueryClient();
   const signedIn = Boolean(getAccessToken());
   const profile = useQuery({
@@ -41,7 +41,8 @@ function SettingsPage() {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [form, setForm] = useState<UpdateUserProfileRequest>({});
   useEffect(() => {
-    if (profile.data)
+    if (profile.data) {
+      setAvatarUrl(profile.data.avatarUrl ?? "");
       setForm({
         firstName: profile.data.firstName,
         lastName: profile.data.lastName,
@@ -51,6 +52,7 @@ function SettingsPage() {
         yearOfStudy: profile.data.yearOfStudy,
         timezone: profile.data.timezone ?? "",
       });
+    }
   }, [profile.data]);
   const update = useMutation({
     mutationFn: () => {
@@ -70,6 +72,17 @@ function SettingsPage() {
             ? failure.message
             : "Could not update your profile.",
       ),
+  });
+  const uploadAvatar = useMutation({
+    mutationFn: (file: File) => authService.uploadAvatar(file),
+    onSuccess: async (updatedProfile) => {
+      setAvatarUrl(updatedProfile.avatarUrl || "");
+      queryClient.setQueryData(["profile"], updatedProfile);
+      await refreshProfile();
+      toast.success("Profile photo updated.");
+    },
+    onError: (failure) =>
+      toast.error(failure instanceof Error ? failure.message : "Could not upload your profile photo."),
   });
   const setField = (key: keyof UpdateUserProfileRequest, value: string) =>
     setForm((current) => ({
@@ -165,7 +178,9 @@ function SettingsPage() {
                       className="hidden"
                       onChange={(event) => {
                         const file = event.target.files?.[0];
-                        if (file) setAvatarUrl(URL.createObjectURL(file));
+                        if (!file) return;
+                        setAvatarUrl(URL.createObjectURL(file));
+                        uploadAvatar.mutate(file);
                       }}
                     />
                     <Button
@@ -176,7 +191,7 @@ function SettingsPage() {
                       <Camera className="mr-2 h-4 w-4" /> Change photo
                     </Button>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Preview only until storage upload is enabled.
+                      JPEG, PNG, or WebP up to 2 MB.
                     </p>
                   </div>
                 </div>

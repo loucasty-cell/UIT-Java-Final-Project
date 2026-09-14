@@ -27,7 +27,7 @@ public class LocalFileSystemStorageService implements StorageService {
     public String store(String filename, byte[] content, String contentType) {
         try {
             // Create storage key with UUID to avoid filename collisions
-            String storageKey = UUID.randomUUID() + ".pdf";
+            String storageKey = UUID.randomUUID() + extensionFor(filename);
             Path storagePath = Paths.get(basePath);
 
             // Ensure directory exists
@@ -44,6 +44,15 @@ public class LocalFileSystemStorageService implements StorageService {
             log.error("Failed to store file on filesystem", e);
             throw new IllegalStateException("Failed to store file: " + e.getMessage(), e);
         }
+    }
+
+    private String extensionFor(String filename) {
+        if (filename == null) return ".bin";
+        String safeName = Paths.get(filename).getFileName().toString();
+        int dot = safeName.lastIndexOf('.');
+        if (dot < 0 || dot == safeName.length() - 1) return ".bin";
+        String extension = safeName.substring(dot).toLowerCase(java.util.Locale.ROOT);
+        return extension.matches("\\.[a-z0-9]{1,10}") ? extension : ".bin";
     }
 
     @Override

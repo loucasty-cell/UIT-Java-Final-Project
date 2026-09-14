@@ -260,7 +260,10 @@ export function UserModerationCard({
   const isAdmin = account.roles.some((role) => role.replace("ROLE_", "") === "ADMIN");
   const isMentor = account.roles.some((role) => role.replace("ROLE_", "") === "MENTOR");
   const canModerate = !isAdmin && account.id !== currentAdminId;
-  const isSyntheticTestAccount = account.email.toLowerCase().endsWith("@skillbridge.test");
+  const normalizedEmail = account.email.toLowerCase();
+  const isRemovableDemoAccount =
+    normalizedEmail.endsWith("@skillbridge.test") ||
+    ["learner.demo@skillbridge.edu", "instructor.demo@skillbridge.edu"].includes(normalizedEmail);
   const warningReady = account.recommendedAction === "WARN";
   const suspensionReady = account.recommendedAction === "SUSPEND" && account.status !== "SUSPENDED";
   const needsReason = warningReady || suspensionReady || account.status === "SUSPENDED";
@@ -316,17 +319,17 @@ export function UserModerationCard({
     }
   };
 
-  const deleteTestAccount = async () => {
+  const deleteDemoAccount = async () => {
     if (!window.confirm(
-      `Permanently delete ${account.email} and its linked test records? This cannot be undone.`,
+      `Permanently delete demo account ${account.email} and its linked records? This cannot be undone.`,
     )) return;
     setBusy(true);
     try {
       await adminService.deleteTestAccount(account.id);
-      toast.success("Test account deleted", { description: account.email });
+      toast.success("Demo account deleted", { description: account.email });
       await reload();
     } catch (failure) {
-      toast.error(failure instanceof Error ? failure.message : "Could not delete this test account.");
+      toast.error(failure instanceof Error ? failure.message : "Could not delete this demo account.");
     } finally {
       setBusy(false);
     }
@@ -348,19 +351,21 @@ export function UserModerationCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex flex-wrap gap-2 text-sm">
-          <Badge variant="outline">{account.verifiedReviewCount} reviews</Badge>
-          <Badge variant={account.verifiedLowReviewCount ? "destructive" : "outline"}>
-            {account.verifiedLowReviewCount} low ratings
-          </Badge>
-          <Badge variant="outline">{account.warningCount} warnings</Badge>
-          <Badge variant="outline">
-            {account.verifiedReviewCount
-              ? `${account.verifiedAverageRating.toFixed(1)} average`
-              : "No ratings yet"}
-          </Badge>
-          {account.trustedMentor && <TrustedMentorBadge />}
-        </div>
+        {!isAdmin && (
+          <div className="flex flex-wrap gap-2 text-sm">
+            <Badge variant="outline">{account.verifiedReviewCount} reviews</Badge>
+            <Badge variant={account.verifiedLowReviewCount ? "destructive" : "outline"}>
+              {account.verifiedLowReviewCount} low ratings
+            </Badge>
+            <Badge variant="outline">{account.warningCount} warnings</Badge>
+            <Badge variant="outline">
+              {account.verifiedReviewCount
+                ? `${account.verifiedAverageRating.toFixed(1)} average`
+                : "No ratings yet"}
+            </Badge>
+            {account.trustedMentor && <TrustedMentorBadge />}
+          </div>
+        )}
         {account.suspendedUntil && (
           <p className="text-sm font-medium text-destructive">
             Suspended until {new Date(account.suspendedUntil).toLocaleString()}
@@ -413,13 +418,13 @@ export function UserModerationCard({
                   Lift suspension
                 </Button>
               )}
-              {isSyntheticTestAccount && (
+              {isRemovableDemoAccount && (
                 <Button
                   variant="destructive"
                   disabled={busy}
-                  onClick={() => void deleteTestAccount()}
+                  onClick={() => void deleteDemoAccount()}
                 >
-                  <Trash2 className="mr-2 h-4 w-4" /> Delete test account
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete demo account
                 </Button>
               )}
             </div>

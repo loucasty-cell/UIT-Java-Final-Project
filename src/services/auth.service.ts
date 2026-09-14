@@ -82,6 +82,13 @@ export const authService = {
     });
   },
 
+  /** Upload the authenticated user's profile photo. */
+  async uploadAvatar(file: File): Promise<UserProfileResponse> {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.upload<UserProfileResponse>("/api/v1/me/avatar", formData);
+  },
+
   /**
    * Get authenticated user aggregated dashboard projection
    * GET /api/v1/me/dashboard

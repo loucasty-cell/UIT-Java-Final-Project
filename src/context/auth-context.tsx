@@ -142,7 +142,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateProfile = async (data: UpdateUserProfileRequest, version: number) => {
     const current = operation.current;
     const profile = await authService.updateProfile(data, version);
-    if (current === operation.current && getAccessToken()) setUser(profile);
+    if (current === operation.current && getAccessToken()) {
+      setUser(profile);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["mentors"] }),
+        queryClient.invalidateQueries({ queryKey: ["public-user-profile", profile.id] }),
+      ]);
+    }
     return profile;
   };
   const roles = useMemo(() => user?.roles || [], [user]);
